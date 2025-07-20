@@ -1,70 +1,58 @@
-# React + TypeScript + Vite
+# VeoVeo
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**VeoVeo** is a modern web app for movie lovers who want to **track, organize, and discover movies** with ease. Built with **React**, **TypeScript**, and **Vite**, VeoVeo lets you manage your personal movie collection, track which films you’ve seen (and how many times), and create a watchlist for the future.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## ✨ Features
 
-## Expanding the ESLint configuration
+- 🔍 **Movie Search:** Find movies instantly by title or genre.
+- 🎬 **Movie Cards:** View details like synopsis, year, genre, and rating.
+- ✅ **Watched Tracker:** Mark movies as watched and keep count of views per movie.
+- ⭐ **Watchlist:** Add movies to your "Watch Later" list.
+- 📊 **Stats Display:** At-a-glance stats for total, watched, and watchlist movies.
+- 💾 **Local Storage:** Your collection is saved locally in your browser.
+- ⚡ **Modern Stack:** React + TypeScript + Vite provide fast, scalable codebase.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+---
 
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## 📁 Project Structure
 
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
+- `src/components/` — Reusable UI components (Cards, Filters, Stats, Grid, etc.)
+- `src/interfaces/` — TypeScript interfaces for data types.
+- `src/pages/` — Main pages and app layout.
+- `src/App.tsx` — Application root.
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+---
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## 🛠️ Customization
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+- Easily extend VeoVeo to fetch real movie data from TMDb or OMDb by adding API calls.
+- Adjust the color scheme, stats, or logic to suit your preferences.
 
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-"# VeoVeo" 
+---
+
+## 🧰 Built With
+
+- [React](https://react.dev/)
+- [TypeScript](https://www.typescriptlang.org/)
+- [Vite](https://vitejs.dev/)
+- [Lucide Icons](https://lucide.dev/) *(for icons)*
+- [Shadcn UI](https://ui.shadcn.com/) *(UI components, if installed)*
+
+---
+
+## 🤝 Contributing
+
+Pull requests are welcome!  
+Please fork the repo and submit a pull request for review.
+
+---
+
+## 📄 License
+
+MIT License
+
+---
+
+> Enjoy managing your own movie universe with VeoVeo!

@@ -1,4 +1,5 @@
-import type { Movie } from "./interfaces/Movie";
+import type { Movie } from "../interfaces/Movie";
+
 
 export const initialMovies: Movie[] = [
     {

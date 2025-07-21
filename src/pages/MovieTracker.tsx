@@ -1,9 +1,4 @@
 import { useState, useMemo, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Search, Eye, EyeOff, Clock, Star, Calendar } from "lucide-react"
 import type { Movie } from "../interfaces/Movie"
 import { initialMovies } from "../components/initialMovies"
 import { Stats } from "../components/Stats"
@@ -11,6 +6,9 @@ import { MovieSearchBar } from "../components/MovieSearchBar"
 import { MovieFilters } from "../components/MovieFilters"
 import { MovieCard } from "../components/MovieCard"
 import { Pagination } from "../components/Pagination"
+import { ModalLogin } from "../components/ModalLogin"
+import { ModalRegister } from "../components/ModalRegister"
+
 
 
 
@@ -21,6 +19,8 @@ export default function MovieTracker() {
   const [filterStatus, setFilterStatus] = useState<"all" | "watched" | "watchLater">("all")
   const [currentPage, setCurrentPage] = useState(1)
   const moviesPerPage = 25
+  const [showLoginModal, setShowLoginModal] = useState(false)
+  const [showRegisterModal, setShowRegisterModal] = useState(false)
 
   // Filtrar películas basado en búsqueda y estado
   const filteredMovies = useMemo(() => {
@@ -79,6 +79,12 @@ export default function MovieTracker() {
       {/* Header */}
       <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-6">
+          <div className="absolute top-4 right-4 flex gap-2">
+            {/* Botón de login */}
+            <ModalLogin  open={showLoginModal} setOpen={setShowLoginModal}  />
+            {/* Botón de registro */}
+            <ModalRegister  open={showRegisterModal} setOpen={setShowRegisterModal}  />
+          </div>
           <h1 className="text-3xl font-bold text-center mb-6">🎬 Mi Colección de Películas</h1>
 
           {/* Estadísticas */}

@@ -1,5 +1,6 @@
-import { Button } from "@/components/ui/button"
+
 import { Eye, Clock } from "lucide-react"
+import { Button } from "./ui/button";
 
 interface Props {
   filterStatus: "all" | "watched" | "watchLater"

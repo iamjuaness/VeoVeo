@@ -1,12 +1,11 @@
 import './App.css'
-import MovieTracker from './pages/page';
-import Page from "./pages/page";
+import MovieTracker from './pages/MovieTracker';
 
 function App() {
 
   return (
     <>
-      <Page />
+      <MovieTracker />
     </>
   )
 }

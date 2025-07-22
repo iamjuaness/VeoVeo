@@ -7,7 +7,8 @@ export const registerSchema = object({
     password: string({ required_error: 'Password is required' })
       .min(8, 'Min 8 chars')
       .max(64, 'Max 64 chars'),
-    passwordConfirm: string({ required_error: 'Please confirm your password' })
+    passwordConfirm: string({ required_error: 'Please confirm your password' }),
+    selectedAvatar: string({ required_error: 'Please select an avatar' })
   }).refine(data => data.password === data.passwordConfirm, {
     path: ['passwordConfirm'],
     message: "Passwords don't match"

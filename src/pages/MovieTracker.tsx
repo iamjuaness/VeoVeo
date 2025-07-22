@@ -8,6 +8,8 @@ import { MovieCard } from "../components/MovieCard"
 import { Pagination } from "../components/Pagination"
 import { ModalLogin } from "../components/ModalLogin"
 import { ModalRegister } from "../components/ModalRegister"
+import type { User } from "../interfaces/User"
+import { UserMenu } from "../components/UserMenu"
 
 
 
@@ -21,6 +23,8 @@ export default function MovieTracker() {
   const moviesPerPage = 25
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [showRegisterModal, setShowRegisterModal] = useState(false)
+  const [user, setUser] = useState<User|null>(null);
+  const [showUserMenu, setShowUserMenu] = useState(false)
 
   // Filtrar películas basado en búsqueda y estado
   const filteredMovies = useMemo(() => {
@@ -45,12 +49,14 @@ export default function MovieTracker() {
   const endIndex = startIndex + moviesPerPage
   const currentMovies = filteredMovies.slice(startIndex, endIndex)
 
-  // Resetear página cuando cambien los filtros
-  const resetPage = () => setCurrentPage(1)
-
   useEffect(() => {
     setCurrentPage(1)
   }, [searchTerm, filterStatus])
+
+  const handleLogout = () => {
+    setUser(null)
+    setShowUserMenu(false)
+  }
 
   // Incrementar contador de veces vista
   const incrementWatchCount = (id: number) => {
@@ -80,10 +86,14 @@ export default function MovieTracker() {
       <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-6">
           <div className="absolute top-4 right-4 flex gap-2">
-            {/* Botón de login */}
-            <ModalLogin  open={showLoginModal} setOpen={setShowLoginModal}  />
-            {/* Botón de registro */}
-            <ModalRegister  open={showRegisterModal} setOpen={setShowRegisterModal}  />
+          {!user ? (
+              <>
+                <ModalLogin open={showLoginModal} setOpen={setShowLoginModal} onLogin={setUser} />
+                <ModalRegister open={showRegisterModal} setOpen={setShowRegisterModal} />
+              </>
+            ) : (
+              <UserMenu user={user} logout={handleLogout} open={showUserMenu} setOpen={setShowUserMenu} />
+            )}
           </div>
           <h1 className="text-3xl font-bold text-center mb-6">🎬 Mi Colección de Películas</h1>
 

@@ -15,7 +15,7 @@ export function MovieCard({ movie, incrementWatchCount, resetWatchCount, toggleW
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow">
       <div className="relative">
-        <img src={movie.poster || "/placeholder.svg"} alt={movie.title} className="w-full h-100 object-cover rounded-t-sm" />
+        <img src={movie.poster || "/placeholder.svg"} alt={movie.title} className="object-cover rounded-t-sm" />
         <div className="absolute top-2 left-2 flex flex-col gap-1">
           {movie.watchCount > 0 && (
             <Badge className="bg-green-600 hover:bg-green-700">

@@ -5,21 +5,29 @@ import  { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { LogIn } from "lucide-react";
 import { login } from "../api/auth";
+import type { User } from "../interfaces/User";
 
 
 interface LoginDialogProps {
   open: boolean;
   setOpen: (open: boolean) => void;
+  onLogin: (user: User) => void;
 }
 
-export function ModalLogin({ open, setOpen }: LoginDialogProps) {
+export function ModalLogin({ open, setOpen, onLogin }: LoginDialogProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    login({email, password});
-    setOpen(false);
+    const result = await login({ email, password }); // debe ser async!
+    const user = { id: result.id, name: result.name, email: result.email, avatar: result.avatar };
+    if (user) {
+      onLogin(user);
+      setOpen(false);
+    } else {
+      alert("Error al iniciar sesión");
+    }
   };
 
   return (

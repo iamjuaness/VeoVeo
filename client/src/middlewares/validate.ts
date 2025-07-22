@@ -1,7 +1,7 @@
-import { AnyZodObject } from "zod";
+import { ZodObject } from "zod";
 import { Request, Response, NextFunction } from "express";
 
-export const validate = (schema: AnyZodObject) => (req: Request, res: Response, next: NextFunction) => {
+export const validate = (schema: ZodObject) => (req: Request, res: Response, next: NextFunction) => {
   try {
     schema.parse({ body: req.body });
     next();

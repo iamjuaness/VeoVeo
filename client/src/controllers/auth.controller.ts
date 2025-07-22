@@ -1,10 +1,10 @@
 import { Request, Response } from "express";
 import bcrypt from "bcryptjs";
-import User, { IUser } from "../models/user.model";
+import User from "../models/user.model";
 import { signToken } from "../utils/jwt";
 
 export async function register(req: Request, res: Response) {
-  const { name, email, password, passwordConfirm } = req.body;
+  const { name, email, password, passwordConfirm, selectedAvatar } = req.body;
 
   try {
     if (password !== passwordConfirm) {
@@ -14,7 +14,7 @@ export async function register(req: Request, res: Response) {
     if (existing) return res.status(409).json({ message: "Email already registered" });
 
     const hashed = await bcrypt.hash(password, 10);
-    const user = await User.create({ name, email, password: hashed });
+    const user = await User.create({ name, email, password: hashed, selectedAvatar });
 
     return res.status(201).json({ message: "User created!" });
   } catch (error) {
@@ -33,8 +33,14 @@ export async function login(req: Request, res: Response) {
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) return res.status(401).json({ message: "Invalid credentials" });
 
-    const token = signToken({ userId: user._id, email: user.email });
-    return res.json({ token, name: user.name });
+    const token = signToken({ id: user._id, email: user.email, avatar: user.selectedAvatar });
+    return res.json({
+      token,
+      name: user.name,
+      email: user.email,
+      id: user._id,
+      avatar: user.selectedAvatar // El avatar es una string predefinida por tu app
+    });
   } catch (error) {
     return res.status(500).json({ message: "Server error" });
   }

@@ -5,6 +5,8 @@ export interface IUser extends Document {
   email: string;
   password: string;
   selectedAvatar: string;
+  moviesWatched: { movieId: string, count: number }[];
+  watchLater: string[];
 }
 
 const userSchema = new Schema<IUser>({
@@ -12,6 +14,13 @@ const userSchema = new Schema<IUser>({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   selectedAvatar: { type: String, required: false },
+    moviesWatched: [
+    {
+      movieId: { type: String, required: true },
+      count: { type: Number, default: 1 }
+    }
+  ],
+  watchLater: [String]
 });
 
 export default model<IUser>('User', userSchema);

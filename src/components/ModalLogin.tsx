@@ -12,19 +12,21 @@ interface LoginDialogProps {
   open: boolean;
   setOpen: (open: boolean) => void;
   onLogin: (user: User) => void;
+  openRegisterModal: () => void;
 }
 
-export function ModalLogin({ open, setOpen, onLogin }: LoginDialogProps) {
+export function ModalLogin({ open, setOpen, onLogin, openRegisterModal }: LoginDialogProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const result = await login({ email, password }); // debe ser async!
+    const result = await login({ email, password });
     const user = { id: result.id, name: result.name, email: result.email, avatar: result.avatar };
     if (user) {
       onLogin(user);
       setOpen(false);
+      window.location.reload();
     } else {
       alert("Error al iniciar sesión");
     }
@@ -72,6 +74,17 @@ export function ModalLogin({ open, setOpen, onLogin }: LoginDialogProps) {
             <Button type="button" variant="link" className="p-0 h-auto text-sm">
               ¿Olvidaste tu contraseña?
             </Button>
+            <Button
+            type="button"
+            variant="link"
+            className="p-0 h-auto text-sm"
+            onClick={() => {
+              setOpen(false);     
+              openRegisterModal();
+            }}
+          >
+            Crear cuenta
+          </Button>
           </div>
           <div className="flex gap-2 pt-4">
             <Button
@@ -90,8 +103,4 @@ export function ModalLogin({ open, setOpen, onLogin }: LoginDialogProps) {
       </DialogContent>
     </Dialog>
   );
-}
-
-function hashSHA256(password: string) {
-    throw new Error("Function not implemented.");
 }

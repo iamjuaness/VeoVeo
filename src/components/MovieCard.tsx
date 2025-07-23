@@ -3,15 +3,35 @@ import { Badge } from "./ui/badge"
 import { Eye, EyeOff, Clock, Star, Calendar } from "lucide-react"
 import type { Movie } from "../interfaces/Movie"
 import { Button } from "./ui/button"
+import type { User } from "../interfaces/User"
 
 interface Props {
   movie: Movie
   incrementWatchCount: (id: number) => void
   resetWatchCount: (id: number) => void
   toggleWatchLater: (id: number) => void
+  user: User | null;
+  openLoginModal: () => void;
 }
 
-export function MovieCard({ movie, incrementWatchCount, resetWatchCount, toggleWatchLater }: Props) {
+export function MovieCard({ movie, incrementWatchCount, resetWatchCount, toggleWatchLater, user, openLoginModal }: Props) {
+
+  function handleIncrement() {
+    if (!user) {
+      openLoginModal();
+      return;
+    }
+    incrementWatchCount(movie.id);
+  }
+
+  function handleToggleWatchLater() {
+    if (!user) {
+      openLoginModal();
+      return;
+    }
+    toggleWatchLater(movie.id);
+  }
+
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow">
       <div className="relative">
@@ -47,7 +67,7 @@ export function MovieCard({ movie, incrementWatchCount, resetWatchCount, toggleW
       <CardContent className="pt-0">
         <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{movie.description}</p>
         <div className="flex gap-2 pb-3">
-          <Button variant={movie.watchCount > 0 ? "default" : "outline"} size="sm" onClick={() => incrementWatchCount(movie.id)} className="flex-1 gap-1">
+          <Button variant={movie.watchCount > 0 ? "default" : "outline"} size="sm" onClick={handleIncrement} className="flex-1 gap-1">
             <Eye className="w-4 h-4" />
             {movie.watchCount > 0 ? `(${movie.watchCount})` : ""}
           </Button>
@@ -56,7 +76,7 @@ export function MovieCard({ movie, incrementWatchCount, resetWatchCount, toggleW
               <EyeOff className="w-4 h-4" />
             </Button>
           )}
-          <Button variant={movie.watchLater ? "default" : "outline"} size="sm" onClick={() => toggleWatchLater(movie.id)} className="gap-1">
+          <Button variant={movie.watchLater ? "default" : "outline"} size="sm" onClick={handleToggleWatchLater} className="gap-1">
             <Clock className="w-4 h-4" />
           </Button>
         </div>

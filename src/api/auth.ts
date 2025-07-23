@@ -20,13 +20,9 @@ export async function login(data: { email: string, password: string }) {
       body: JSON.stringify(data)
     });
     const result = await res.json();
+    console.log(result);
     if (result.token) {
-      // Puedes elegir localStorage o sessionStorage
       localStorage.setItem("authToken", result.token);
-      // Si solo quieres que dure la sesión: sessionStorage.setItem("authToken", data.token);
-  
-      // También puedes guardar el usuario en algún estado global o contexto si deseas
-      // setUser({ id: data.id, name: data.name, email: data.email, avatar: data.avatar });
     } else {
       // Manejo de error
     }

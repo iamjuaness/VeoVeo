@@ -33,13 +33,13 @@ export async function login(req: Request, res: Response) {
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) return res.status(401).json({ message: "Invalid credentials" });
 
-    const token = signToken({ id: user._id, email: user.email, avatar: user.selectedAvatar });
+    const token = signToken({ id: user._id, email: user.email, name: user.name, avatar: user.selectedAvatar });
     return res.json({
       token,
       name: user.name,
       email: user.email,
       id: user._id,
-      avatar: user.selectedAvatar // El avatar es una string predefinida por tu app
+      avatar: user.selectedAvatar
     });
   } catch (error) {
     return res.status(500).json({ message: "Server error" });

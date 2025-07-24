@@ -33,7 +33,7 @@ export function MovieCard({ movie, incrementWatchCount, resetWatchCount, toggleW
   }
 
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-shadow">
+    <Card className="overflow-hidden hover:shadow-lg transform hover:scale-105 transition-transform duration-300 ease-in-out sm:w-72 md:w-80 lg:w-96 max-w-full">
       <div className="relative">
         <img src={movie.poster || "/placeholder.svg"} alt={movie.title} className="object-cover rounded-t-sm" />
         <div className="absolute top-2 left-2 flex flex-col gap-1">

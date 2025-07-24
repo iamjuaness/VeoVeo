@@ -1,4 +1,4 @@
-import { dev_url, prod_url } from "../utils/urls";
+import { prod_url } from "../utils/urls";
 
 const API_URL = prod_url + 'api/auth';
 

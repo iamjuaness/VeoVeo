@@ -18,6 +18,8 @@ import {
 } from "../api/movie";
 import { jwtDecode } from "jwt-decode";
 import type { AuthPayload } from "../interfaces/AuthPayload";
+import { Theme } from "../components/Theme";
+import { Hamburger } from "../components/Hamburguer";
 
 export default function MovieTracker() {
   const [movies, setMovies] = useState<Movie[]>(initialMovies);
@@ -32,6 +34,7 @@ export default function MovieTracker() {
   const [user, setUser] = useState<User | null>(null);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   // Filtrar películas basado en búsqueda y estado
   const filteredMovies = useMemo(() => {
@@ -102,7 +105,10 @@ export default function MovieTracker() {
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme");
-    if (savedTheme === "dark" || (!savedTheme && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
+    if (
+      savedTheme === "dark" ||
+      (!savedTheme && window.matchMedia("(prefers-color-scheme: dark)").matches)
+    ) {
       setIsDarkMode(true);
       document.documentElement.classList.add("dark");
     } else {
@@ -181,30 +187,41 @@ export default function MovieTracker() {
       {/* Header */}
       <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-6">
-          <div className="absolute top-4 right-4 flex gap-2">
-            {!user ? (
-              <>
-                <ModalLogin
-                  open={showLoginModal}
-                  setOpen={setShowLoginModal}
-                  onLogin={setUser}
-                  openRegisterModal={() => setShowRegisterModal(true)}
+          <div className="absolute top-4 right-4">
+            {/* Desktop: botones normales a partir de lg */}
+            <div className="hidden lg:flex gap-2 items-center">
+              <Theme toggleTheme={toggleTheme} />
+
+              {!user ? (
+                <>
+                  <ModalLogin
+                    open={showLoginModal}
+                    setOpen={setShowLoginModal}
+                    onLogin={setUser}
+                    openRegisterModal={() => setShowRegisterModal(true)}
+                  />
+                  <ModalRegister
+                    open={showRegisterModal}
+                    setOpen={setShowRegisterModal}
+                  />
+                </>
+              ) : (
+                <UserMenu
+                  user={user}
+                  logout={handleLogout}
+                  open={showUserMenu}
+                  setOpen={setShowUserMenu}
+                  isDarkMode={isDarkMode}
+                  setIsDarkMode={toggleTheme}
                 />
-                <ModalRegister
-                  open={showRegisterModal}
-                  setOpen={setShowRegisterModal}
-                />
-              </>
-            ) : (
-              <UserMenu
-                user={user}
-                logout={handleLogout}
-                open={showUserMenu}
-                setOpen={setShowUserMenu}
-                isDarkMode={isDarkMode}
-                setIsDarkMode={toggleTheme}
-              />
-            )}
+              )}
+            </div>
+
+            {/* Móvil: botón hamburguesa */}
+            <div className="lg:hidden">
+              {/* Menu móvil - Sheet o drawer */}
+              <Hamburger showLoginModal={showLoginModal} setShowLoginModal={setShowLoginModal} showRegisterModal={showRegisterModal} setShowRegisterModal={setShowRegisterModal} showMobileMenu={showMobileMenu} setShowMobileMenu={setShowMobileMenu} setUser={setUser} toggleTheme={toggleTheme} isDarkMode={isDarkMode} handleLogout={handleLogout} />
+            </div>
           </div>
           <h1 className="text-3xl font-bold text-center mb-6 leading-tight">
             🎬 Mi Colección de Películas
@@ -247,7 +264,7 @@ export default function MovieTracker() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
             {currentMovies.map((movie) => (
               <MovieCard
                 key={movie.id}

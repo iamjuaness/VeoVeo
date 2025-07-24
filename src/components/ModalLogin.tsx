@@ -35,7 +35,7 @@ export function ModalLogin({ open, setOpen, onLogin, openRegisterModal }: LoginD
   return (
     <Dialog open={open} onOpenChange={setOpen}>
        <DialogTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-2 bg-transparent">
+            <Button variant="outline" size="sm" className="gap-2 bg-transparent border-2 border-gray-600">
                   <LogIn className="w-4 h-4" />
                   Iniciar Sesión
             </Button>

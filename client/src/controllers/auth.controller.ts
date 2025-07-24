@@ -42,6 +42,7 @@ export async function login(req: Request, res: Response) {
       avatar: user.selectedAvatar
     });
   } catch (error) {
+    console.error(error);
     return res.status(500).json({ message: "Server error" });
   }
 }

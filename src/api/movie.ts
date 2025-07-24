@@ -1,4 +1,6 @@
-const API_URL = 'http://localhost:5000/api/user';
+import { dev_url, prod_url } from "../utils/urls";
+
+const API_URL = prod_url + 'api/user';
 const token = localStorage.getItem("authToken");
 
 export async function addOrIncrementWatched(data: { movieId: string }) {

@@ -31,6 +31,7 @@ export default function MovieTracker() {
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false);
 
   // Filtrar películas basado en búsqueda y estado
   const filteredMovies = useMemo(() => {
@@ -98,6 +99,31 @@ export default function MovieTracker() {
         });
     }
   }, [user]);
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme");
+    if (savedTheme === "dark" || (!savedTheme && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
+      setIsDarkMode(true);
+      document.documentElement.classList.add("dark");
+    } else {
+      setIsDarkMode(false);
+      document.documentElement.classList.remove("dark");
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    setIsDarkMode((prev) => {
+      const next = !prev;
+      if (next) {
+        document.documentElement.classList.add("dark");
+        localStorage.setItem("theme", "dark");
+      } else {
+        document.documentElement.classList.remove("dark");
+        localStorage.setItem("theme", "light");
+      }
+      return next;
+    });
+  };
 
   const handleLogout = () => {
     // Limpiar usuario
@@ -175,10 +201,12 @@ export default function MovieTracker() {
                 logout={handleLogout}
                 open={showUserMenu}
                 setOpen={setShowUserMenu}
+                isDarkMode={isDarkMode}
+                setIsDarkMode={toggleTheme}
               />
             )}
           </div>
-          <h1 className="text-3xl font-bold text-center mb-6">
+          <h1 className="text-3xl font-bold text-center mb-6 leading-tight">
             🎬 Mi Colección de Películas
           </h1>
 
@@ -219,7 +247,7 @@ export default function MovieTracker() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
             {currentMovies.map((movie) => (
               <MovieCard
                 key={movie.id}

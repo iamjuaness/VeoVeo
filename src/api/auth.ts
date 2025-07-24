@@ -1,4 +1,6 @@
-const API_URL = 'http://localhost:5000/api/auth';
+import { dev_url, prod_url } from "../utils/urls";
+
+const API_URL = prod_url + 'api/auth';
 
 export async function register(data: { name: string, email: string, password: string, passwordConfirm: string, selectedAvatar: string }) {
   const res = await fetch(`${API_URL}/register`, {

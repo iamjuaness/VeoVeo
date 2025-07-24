@@ -1,5 +1,5 @@
 import type { Movie } from "../interfaces/Movie";
-const path = "https://image.tmdb.org/t/p/w342"
+const path = "https://image.tmdb.org/t/p/original"
 
 export const initialMovies: Movie[] = [
     {

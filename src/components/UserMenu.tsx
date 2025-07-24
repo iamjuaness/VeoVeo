@@ -11,7 +11,6 @@ import { Button } from "./ui/button";
 import { LogOut, Settings, Sun, Moon } from "lucide-react";
 import { Switch } from "./ui/switch";
 import { Separator } from "./ui/separator";
-import { useState } from "react";
 import { predefinedAvatars } from "./PredefinedAvatars";
 
 interface UserMenuProps {
@@ -19,16 +18,13 @@ interface UserMenuProps {
   logout(): void;
   open: boolean;
   setOpen(val: boolean): void;
+  isDarkMode: boolean;
+  setIsDarkMode(val: boolean): void;
 }
 
-export function UserMenu({ user, logout, open, setOpen }: UserMenuProps) {
-  const [isDarkMode, setIsDarkMode] = useState(false);
-  const toggleTheme = () => {
-    setIsDarkMode(!isDarkMode);
-    // Aquí podrías implementar la lógica real del tema
-    document.documentElement.classList.toggle("dark");
-  };
-  const userAvatarObj = predefinedAvatars.find(a => a.id === user.avatar)!;
+export function UserMenu({ user, logout, open, setOpen, isDarkMode, setIsDarkMode }: UserMenuProps) {
+
+  const userAvatarObj = predefinedAvatars.find((a) => a.id === user.avatar)!;
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -89,7 +85,7 @@ export function UserMenu({ user, logout, open, setOpen }: UserMenuProps) {
             )}
             <span>Tema {isDarkMode ? "Oscuro" : "Claro"}</span>
           </div>
-          <Switch checked={isDarkMode} onCheckedChange={toggleTheme} />
+          <Switch checked={isDarkMode} onCheckedChange={setIsDarkMode} />
         </div>
         <Separator />
         <Button

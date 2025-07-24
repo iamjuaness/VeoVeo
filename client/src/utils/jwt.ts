@@ -11,7 +11,7 @@ export function signToken(user: { id: string; name: string; email: string; avata
       avatar: user.avatar,
     },
     JWT_SECRET,
-    { expiresIn: "2h" }
+    { expiresIn: "1 week" }
   );
 }
 

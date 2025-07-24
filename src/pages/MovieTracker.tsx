@@ -20,6 +20,8 @@ import { jwtDecode } from "jwt-decode";
 import type { AuthPayload } from "../interfaces/AuthPayload";
 import { Theme } from "../components/Theme";
 import { Hamburger } from "../components/Hamburguer";
+import { Slider } from "../components/Slider";
+import { isTokenExpired } from "../lib/utils";
 
 export default function MovieTracker() {
   const [movies, setMovies] = useState<Movie[]>(initialMovies);
@@ -35,6 +37,7 @@ export default function MovieTracker() {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [currentSlide, setCurrentSlide] = useState(0);
 
   // Filtrar películas basado en búsqueda y estado
   const filteredMovies = useMemo(() => {
@@ -53,11 +56,46 @@ export default function MovieTracker() {
     return filtered;
   }, [movies, searchTerm, filterStatus]);
 
+  const featuredMovies = initialMovies
+    .sort((a, b) => b.rating - a.rating)
+    .slice(0, 6)
+    .map((movie) => ({
+      ...movie,
+      backdrop: `${movie.backdrop}&text=${encodeURIComponent(
+        movie.title
+      )}+Backdrop`,
+    }));
+
   // Calcular paginación
   const totalPages = Math.ceil(filteredMovies.length / moviesPerPage);
   const startIndex = (currentPage - 1) * moviesPerPage;
   const endIndex = startIndex + moviesPerPage;
   const currentMovies = filteredMovies.slice(startIndex, endIndex);
+
+  useEffect(() => {
+    const token = localStorage.getItem("authToken");
+    if (token && isTokenExpired(token)) {
+      localStorage.removeItem("authToken");
+      setUser(null);
+      setShowLoginModal(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // Llama a tu función para obtener el status de películas del usuario
+      getUserMovieStatus();
+    }, 1000); 
+    return () => clearInterval(interval);
+  }, []);
+
+  // Auto-play del slider
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % featuredMovies.length);
+    }, 6000);
+    return () => clearInterval(interval);
+  }, [featuredMovies]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -76,6 +114,7 @@ export default function MovieTracker() {
         };
         setUser(user);
       } catch (e) {
+        console.log(e);
         setUser(null);
       }
     }
@@ -145,6 +184,21 @@ export default function MovieTracker() {
     setCurrentPage(1);
   };
 
+  // Funciones del slider
+  const nextSlide = () => {
+    setCurrentSlide((prev) => (prev + 1) % featuredMovies.length);
+  };
+
+  const prevSlide = () => {
+    setCurrentSlide(
+      (prev) => (prev - 1 + featuredMovies.length) % featuredMovies.length
+    );
+  };
+
+  const goToSlide = (index: number) => {
+    setCurrentSlide(index);
+  };
+
   // Incrementar contador de veces vista
   const incrementWatchCount = (id: number) => {
     setMovies(
@@ -187,13 +241,14 @@ export default function MovieTracker() {
       {/* Header */}
       <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-6">
-          <div className="absolute top-4 right-4">
-            {/* Desktop: botones normales a partir de lg */}
-            <div className="hidden lg:flex gap-2 items-center">
-              <Theme toggleTheme={toggleTheme} />
-
-              {!user ? (
-                <>
+          {/* Controles de navegación */}
+          <div className="absolute top-4 right-4 flex items-center gap-2">
+            {!user ? (
+              <>
+                {/* Botones de desktop (lg y superior) */}
+                <div className="hidden lg:flex gap-2">
+                  <Theme toggleTheme={toggleTheme} />
+                  {/* Modal de Inicio de Sesión */}
                   <ModalLogin
                     open={showLoginModal}
                     setOpen={setShowLoginModal}
@@ -204,48 +259,77 @@ export default function MovieTracker() {
                     open={showRegisterModal}
                     setOpen={setShowRegisterModal}
                   />
-                </>
-              ) : (
-                <UserMenu
-                  user={user}
-                  logout={handleLogout}
-                  open={showUserMenu}
-                  setOpen={setShowUserMenu}
+                </div>
+
+                {/* Menú hamburguesa para móviles (menor a lg) */}
+                <Hamburger
+                  showLoginModal={showLoginModal}
+                  setShowLoginModal={setShowLoginModal}
+                  showRegisterModal={showRegisterModal}
+                  setShowRegisterModal={setShowRegisterModal}
+                  showMobileMenu={showMobileMenu}
+                  setShowMobileMenu={setShowMobileMenu}
+                  setUser={setUser}
+                  toggleTheme={toggleTheme}
                   isDarkMode={isDarkMode}
-                  setIsDarkMode={toggleTheme}
+                  handleLogout={handleLogout}
                 />
-              )}
-            </div>
-
-            {/* Móvil: botón hamburguesa */}
-            <div className="lg:hidden">
-              {/* Menu móvil - Sheet o drawer */}
-              <Hamburger showLoginModal={showLoginModal} setShowLoginModal={setShowLoginModal} showRegisterModal={showRegisterModal} setShowRegisterModal={setShowRegisterModal} showMobileMenu={showMobileMenu} setShowMobileMenu={setShowMobileMenu} setUser={setUser} toggleTheme={toggleTheme} isDarkMode={isDarkMode} handleLogout={handleLogout} />
-            </div>
+              </>
+            ) : (
+              <UserMenu
+                user={user}
+                logout={handleLogout}
+                open={showUserMenu}
+                setOpen={setShowUserMenu}
+                isDarkMode={isDarkMode}
+                setIsDarkMode={toggleTheme}
+              />
+            )}
           </div>
-          <h1 className="text-3xl font-bold text-center mb-6 leading-tight">
-            🎬 Mi Colección de Películas
-          </h1>
+          <div className="gap-6 mb-6">
+            <div className="gap-2 mt-16">
+              <Slider
+                featuredMovies={featuredMovies}
+                currentSlide={currentSlide}
+                prevSlide={prevSlide}
+                nextSlide={nextSlide}
+                goToSlide={goToSlide}
+                toggleWatchLater={() => {}}
+              />
+            </div>
 
-          {/* Estadísticas */}
-          <Stats
-            total={stats.total}
-            watched={stats.watched}
-            watchLater={stats.watchLater}
-          />
+            {/* Estadísticas - Solo visible cuando el usuario está logueado */}
+            {user && (
+              <>
+                <h1 className="text-3xl font-bold text-center mb-6 leading-tight">
+                  🎬 Mi Colección de Películas
+                </h1>
+                {/* Estadísticas */}
+                <Stats
+                  total={stats.total}
+                  watched={stats.watched}
+                  watchLater={stats.watchLater}
+                />
+              </>
+            )}
 
-          {/* Barra de búsqueda */}
-          <MovieSearchBar
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
-          />
+            {/* Barra de búsqueda */}
+            <MovieSearchBar
+              searchTerm={searchTerm}
+              setSearchTerm={setSearchTerm}
+            />
 
-          {/* Filtros */}
-          <MovieFilters
-            filterStatus={filterStatus}
-            setFilterStatus={setFilterStatus}
-            stats={stats}
-          />
+            {/* Filtros */}
+            {user && (
+              <>
+                <MovieFilters
+                  filterStatus={filterStatus}
+                  setFilterStatus={setFilterStatus}
+                  stats={stats}
+                />
+              </>
+            )}
+          </div>
         </div>
       </header>
 
@@ -264,7 +348,7 @@ export default function MovieTracker() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 justify-items-center min-h-screen py-8">
             {currentMovies.map((movie) => (
               <MovieCard
                 key={movie.id}
@@ -286,6 +370,13 @@ export default function MovieTracker() {
           filteredCount={filteredMovies.length}
         />
       </main>
+
+      <footer className="border-t border-gray-200 p-4 text-center">
+        <p className="text-sm text-gray-500">
+          &copy; {new Date().getFullYear()} VeoVeo. Todos los derechos
+          reservados.
+        </p>
+      </footer>
     </div>
   );
 }

@@ -30,7 +30,7 @@ export function UserMenu({ user, logout, open, setOpen, isDarkMode, setIsDarkMod
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
         <Button variant="ghost" className="p-0 rounded-full pt-5">
-          <Avatar className="h-15 w-15">
+          <Avatar className="h-12 w-12 border-2 border-primary">
             <AvatarImage
               src={userAvatarObj.url || "/placeholder.svg"}
               alt={user.name}

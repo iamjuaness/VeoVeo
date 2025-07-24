@@ -6,6 +6,7 @@ export interface Movie {
   rating: number
   description: string
   poster: string
+  backdrop: string
   watchCount: number // Cambiar de 'watched: boolean' a 'watchCount: number'
   watchLater: boolean
 }

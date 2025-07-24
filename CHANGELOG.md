@@ -1,5 +1,19 @@
 # Changelog
 
-All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
+All notable changes to this project will be documented in this file.
 
-### [1.0.1](https://github.com/iamjuaness/VeoVeo/compare/v1.2.2...v1.0.1) (2025-07-24)
+## [Unreleased]
+
+## [1.3.0] - 2025-07-24
+### Changed
+- Improved UI/UX for mobile devices.
+- Improved error handling and user experience.
+
+## [1.2.0] - 2025-07-23
+### Added
+- Support for dark mode.
+- Hamburger menu button on mobile devices.
+
+## [1.1.0] - 2025-07-19
+### Changed
+- Decoupling of components for better code cleanliness.

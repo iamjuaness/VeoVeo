@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, UserPlus } from "lucide-react";
+import { Check, Loader2, UserPlus } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -25,18 +25,34 @@ export function ModalRegister({ open, setOpen }: RegisterDialogProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setConfirm] = useState("");
-  const [selectedAvatar, setSelectedAvatar] = useState<string>(predefinedAvatars[0].id)
+  const [selectedAvatar, setSelectedAvatar] = useState<string>(
+    predefinedAvatars[0].id
+  );
+  const [isLoading, setIsLoading] = useState(false);
 
   // Lógica para manejar el registro (puedes conectar con tu backend o localStorage aquí)
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password !== passwordConfirm) {
-      alert("Las contraseñas no coinciden");
-      return;
+    setIsLoading(true);
+    try {
+      if (password !== passwordConfirm) {
+        alert("Las contraseñas no coinciden");
+        return;
+      }
+      await register({ name, email, password, passwordConfirm, selectedAvatar });
+      setOpen(false);
+      setName("");
+      setEmail("");
+      setPassword("");
+      setConfirm("");
+      setSelectedAvatar(predefinedAvatars[0].id);
+      setSelectedAvatar(predefinedAvatars[0].id);
+    } catch (error) {
+      // Manejo de error opcional
+      alert("Error al registrarse, intenta de nuevo.");
+    } finally {
+      setIsLoading(false);
     }
-    register({ name, email, password, passwordConfirm, selectedAvatar });
-    setOpen(false);
-    setSelectedAvatar(predefinedAvatars[0].id)
   };
 
   return (
@@ -64,6 +80,7 @@ export function ModalRegister({ open, setOpen }: RegisterDialogProps) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
+              disabled={isLoading}
             />
           </div>
           <div className="space-y-2">
@@ -75,6 +92,7 @@ export function ModalRegister({ open, setOpen }: RegisterDialogProps) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              disabled={isLoading}
             />
           </div>
           <div className="space-y-2">
@@ -86,6 +104,7 @@ export function ModalRegister({ open, setOpen }: RegisterDialogProps) {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              disabled={isLoading}
             />
           </div>
           <div className="space-y-2">
@@ -97,6 +116,7 @@ export function ModalRegister({ open, setOpen }: RegisterDialogProps) {
               value={passwordConfirm}
               onChange={(e) => setConfirm(e.target.value)}
               required
+              disabled={isLoading}
             />
           </div>
           {/* Selector de Avatar */}
@@ -138,6 +158,7 @@ export function ModalRegister({ open, setOpen }: RegisterDialogProps) {
                       ? "ring-2 ring-primary bg-accent"
                       : "hover:ring-1 hover:ring-muted-foreground"
                   }`}
+                  disabled={isLoading}
                 >
                   <Avatar className="h-12 w-12">
                     <AvatarImage
@@ -162,11 +183,22 @@ export function ModalRegister({ open, setOpen }: RegisterDialogProps) {
               variant="outline"
               className="flex-1 bg-transparent"
               onClick={() => setOpen(false)}
+              disabled={isLoading}
             >
               Cancelar
             </Button>
-            <Button type="submit" className="flex-1">
-              Crear Cuenta
+            <Button type="submit" className="flex-1" disabled={isLoading}>
+              {isLoading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Cargando...
+                </span>
+              ) : (
+                <>
+                  <UserPlus className="w-4 h-4" />
+                  Crear Cuenta
+                </>
+              )}
             </Button>
           </div>
         </form>

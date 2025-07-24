@@ -1,10 +1,6 @@
 import type { User } from "../interfaces/User";
 import { Button } from "./ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetTrigger,
-} from "./ui/sheet";
+import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
 import { ModalLogin } from "./ModalLogin";
 import { ModalRegister } from "./ModalRegister";
 import { Separator } from "./ui/separator";
@@ -46,7 +42,7 @@ export function Hamburger({
           <Menu className="w-4 h-4" />
         </Button>
       </SheetTrigger>
-      <SheetContent side="right" className="w-80">
+      <SheetContent side="right" className="w-80" aria-describedby={undefined}>
         <div className="space-y-4 mt-12">
           {/* Botones de autenticación en móvil */}
           <div className="flex flex-col justify-between p-3 rounded-lg w-full max-w-xs mx-auto space-y-4">

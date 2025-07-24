@@ -1,9 +1,6 @@
 import {
   ChevronLeft,
   ChevronRight,
-  Clock,
-  Eye,
-  Play,
   Star,
 } from "lucide-react";
 import type { Movie } from "../interfaces/Movie";
@@ -25,7 +22,6 @@ export function Slider({
   prevSlide,
   nextSlide,
   goToSlide,
-  toggleWatchLater,
 }: SliderProps) {
   return (
     <div className="relative mb-8 rounded-xl overflow-hidden">

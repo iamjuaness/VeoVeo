@@ -83,8 +83,16 @@ export default function MovieTracker() {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      // Llama a tu función para obtener el status de películas del usuario
-      getUserMovieStatus();
+
+      getUserMovieStatus()
+      .then(r => r.json())
+      .then(data => {
+        setMovies(prev => prev.map(movie => ({
+          ...movie,
+          watchCount: data.moviesWatched.find((m: { movieId: any; }) => String(m.movieId) === String(movie.id))?.count || 0,
+          watchLater: data.watchLater.includes(String(movie.id))
+        })))
+      });
     }, 1000); 
     return () => clearInterval(interval);
   }, []);

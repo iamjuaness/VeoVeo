@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import type { Movie } from "../interfaces/Movie";
 import { initialMovies } from "../components/initialMovies";
 import { Stats } from "../components/Stats";
@@ -22,6 +22,9 @@ import { Theme } from "../components/Theme";
 import { Hamburger } from "../components/Hamburguer";
 import { Slider } from "../components/Slider";
 import { isTokenExpired } from "../lib/utils";
+import { io, Socket } from "socket.io-client";
+import type { DefaultEventsMap } from "@socket.io/component-emitter";
+import { prod_url } from "../utils/urls";
 
 export default function MovieTracker() {
   const [movies, setMovies] = useState<Movie[]>(initialMovies);
@@ -38,6 +41,7 @@ export default function MovieTracker() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
+  const ENDPOINT = prod_url;
 
   // Filtrar películas basado en búsqueda y estado
   const filteredMovies = useMemo(() => {
@@ -71,6 +75,85 @@ export default function MovieTracker() {
   const startIndex = (currentPage - 1) * moviesPerPage;
   const endIndex = startIndex + moviesPerPage;
   const currentMovies = filteredMovies.slice(startIndex, endIndex);
+  const socketRef = useRef<Socket<DefaultEventsMap, DefaultEventsMap> | null>(
+    null
+  );
+
+  useEffect(() => {
+    if (!user) return;
+
+    socketRef.current = io(ENDPOINT, { transports: ["websocket"] });
+
+    socketRef.current.on("connect", () => {
+      socketRef.current?.emit("join", String(user.id));
+    });
+
+    socketRef.current.on("movies-watched", () => {
+      getUserMovieStatus()
+        .then((data) => {
+          setMovies((prev) =>
+            prev.map((movie) => ({
+              ...movie,
+              watchCount:
+                data.moviesWatched.find(
+                  (m: any) => String(m.movieId) === String(movie.id)
+                )?.count || 0,
+              watchLater: data.watchLater.includes(String(movie.id)),
+            }))
+          );
+        })
+        .catch((err) => {
+          console.error("Error cargando estado de películas:", err);
+        });
+    });
+
+    socketRef.current.on("movies-reset", () => {
+      getUserMovieStatus()
+        .then((data) => {
+          setMovies((prev) =>
+            prev.map((movie) => ({
+              ...movie,
+              watchCount:
+                data.moviesWatched.find(
+                  (m: any) => String(m.movieId) === String(movie.id)
+                )?.count || 0,
+              watchLater: data.watchLater.includes(String(movie.id)),
+            }))
+          );
+        })
+        .catch((err) => {
+          console.error("Error cargando estado de películas:", err);
+        });
+    });
+
+    socketRef.current.on("watch-later-toggled", () => {
+      // Actualiza estado local con payload.watchLater
+      getUserMovieStatus()
+        .then((data) => {
+          setMovies((prev) =>
+            prev.map((movie) => ({
+              ...movie,
+              watchCount:
+                data.moviesWatched.find(
+                  (m: any) => String(m.movieId) === String(movie.id)
+                )?.count || 0,
+              watchLater: data.watchLater.includes(String(movie.id)),
+            }))
+          );
+        })
+        .catch((err) => {
+          console.error("Error cargando estado de películas:", err);
+        });
+    });
+
+    socketRef.current.on("connect_error", (err) => {
+      console.error("Error de conexión en socket:", err);
+    });
+
+    return () => {
+      socketRef.current?.disconnect();
+    };
+  }, [ENDPOINT, user]);
 
   useEffect(() => {
     const token = localStorage.getItem("authToken");
@@ -79,22 +162,6 @@ export default function MovieTracker() {
       setUser(null);
       setShowLoginModal(true);
     }
-  }, []);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-
-      getUserMovieStatus()
-      .then(r => r.json())
-      .then(data => {
-        setMovies(prev => prev.map(movie => ({
-          ...movie,
-          watchCount: data.moviesWatched.find((m: { movieId: any; }) => String(m.movieId) === String(movie.id))?.count || 0,
-          watchLater: data.watchLater.includes(String(movie.id))
-        })))
-      });
-    }, 1000); 
-    return () => clearInterval(interval);
   }, []);
 
   // Auto-play del slider

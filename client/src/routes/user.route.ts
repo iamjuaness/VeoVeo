@@ -4,7 +4,7 @@ import { addOrIncrementWatched, resetWatched, toggleWatchLater, getUserMovieStat
 
 const router = Router();
 
-router.use(authMiddleware); // Todas las rutas siguientes requieren usuario autenticado
+router.use(authMiddleware);
 
 router.post("/movies/watched", addOrIncrementWatched);
 router.post("/movies/reset", resetWatched);

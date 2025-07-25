@@ -28,6 +28,7 @@ export function MovieCard({
   user,
   openLoginModal,
 }: Props) {
+  
   function handleIncrement() {
     if (!user) {
       openLoginModal();

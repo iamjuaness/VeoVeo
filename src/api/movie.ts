@@ -10,7 +10,6 @@ export async function addOrIncrementWatched(data: { movieId: string }) {
     body: JSON.stringify(data)
   });
   const result = await res.json();
-  console.log(token);
   return result;
 }
 

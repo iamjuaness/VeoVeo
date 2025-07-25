@@ -2,6 +2,7 @@
 // Body: { movieId: string }
 import { Request, Response } from "express";
 import User from "../models/user.model";
+import { io } from "../app";
 
 export async function addOrIncrementWatched(req: Request, res: Response) {
   const { id } = req;
@@ -17,6 +18,10 @@ export async function addOrIncrementWatched(req: Request, res: Response) {
     user.moviesWatched.push({ movieId, count: 1 });
   }
   await user.save();
+  io.to(String(id)).emit("movies-watched", {
+    type: "add",
+    data: { movieId, count: found ? found.count : 1 },
+  });
   return res.json({ moviesWatched: user.moviesWatched });
 }
 
@@ -35,6 +40,11 @@ export async function resetWatched(req: Request, res: Response) {
   );
 
   await user.save();
+  io.to(String(id)).emit("movies-reset", {
+    type: "reset",
+    movieId,
+    moviesWatched: user.moviesWatched,
+  });
   return res.json({ moviesWatched: user.moviesWatched });
 }
 
@@ -53,6 +63,10 @@ export async function toggleWatchLater(req: Request, res: Response) {
     user.watchLater.push(movieId);
   }
   await user.save();
+  io.to(String(id)).emit("watch-later-toggled", {
+    movieId,
+    watchLater: user.watchLater,
+  });
   return res.json({ watchLater: user.watchLater });
 }
 

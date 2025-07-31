@@ -10,6 +10,7 @@ import { Eye, EyeOff, Clock, Star, Calendar } from "lucide-react";
 import type { Movie } from "../interfaces/Movie";
 import { Button } from "./ui/button";
 import type { User } from "../interfaces/User";
+import GlareHover from "./ui/glarehover";
 
 interface Props {
   movie: Movie;
@@ -28,7 +29,6 @@ export function MovieCard({
   user,
   openLoginModal,
 }: Props) {
-  
   function handleIncrement() {
     if (!user) {
       openLoginModal();
@@ -46,13 +46,21 @@ export function MovieCard({
   }
 
   return (
-    <Card className="overflow-hidden hover:shadow-lg transform hover:scale-105 transition-transform duration-300 ease-in-out w-64 md:w-72 lg:w-80 max-w-full p-2 sm:p-4">
+    <Card className="overflow-hidden hover:shadow-lg transform hover:scale-105 transition-transform duration-300 ease-in-out w-72 md:w-80 lg:w-82 max-w-full p-2 sm:p-4">
       <div className="relative w-full aspect-[2/3]">
-        <img
-          src={movie.poster || "/placeholder.svg"}
-          alt={movie.title}
-          className="object-cover w-full h-full rounded-t-sm"
-        />
+        <GlareHover
+          glareColor="#ffffff"
+          glareOpacity={0.3}
+          glareAngle={-30}
+          glareSize={300}
+          transitionDuration={1000}
+        >
+          <img
+            src={movie.poster || "/placeholder.svg"}
+            alt={movie.title}
+            className="object-cover w-full h-full rounded-t-sm"
+          />
+        </GlareHover>
         <div className="absolute top-2 left-2 flex flex-col gap-1">
           {movie.watchCount > 0 && (
             <Badge className="bg-green-600 hover:bg-green-700">
@@ -144,7 +152,11 @@ export function MovieCard({
               size="sm"
               onClick={handleToggleWatchLater}
               className="min-w-[48px] gap-1 text-xs px-2 py-1"
-              title={movie.watchLater ? "Quitar de lista de ver después" : "Agregar a lista de ver después"}
+              title={
+                movie.watchLater
+                  ? "Quitar de lista de ver después"
+                  : "Agregar a lista de ver después"
+              }
             >
               <Clock className="w-4 h-4" />
               <span className="hidden xs:inline">

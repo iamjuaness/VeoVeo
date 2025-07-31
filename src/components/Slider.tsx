@@ -1,8 +1,4 @@
-import {
-  ChevronLeft,
-  ChevronRight,
-  Star,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight, Star } from "lucide-react";
 import type { Movie } from "../interfaces/Movie";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
@@ -41,8 +37,8 @@ export function Slider({
                 loading="lazy"
               />
               <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-transparent" />
-              <div className="absolute inset-0 flex items-center">
-                <div className="container mx-auto px-4">
+              <div className="absolute inset-0 flex">
+                <div className="container mx-auto px-4 mt-3">
                   <div className="max-w-2xl text-white">
                     <div className="flex items-center gap-2 mb-2">
                       <Badge className="bg-yellow-600 hover:bg-yellow-700">
@@ -57,15 +53,13 @@ export function Slider({
                         {movie.year}
                       </Badge>
                     </div>
-                    <h2 className="text-3xl ml-10 md:text-4xl lg:text-5xl font-bold mb-4">
-                      {movie.title}
-                    </h2>
-                    <p className="text-lg md:text-xl ml-10 mb-6 text-gray-200 line-clamp-2">
-                      {movie.description}
-                    </p>
-                    <div className="flex gap-3">
-                    </div>
+                    <div className="flex gap-3"></div>
                   </div>
+                </div>
+                <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/60 via-black/10 to-transparent px-6 py-8 lg:py-12">
+                  <h2 className="text-2xl md:text-4xl lg:text-5xl font-bold text-white drop-shadow-sm">
+                    {movie.title}
+                  </h2>
                 </div>
               </div>
             </div>

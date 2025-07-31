@@ -1,26 +1,22 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useEffect, useState } from "react";
 import {jwtDecode} from "jwt-decode";
-
-interface UserPayload {
-  id: string;
-  name: string;
-  email: string;
-  avatar: string;
-}
+import type { User } from "../interfaces/User";
 
 interface AuthContextType {
-  user: UserPayload | null;
+  user: User | null;
+  setUser: (user: User | null) => void;
   token: string | null;
   login: (token: string) => void;
   logout: () => void;
+  isLoading: boolean;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Helper para obtener el usuario del token JWT
-function getUserFromToken(token: string): UserPayload | null {
+function getUserFromToken(token: string): User | null {
   try {
-    return jwtDecode<UserPayload>(token);
+    return jwtDecode<User>(token);
   } catch {
     return null;
   }
@@ -28,7 +24,8 @@ function getUserFromToken(token: string): UserPayload | null {
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [token, setToken] = useState<string | null>(null);
-  const [user, setUser] = useState<UserPayload | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Cargar user y token al iniciar la app
   useEffect(() => {
@@ -37,6 +34,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setToken(storedToken);
       setUser(getUserFromToken(storedToken));
     }
+    setIsLoading(false);
   }, []);
 
   // Función para iniciar sesión y guardar token/user
@@ -55,15 +53,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout }}>
+    <AuthContext.Provider value={{ user, setUser, token, login, logout, isLoading }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
-// Custom hook para usar el contexto
-export const useAuth = () => {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth debe usarse dentro de <AuthProvider>");
-  return ctx;
-};

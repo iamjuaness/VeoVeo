@@ -1,5 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
-import type { Movie } from "../interfaces/Movie";
+import { useState, useMemo, useEffect } from "react";
 import { initialMovies } from "../components/initialMovies";
 import { Stats } from "../components/Stats";
 import { MovieSearchBar } from "../components/MovieSearchBar";
@@ -8,26 +7,21 @@ import { MovieCard } from "../components/MovieCard";
 import { Pagination } from "../components/Pagination";
 import { ModalLogin } from "../components/ModalLogin";
 import { ModalRegister } from "../components/ModalRegister";
-import type { User } from "../interfaces/User";
 import { UserMenu } from "../components/UserMenu";
 import {
   addOrIncrementWatched,
-  getUserMovieStatus,
   resetWatched,
   toggleWatchLaterApi,
 } from "../api/movie";
-import { jwtDecode } from "jwt-decode";
-import type { AuthPayload } from "../interfaces/AuthPayload";
 import { Theme } from "../components/Theme";
 import { Hamburger } from "../components/Hamburguer";
 import { Slider } from "../components/Slider";
-import { isTokenExpired } from "../lib/utils";
-import { io, Socket } from "socket.io-client";
-import type { DefaultEventsMap } from "@socket.io/component-emitter";
-import { prod_url } from "../utils/urls";
+import { useAuth } from "../context/useAuth";
+import { useMovies } from "../context/MoviesContext";
+// import { getMoviesByGenres } from "../api/imbd";
 
 export default function MovieTracker() {
-  const [movies, setMovies] = useState<Movie[]>(initialMovies);
+  const { movies, setMovies } = useMovies();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<
     "all" | "watched" | "watchLater"
@@ -36,12 +30,11 @@ export default function MovieTracker() {
   const moviesPerPage = 25;
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
+  const { user, setUser, logout } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
-  const ENDPOINT = prod_url;
 
   // Filtrar películas basado en búsqueda y estado
   const filteredMovies = useMemo(() => {
@@ -75,94 +68,8 @@ export default function MovieTracker() {
   const startIndex = (currentPage - 1) * moviesPerPage;
   const endIndex = startIndex + moviesPerPage;
   const currentMovies = filteredMovies.slice(startIndex, endIndex);
-  const socketRef = useRef<Socket<DefaultEventsMap, DefaultEventsMap> | null>(
-    null
-  );
 
-  useEffect(() => {
-    if (!user) return;
-
-    socketRef.current = io(ENDPOINT, { transports: ["websocket"] });
-
-    socketRef.current.on("connect", () => {
-      socketRef.current?.emit("join", String(user.id));
-    });
-
-    socketRef.current.on("movies-watched", () => {
-      getUserMovieStatus()
-        .then((data) => {
-          setMovies((prev) =>
-            prev.map((movie) => ({
-              ...movie,
-              watchCount:
-                data.moviesWatched.find(
-                  (m: any) => String(m.movieId) === String(movie.id)
-                )?.count || 0,
-              watchLater: data.watchLater.includes(String(movie.id)),
-            }))
-          );
-        })
-        .catch((err) => {
-          console.error("Error cargando estado de películas:", err);
-        });
-    });
-
-    socketRef.current.on("movies-reset", () => {
-      getUserMovieStatus()
-        .then((data) => {
-          setMovies((prev) =>
-            prev.map((movie) => ({
-              ...movie,
-              watchCount:
-                data.moviesWatched.find(
-                  (m: any) => String(m.movieId) === String(movie.id)
-                )?.count || 0,
-              watchLater: data.watchLater.includes(String(movie.id)),
-            }))
-          );
-        })
-        .catch((err) => {
-          console.error("Error cargando estado de películas:", err);
-        });
-    });
-
-    socketRef.current.on("watch-later-toggled", () => {
-      // Actualiza estado local con payload.watchLater
-      getUserMovieStatus()
-        .then((data) => {
-          setMovies((prev) =>
-            prev.map((movie) => ({
-              ...movie,
-              watchCount:
-                data.moviesWatched.find(
-                  (m: any) => String(m.movieId) === String(movie.id)
-                )?.count || 0,
-              watchLater: data.watchLater.includes(String(movie.id)),
-            }))
-          );
-        })
-        .catch((err) => {
-          console.error("Error cargando estado de películas:", err);
-        });
-    });
-
-    socketRef.current.on("connect_error", (err) => {
-      console.error("Error de conexión en socket:", err);
-    });
-
-    return () => {
-      socketRef.current?.disconnect();
-    };
-  }, [ENDPOINT, user]);
-
-  useEffect(() => {
-    const token = localStorage.getItem("authToken");
-    if (token && isTokenExpired(token)) {
-      localStorage.removeItem("authToken");
-      setUser(null);
-      setShowLoginModal(true);
-    }
-  }, []);
+  
 
   // Auto-play del slider
   useEffect(() => {
@@ -175,61 +82,6 @@ export default function MovieTracker() {
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, filterStatus]);
-
-  useEffect(() => {
-    const token = localStorage.getItem("authToken");
-    if (token) {
-      try {
-        const decoded = jwtDecode<AuthPayload>(token);
-        const user = {
-          id: decoded.id,
-          name: decoded.name,
-          email: decoded.email,
-          avatar: decoded.avatar,
-        };
-        setUser(user);
-      } catch (e) {
-        console.log(e);
-        setUser(null);
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    const token = localStorage.getItem("authToken");
-    if (user && token) {
-      getUserMovieStatus()
-        .then((data) => {
-          setMovies((prev) =>
-            prev.map((movie) => ({
-              ...movie,
-              watchCount:
-                data.moviesWatched.find(
-                  (m: any) => String(m.movieId) === String(movie.id)
-                )?.count || 0,
-              watchLater: data.watchLater.includes(String(movie.id)),
-            }))
-          );
-        })
-        .catch((err) => {
-          console.error("Error cargando estado de películas:", err);
-        });
-    }
-  }, [user]);
-
-  useEffect(() => {
-    const savedTheme = localStorage.getItem("theme");
-    if (
-      savedTheme === "dark" ||
-      (!savedTheme && window.matchMedia("(prefers-color-scheme: dark)").matches)
-    ) {
-      setIsDarkMode(true);
-      document.documentElement.classList.add("dark");
-    } else {
-      setIsDarkMode(false);
-      document.documentElement.classList.remove("dark");
-    }
-  }, []);
 
   const toggleTheme = () => {
     setIsDarkMode((prev) => {
@@ -246,13 +98,7 @@ export default function MovieTracker() {
   };
 
   const handleLogout = () => {
-    // Limpiar usuario
-    setUser(null);
-    // Ocultar menú de usuario
-    setShowUserMenu(false);
-    // Eliminar token de sesión (token JWT)
-    localStorage.removeItem("authToken");
-    sessionStorage.removeItem("authToken");
+    logout();
     setMovies(initialMovies);
     setFilterStatus("all");
     setSearchTerm("");
@@ -307,7 +153,7 @@ export default function MovieTracker() {
   // Estadísticas
   const stats = {
     total: movies.length,
-    watched: movies.filter((m) => m.watchCount > 0).length, // Cambiar m.watched por m.watchCount > 0
+    watched: movies.filter((m) => m.watchCount > 0).length,
     watchLater: movies.filter((m) => m.watchLater).length,
   };
 
@@ -317,7 +163,7 @@ export default function MovieTracker() {
       <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-6">
           {/* Controles de navegación */}
-          <div className="absolute top-4 right-4 flex items-center gap-2">
+          <div className="absolute top-6 right-4 z-50 flex items-center gap-2">
             {!user ? (
               <>
                 {/* Botones de desktop (lg y superior) */}
@@ -352,8 +198,6 @@ export default function MovieTracker() {
               </>
             ) : (
               <UserMenu
-                user={user}
-                logout={handleLogout}
                 open={showUserMenu}
                 setOpen={setShowUserMenu}
                 isDarkMode={isDarkMode}

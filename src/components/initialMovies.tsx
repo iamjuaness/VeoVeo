@@ -13,6 +13,7 @@ export const initialMovies: Movie[] = [
       backdrop: `${path}/7HqLLVjdjhXS0Qoz1SgZofhkIpE.jpg`,
       watchCount: 0,
       watchLater: false,
+      duration: 180
     },
     {
       id: 2,
@@ -25,6 +26,7 @@ export const initialMovies: Movie[] = [
       backdrop: `${path}/cEQMqB3ahd4mfeUN6VGC0ouVnZZ.jpg`,
       watchCount: 0,
       watchLater: false,
+      duration: 200,
     },
     {
       id: 3,
@@ -37,6 +39,7 @@ export const initialMovies: Movie[] = [
       backdrop: `${path}/8or4S9BPhkeYK0vlKsPFee4JVWI.jpg`,
       watchCount: 0,
       watchLater: false,
+      duration: 150,
     },
     {
       id: 4,
@@ -49,6 +52,7 @@ export const initialMovies: Movie[] = [
       backdrop: `${path}/1RgPyOhN4DRs225BGTlHJqCudII.jpg`,
       watchCount: 0,
       watchLater: false,
+      duration: 100,
     },
     {
       id: 5,
@@ -61,6 +65,7 @@ export const initialMovies: Movie[] = [
       backdrop: `${path}/7Q2CmqIVJuDAESPPp76rWIiA0AD.jpg`,
       watchCount: 0,
       watchLater: false,
+      duration: 0,
     },
     {
       id: 6,
@@ -73,6 +78,7 @@ export const initialMovies: Movie[] = [
       backdrop: `${path}/ApRxyHFuvv5yghedxXPJSm9FEDe.jpg`,
       watchCount: 0,
       watchLater: false,
+      duration: 0,
     },
     {
       id: 7,
@@ -85,6 +91,7 @@ export const initialMovies: Movie[] = [
       backdrop: `${path}/962KXsr09uK8wrmUg9TjzmE7c4e.jpg`,
       watchCount: 0,
       watchLater: false,
+      duration: 0,
     },
     {
       id: 8,
@@ -97,5 +104,6 @@ export const initialMovies: Movie[] = [
       backdrop: `${path}/7Zx3wDG5bBtcfk8lcnCWDOLM4Y4.jpg`,
       watchCount: 0,
       watchLater: false,
+      duration: 0,
     },
   ]

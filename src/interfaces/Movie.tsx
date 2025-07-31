@@ -9,4 +9,5 @@ export interface Movie {
   backdrop: string
   watchCount: number // Cambiar de 'watched: boolean' a 'watchCount: number'
   watchLater: boolean
+  duration: number // minutos
 }

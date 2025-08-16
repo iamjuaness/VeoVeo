@@ -113,7 +113,7 @@ const performSearch = async (query: string) => {
 
     const enrichedResults = results.map((movie) => {
       const watched = userStatus.moviesWatched.find(
-        (mw) => String(mw.movieId) === String(movie.id)
+        (mw: { movieId: any; }) => String(mw.movieId) === String(movie.id)
       );
       return {
         ...movie,
@@ -143,7 +143,7 @@ const performSearch = async (query: string) => {
       .then(([movieData, userStatus]) => {
         const mergedMovies = movieData.movies.map((movie) => {
           const watched = userStatus.moviesWatched.find(
-            (mw) => String(mw.movieId) === String(movie.id)
+            (mw: { movieId: any; }) => String(mw.movieId) === String(movie.id)
           );
           return {
             ...movie,

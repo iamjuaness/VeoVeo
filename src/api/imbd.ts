@@ -32,7 +32,7 @@ export async function getMovieById(id: string): Promise<Movie> {
     id: data.id,
     title: data.title ?? data.original_title,
     year: Number(data.release_date?.slice(0, 4)) || 0,
-    genres: data.genre_ids.map((id) => genreMap[id] ?? "Desconocido"),
+    genres: data.genre_ids.map((id: string | number) => genreMap[id] ?? "Desconocido"),
     rating: data.vote_average ?? 0,
     description: data.overview ?? "",
     poster: data.poster_path ? `${API_IMAGE_BASE}${data.poster_path}` : "",

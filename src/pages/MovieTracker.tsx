@@ -1,10 +1,8 @@
-import { useState, useMemo, useEffect } from "react";
-import { initialMovies } from "../components/initialMovies";
+import { useState, useMemo, useEffect, useRef, useContext } from "react";
 import { Stats } from "../components/Stats";
 import { MovieSearchBar } from "../components/MovieSearchBar";
 import { MovieFilters } from "../components/MovieFilters";
 import { MovieCard } from "../components/MovieCard";
-import { Pagination } from "../components/Pagination";
 import { ModalLogin } from "../components/ModalLogin";
 import { ModalRegister } from "../components/ModalRegister";
 import { UserMenu } from "../components/UserMenu";
@@ -18,42 +16,65 @@ import { Hamburger } from "../components/Hamburguer";
 import { Slider } from "../components/Slider";
 import { useAuth } from "../context/useAuth";
 import { useMovies } from "../context/MoviesContext";
-// import { getMoviesByGenres } from "../api/imbd";
+import { getMovieDurationById } from "../api/imbd";
+import { ThemeContext } from "../context/ThemeContext";
+import { Loader2 } from "lucide-react";
 
 export default function MovieTracker() {
-  const { movies, setMovies } = useMovies();
-  const [searchTerm, setSearchTerm] = useState("");
+  const {
+    movies,
+    setMovies,
+    setCurrentPage,
+    totalResults,
+    loading,
+    hasMore,
+    moviesWatchedList,
+    moviesWatchLaterList,
+    setMoviesWatchedList,
+    setMoviesWatchLaterList,
+    searchTerm,
+    setSearchTerm,
+    statsLoading,
+    performSearch,
+    searchResults,
+    setSearchResults,
+    searchLoading
+  } = useMovies();
   const [filterStatus, setFilterStatus] = useState<
     "all" | "watched" | "watchLater"
   >("all");
-  const [currentPage, setCurrentPage] = useState(1);
-  const moviesPerPage = 25;
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const { user, setUser, logout } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const { isDarkMode, toggleTheme } = useContext(ThemeContext);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
 
   // Filtrar películas basado en búsqueda y estado
-  const filteredMovies = useMemo(() => {
-    let filtered = movies.filter(
+  const displayedMovies = useMemo(() => {
+    if (filterStatus === "watched") {
+      return moviesWatchedList;
+    }
+    if (filterStatus === "watchLater") {
+      return moviesWatchLaterList;
+    }
+    return movies.filter(
       (movie) =>
         movie.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        movie.genre.toLowerCase().includes(searchTerm.toLowerCase())
+        movie.genres.some((genre) =>
+          genre.toLowerCase().includes(searchTerm.toLowerCase())
+        )
     );
+  }, [
+    filterStatus,
+    movies,
+    moviesWatchedList,
+    moviesWatchLaterList,
+    searchTerm,
+  ]);
 
-    if (filterStatus === "watched") {
-      filtered = filtered.filter((movie) => movie.watchCount > 0);
-    } else if (filterStatus === "watchLater") {
-      filtered = filtered.filter((movie) => movie.watchLater);
-    }
-
-    return filtered;
-  }, [movies, searchTerm, filterStatus]);
-
-  const featuredMovies = initialMovies
+  const featuredMovies = [...movies]
     .sort((a, b) => b.rating - a.rating)
     .slice(0, 6)
     .map((movie) => ({
@@ -63,13 +84,30 @@ export default function MovieTracker() {
       )}+Backdrop`,
     }));
 
-  // Calcular paginación
-  const totalPages = Math.ceil(filteredMovies.length / moviesPerPage);
-  const startIndex = (currentPage - 1) * moviesPerPage;
-  const endIndex = startIndex + moviesPerPage;
-  const currentMovies = filteredMovies.slice(startIndex, endIndex);
+  const moviesToDisplay = searchTerm.trim() ? searchResults : displayedMovies;
+  const filteredMoviesToDisplay = moviesToDisplay.filter(
+  movie => movie.year && movie.year !== 0 && movie.poster && movie.poster.trim() !== ""
+);
 
-  
+  const observerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (entry.isIntersecting && !loading && hasMore) {
+          setCurrentPage((prev) => prev + 1); // dispara el efecto en provider
+        }
+      },
+      { rootMargin: "200px" }
+    );
+
+    if (observerRef.current) observer.observe(observerRef.current);
+
+    return () => {
+      if (observerRef.current) observer.unobserve(observerRef.current);
+    };
+  }, [loading, hasMore, setCurrentPage]);
 
   // Auto-play del slider
   useEffect(() => {
@@ -80,29 +118,15 @@ export default function MovieTracker() {
   }, [featuredMovies]);
 
   useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, filterStatus]);
-
-  const toggleTheme = () => {
-    setIsDarkMode((prev) => {
-      const next = !prev;
-      if (next) {
-        document.documentElement.classList.add("dark");
-        localStorage.setItem("theme", "dark");
-      } else {
-        document.documentElement.classList.remove("dark");
-        localStorage.setItem("theme", "light");
-      }
-      return next;
-    });
-  };
+    const savedPage = localStorage.getItem("currentPage");
+    if (savedPage) setCurrentPage(Number(savedPage));
+  }, []);
 
   const handleLogout = () => {
     logout();
-    setMovies(initialMovies);
+    setMovies(displayedMovies);
     setFilterStatus("all");
     setSearchTerm("");
-    setCurrentPage(1);
   };
 
   // Funciones del slider
@@ -121,40 +145,106 @@ export default function MovieTracker() {
   };
 
   // Incrementar contador de veces vista
-  const incrementWatchCount = (id: number) => {
-    setMovies(
+  const incrementWatchCount = async (id: number) => {
+    setMovies((movies) =>
       movies.map((movie) =>
-        movie.id === id ? { ...movie, watchCount: movie.watchCount + 1 } : movie
+        movie.id === id
+          ? { ...movie, watchCount: movie.watchCount + 1, watchLater: false }
+          : movie
       )
     );
-    addOrIncrementWatched({ movieId: id.toString() });
+    // Actualizar la lista local de vistas
+    setMoviesWatchedList((prev) => {
+      const exists = prev.find((m) => m.id === id);
+      if (exists) {
+        return prev.map((movie) =>
+          movie.id === id
+            ? { ...movie, watchCount: movie.watchCount + 1, watchLater: false }
+            : movie
+        );
+      } else {
+        const movie = movies.find((m) => m.id === id);
+        if (!movie) return prev;
+        return [...prev, { ...movie, watchCount: 1, watchLater: false }];
+      }
+    });
+    // Quitar de por ver, si aplica
+    setMoviesWatchLaterList((prev) => prev.filter((movie) => movie.id !== id));
+
+    // **Actualiza searchResults**
+    setSearchResults((prev) =>
+      prev.map((movie) =>
+        movie.id === id
+          ? {
+              ...movie,
+              watchCount: (movie.watchCount || 0) + 1,
+              watchLater: false,
+            }
+          : movie
+      )
+    );
+
+    // Actualizar backend aquí...
+    const duration = await getMovieDurationById(id).then((res) => res.duration);
+    const movieData = movies.find((m) => m.id === id);
+    if (movieData?.watchLater) {
+      await toggleWatchLaterApi({ movieId: id.toString() });
+    }
+    await addOrIncrementWatched({ movieId: id.toString(), duration });
   };
 
   // Resetear contador de veces vista
   const resetWatchCount = (id: number) => {
-    setMovies(
+    setMovies((movies) =>
       movies.map((movie) =>
         movie.id === id ? { ...movie, watchCount: 0 } : movie
       )
     );
+    setMoviesWatchedList((prev) => prev.filter((movie) => movie.id !== id));
+
+    // **Actualiza searchResults visualmente**
+    setSearchResults((prev) =>
+      prev.map((movie) =>
+        movie.id === id ? { ...movie, watchCount: 0 } : movie
+      )
+    );
+    // reset api call
     resetWatched({ movieId: id.toString() });
   };
 
   // Toggle watchLater status
   const toggleWatchLater = (id: number) => {
-    setMovies(
+    setMovies((movies) =>
       movies.map((movie) =>
         movie.id === id ? { ...movie, watchLater: !movie.watchLater } : movie
       )
     );
+    setMoviesWatchLaterList((prev) => {
+      const exists = prev.some((m) => m.id === id);
+      if (exists) {
+        return prev.filter((movie) => movie.id !== id);
+      } else {
+        const movie = movies.find((m) => m.id === id);
+        if (!movie) return prev;
+        return [...prev, { ...movie, watchLater: true }];
+      }
+    });
+
+    // **Actualiza searchResults visualmente**
+    setSearchResults((prev) =>
+      prev.map((movie) =>
+        movie.id === id ? { ...movie, watchLater: !movie.watchLater } : movie
+      )
+    );
+    // Actualizar en backend
     toggleWatchLaterApi({ movieId: id.toString() });
   };
 
   // Estadísticas
   const stats = {
-    total: movies.length,
-    watched: movies.filter((m) => m.watchCount > 0).length,
-    watchLater: movies.filter((m) => m.watchLater).length,
+    total: totalResults,
+    watched: moviesWatchedList.length,
+    watchLater: moviesWatchLaterList.length,
   };
 
   return (
@@ -197,12 +287,7 @@ export default function MovieTracker() {
                 />
               </>
             ) : (
-              <UserMenu
-                open={showUserMenu}
-                setOpen={setShowUserMenu}
-                isDarkMode={isDarkMode}
-                setIsDarkMode={toggleTheme}
-              />
+              <UserMenu open={showUserMenu} setOpen={setShowUserMenu} />
             )}
           </div>
           <div className="gap-6 mb-6">
@@ -223,11 +308,13 @@ export default function MovieTracker() {
                 <h1 className="text-3xl font-bold text-center mb-6 leading-tight">
                   🎬 Mi Colección de Películas
                 </h1>
+
                 {/* Estadísticas */}
                 <Stats
-                  total={stats.total}
+                  total={totalResults}
                   watched={stats.watched}
                   watchLater={stats.watchLater}
+                  loading={statsLoading}
                 />
               </>
             )}
@@ -236,6 +323,7 @@ export default function MovieTracker() {
             <MovieSearchBar
               searchTerm={searchTerm}
               setSearchTerm={setSearchTerm}
+              performSearch={performSearch}
             />
 
             {/* Filtros */}
@@ -245,6 +333,7 @@ export default function MovieTracker() {
                   filterStatus={filterStatus}
                   setFilterStatus={setFilterStatus}
                   stats={stats}
+                  disabled={statsLoading}
                 />
               </>
             )}
@@ -254,21 +343,27 @@ export default function MovieTracker() {
 
       {/* Grid de películas */}
       <main className="container mx-auto px-4 py-8">
-        {currentMovies.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="text-6xl mb-4">🔍</div>
-            <h3 className="text-xl font-semibold mb-2">
-              No se encontraron películas
-            </h3>
-            <p className="text-muted-foreground">
-              {searchTerm
-                ? `No hay resultados para "${searchTerm}"`
-                : "No hay películas en esta categoría"}
-            </p>
-          </div>
+        {filteredMoviesToDisplay.length === 0 ? (
+          loading || searchLoading ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="w-10 h-10 animate-spin text-gray-400" />
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <div className="text-6xl mb-4">🔍</div>
+              <h3 className="text-xl font-semibold mb-2">
+                No se encontraron películas
+              </h3>
+              <p className="text-muted">
+                {searchTerm
+                  ? `No hay resultados para "${searchTerm}"`
+                  : "No hay películas en esta categoría"}
+              </p>
+            </div>
+          )
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 justify-items-center min-h-screen py-8">
-            {currentMovies.map((movie) => (
+            {filteredMoviesToDisplay.map((movie) => (
               <MovieCard
                 key={movie.id}
                 movie={movie}
@@ -279,15 +374,20 @@ export default function MovieTracker() {
                 openLoginModal={() => setShowLoginModal(true)}
               />
             ))}
+
+            {/* Loader pequeño y no invasivo */}
+            {loading && hasMore && !searchTerm && (
+              <div className="col-span-full flex justify-center py-6 text-gray-400">
+                <span className="animate-pulse text-lg">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                </span>
+              </div>
+            )}
+
+            {/* Elemento sentinel para IntersectionObserver */}
+            <div ref={observerRef} className="h-10 col-span-full"></div>
           </div>
         )}
-        {/* Paginación */}
-        <Pagination
-          totalPages={totalPages}
-          currentPage={currentPage}
-          setCurrentPage={setCurrentPage}
-          filteredCount={filteredMovies.length}
-        />
       </main>
 
       <footer className="border-t border-gray-200 p-4 text-center">

@@ -3,7 +3,7 @@ import { prod_url } from "../utils/urls";
 const API_URL = prod_url + 'api/user';
 const token = localStorage.getItem("authToken");
 
-export async function addOrIncrementWatched(data: { movieId: string }) {
+export async function addOrIncrementWatched(data: { movieId: string, duration: number }) {
   const res = await fetch(`${API_URL}/movies/watched`, {
     method: 'POST',
     headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },

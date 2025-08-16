@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import type { ReactNode } from "react";
 
 interface GlareHoverProps {
@@ -55,18 +55,44 @@ const GlareHover: React.FC<GlareHoverProps> = ({
     el.style.backgroundPosition = "100% 100%, 0 0";
   };
 
-  const animateOut = () => {
-    // const el = overlayRef.current;
-    // if (!el) return;
+const animateOut = () => {
+  const el = overlayRef.current;
+  if (!el) return;
+  el.style.transition = `${transitionDuration}ms ease`;
+  el.style.backgroundPosition = "-100% -100%, 0 0";
+};
 
-    // if (playOnce) {
-    //   el.style.transition = "none";
-    //   el.style.backgroundPosition = "-100% -100%, 0 0";
-    // } else {
-    //   el.style.transition = `${transitionDuration}ms ease`;
-    //   el.style.backgroundPosition = "-100% -100%, 0 0";
-    // }
+// ⚡ Efecto automático para móviles cada 1 minuto
+useEffect(() => {
+  const isMobile = window.matchMedia("(pointer: coarse)").matches;
+  if (!isMobile) return;
+
+  let timeout: NodeJS.Timeout;
+  let active = true;
+
+  function loop() {
+    if (!active) return;
+
+    // Iniciar el efecto
+    animateIn();
+
+    timeout = setTimeout(() => {
+      // Terminar el efecto
+      animateOut();
+
+      // Esperar 1 minuto para la próxima vez
+      timeout = setTimeout(loop, 60000); // 60000 ms = 1 min
+    }, transitionDuration + 500); // espera la animación + medio segundo
+  }
+
+  loop();
+
+  return () => {
+    active = false;
+    clearTimeout(timeout);
+    animateOut();
   };
+}, [transitionDuration]);
 
   const overlayStyle: React.CSSProperties = {
     position: "absolute",

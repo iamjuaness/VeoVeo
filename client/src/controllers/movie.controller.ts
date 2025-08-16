@@ -6,7 +6,7 @@ import { io } from "../app";
 
 export async function addOrIncrementWatched(req: Request, res: Response) {
   const { id } = req;
-  const { movieId } = req.body;
+  const { movieId, duration } = req.body;
 
   const user = await User.findById(id);
   if (!user) return res.status(404).json({ message: "User not found" });
@@ -15,12 +15,12 @@ export async function addOrIncrementWatched(req: Request, res: Response) {
   if (found) {
     found.count += 1;
   } else {
-    user.moviesWatched.push({ movieId, count: 1 });
+    user.moviesWatched.push({ movieId, count: 1, duration });
   }
   await user.save();
   io.to(String(id)).emit("movies-watched", {
     type: "add",
-    data: { movieId, count: found ? found.count : 1 },
+    data: { movieId, count: found ? found.count : 1, duration },
   });
   return res.json({ moviesWatched: user.moviesWatched });
 }

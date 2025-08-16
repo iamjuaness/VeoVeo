@@ -13,25 +13,23 @@ import { Switch } from "./ui/switch";
 import { Separator } from "./ui/separator";
 import { predefinedAvatars } from "./PredefinedAvatars";
 import { ModalSettings } from "./ModalSettings";
-import { useState } from "react";
+import { useContext, useState } from "react";
 import { useAuth } from "../context/useAuth";
+import { ThemeContext } from "../context/ThemeContext";
 
 interface UserMenuProps {
   open: boolean;
   setOpen(val: boolean): void;
-  isDarkMode: boolean;
-  setIsDarkMode(val: boolean): void;
 }
 
 export function UserMenu({
   open,
   setOpen,
-  isDarkMode,
-  setIsDarkMode,
 }: UserMenuProps) {
   const { user, setUser, logout } = useAuth();
   const userAvatarObj = predefinedAvatars.find((a) => a.id === user!.avatar)!;
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const { isDarkMode, toggleTheme } = useContext(ThemeContext);
 
   if (!user) return null;
 
@@ -113,7 +111,7 @@ export function UserMenu({
             )}
             <span>Tema {isDarkMode ? "Oscuro" : "Claro"}</span>
           </div>
-          <Switch checked={isDarkMode} onCheckedChange={setIsDarkMode} />
+          <Switch checked={isDarkMode} onCheckedChange={toggleTheme} />
         </div>
         <Separator />
         <Button

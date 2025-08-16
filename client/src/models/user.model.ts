@@ -5,7 +5,7 @@ export interface IUser extends Document {
   email: string;
   password: string;
   selectedAvatar: string;
-  moviesWatched: { movieId: string, count: number }[];
+  moviesWatched: { movieId: string, count: number, duration: number }[];
   watchLater: string[];
 }
 
@@ -17,7 +17,8 @@ const userSchema = new Schema<IUser>({
     moviesWatched: [
     {
       movieId: { type: String, required: true },
-      count: { type: Number, default: 1 }
+      count: { type: Number, default: 1 },
+      duration: { type: Number, required: true }
     }
   ],
   watchLater: [String]

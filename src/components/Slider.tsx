@@ -45,7 +45,7 @@ export function Slider({
                         <Star className="w-3 h-3 mr-1 fill-current" />
                         {movie.rating}
                       </Badge>
-                      <Badge variant="secondary">{movie.genre}</Badge>
+                      <Badge variant="secondary">{movie.genres[0]}</Badge>
                       <Badge
                         variant="outline"
                         className="text-white border-white/50"

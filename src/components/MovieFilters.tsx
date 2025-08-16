@@ -6,18 +6,19 @@ interface Props {
   filterStatus: "all" | "watched" | "watchLater"
   setFilterStatus: (s: "all" | "watched" | "watchLater") => void
   stats: { total: number; watched: number; watchLater: number }
+  disabled: boolean
 }
 
-export function MovieFilters({ filterStatus, setFilterStatus, stats }: Props) {
+export function MovieFilters({ filterStatus, setFilterStatus, stats, disabled }: Props) {
   return (
     <div className="flex justify-center gap-2 flex-wrap">
-      <Button variant={filterStatus === "all" ? "default" : "outline"} size="sm" onClick={() => setFilterStatus("all")}>
+      <Button variant={filterStatus === "all" ? "default" : "outline"} disabled={disabled} size="sm" onClick={() => setFilterStatus("all")} className="gap-1">
         Todas ({stats.total})
       </Button>
-      <Button variant={filterStatus === "watched" ? "default" : "outline"} size="sm" onClick={() => setFilterStatus("watched")} className="gap-1">
+      <Button variant={filterStatus === "watched" ? "default" : "outline"} disabled={disabled} size="sm" onClick={() => setFilterStatus("watched")} className="gap-1">
         <Eye className="w-4 h-4" /> Vistas ({stats.watched})
       </Button>
-      <Button variant={filterStatus === "watchLater" ? "default" : "outline"} size="sm" onClick={() => setFilterStatus("watchLater")} className="gap-1">
+      <Button variant={filterStatus === "watchLater" ? "default" : "outline"} disabled={disabled} size="sm" onClick={() => setFilterStatus("watchLater")} className="gap-1">
         <Clock className="w-4 h-4" /> Ver Después ({stats.watchLater})
       </Button>
     </div>

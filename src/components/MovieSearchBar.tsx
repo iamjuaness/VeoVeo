@@ -6,9 +6,10 @@ import { Button } from "./ui/button";
 interface Props {
   searchTerm: string;
   setSearchTerm: (value: string) => void;
+  performSearch: (query: string) => Promise<void>;
 }
 
-export function MovieSearchBar({ searchTerm, setSearchTerm }: Props) {
+export function MovieSearchBar({ searchTerm, setSearchTerm, performSearch }: Props) {
   const [inputValue, setInputValue] = useState(searchTerm);
   const [isLoading] = useState(false);
 
@@ -16,6 +17,7 @@ export function MovieSearchBar({ searchTerm, setSearchTerm }: Props) {
   const handleSearch = (e?: React.FormEvent | React.MouseEvent) => {
     e?.preventDefault();
     setSearchTerm(inputValue);
+    performSearch(inputValue);
   };
 
   // Permitir también búsqueda con Enter

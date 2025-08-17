@@ -18,6 +18,7 @@ export function MovieSearchBar({ searchTerm, setSearchTerm, performSearch }: Pro
     e?.preventDefault();
     setSearchTerm(inputValue);
     performSearch(inputValue);
+    setInputValue("");
   };
 
   // Permitir también búsqueda con Enter

@@ -106,24 +106,31 @@ const performSearch = async (query: string) => {
   setSearchLoading(true);
 
   try {
-    const [results, userStatus] = await Promise.all([
-      searchMovies(query),          // <-- tu llamada de búsqueda
-      getUserMovieStatus(),         // <-- estado de usuario (watched, watchLater)
-    ]);
+    // Si hay usuario logueado, mezcla con estado
+    if (user && token) {
+      const [results, userStatus] = await Promise.all([
+        searchMovies(query),
+        getUserMovieStatus(),
+      ]);
 
-    const enrichedResults = results.map((movie) => {
-      const watched = userStatus.moviesWatched.find(
-        (mw: { movieId: any; }) => String(mw.movieId) === String(movie.id)
-      );
-      return {
-        ...movie,
-        watchCount: watched ? watched.count : 0,
-        watchLater: userStatus.watchLater.includes(String(movie.id)),
-        duration: watched ? watched.duration : movie.duration,
-      };
-    });
+      const enrichedResults = results.map((movie) => {
+        const watched = userStatus.moviesWatched.find(
+          (mw: { movieId: any }) => String(mw.movieId) === String(movie.id)
+        );
+        return {
+          ...movie,
+          watchCount: watched ? watched.count : 0,
+          watchLater: userStatus.watchLater.includes(String(movie.id)),
+          duration: watched ? watched.duration : movie.duration,
+        };
+      });
 
-    setSearchResults(enrichedResults);
+      setSearchResults(enrichedResults);
+    } else {
+      // Si NO hay usuario, solo trae los resultados
+      const results = await searchMovies(query);
+      setSearchResults(results);
+    }
   } catch (err) {
     console.error("Error al buscar películas:", err);
     setSearchResults([]);
@@ -131,6 +138,7 @@ const performSearch = async (query: string) => {
     setSearchLoading(false);
   }
 };
+
 
   // Función para cargar el estado del usuario y mezclar con las películas
   useEffect(() => {
@@ -167,6 +175,32 @@ const performSearch = async (query: string) => {
       .catch((err) => console.error(err))
       .finally(() => setLoading(false));
   }, [user, token, currentPage]); // solo depende de estas
+
+  useEffect(() => {
+  // Solo para usuarios NO logueados
+  if (user && token) return; // si está logueado, no ejecutar este
+  if (!hasMore) return;      // Detener si no hay más páginas
+
+  setLoading(true);
+
+  fetchMoviesFromEndpoint(nextPageToken)
+    .then((movieData) => {
+      // Sin mezcla con estado de usuario
+      setMovies((prev) => {
+        const idsExistentes = new Set(prev.map((m) => m.id));
+        const nuevos = movieData.movies.filter((m) => !idsExistentes.has(m.id));
+        return [...prev, ...nuevos];
+      });
+
+      setNextPageToken(movieData.nextPageToken);
+      setHasMore(!!movieData.nextPageToken);
+      setTotalPages(movieData.totalPages);
+      setTotalResults(movieData.totalResults);
+    })
+    .catch((err) => console.error(err))
+    .finally(() => setLoading(false));
+}, [user, token, currentPage]);
+
 
   const loadMoviesWatched = async () => {
     try {

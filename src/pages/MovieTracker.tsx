@@ -93,12 +93,10 @@ export default function MovieTracker() {
       movie.poster.trim() !== "" &&
       movie.title &&
       movie.title.trim() !== "" &&
-      movie.genres &&
-      movie.genres.length > 0 &&
       movie.rating &&
       movie.rating !== 0 &&
       movie.type &&
-      movie.type === "movie"
+      movie.type === "movie" 
   );
 
   const observerRef = useRef<HTMLDivElement | null>(null);

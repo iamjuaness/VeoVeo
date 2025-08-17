@@ -111,7 +111,7 @@ export async function getMoviesByIds(ids: string[]): Promise<Movie[]> {
 export async function searchMovies(query: string): Promise<Movie[]> {
   if (!query.trim()) return [];
 
-  const url = `${API_URL}search/titles?query=${encodeURIComponent(query)}`;
+  const url = `${API_URL}search/titles?query=${encodeURIComponent(query)}&limit=50`;
   const res = await fetch(url, {
     method: "GET",
     headers: { "Content-Type": "application/json" },

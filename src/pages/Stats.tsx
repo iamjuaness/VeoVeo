@@ -140,7 +140,7 @@ export default function StatsPage() {
                 </div>
                 <p className="text-xs text-muted-foreground">
                   de {stats.totalMovies.toLocaleString("es-ES")} total (
-                  {stats.completionRate.toFixed(1)}
+                  {stats.completionRate.toFixed(2)}
                   %)
                 </p>
                 <Progress value={stats.completionRate} className="mt-2" />

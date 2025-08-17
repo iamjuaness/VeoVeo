@@ -38,7 +38,7 @@ export default function MovieTracker() {
     performSearch,
     searchResults,
     setSearchResults,
-    searchLoading
+    searchLoading,
   } = useMovies();
   const [filterStatus, setFilterStatus] = useState<
     "all" | "watched" | "watchLater"
@@ -86,8 +86,20 @@ export default function MovieTracker() {
 
   const moviesToDisplay = searchTerm.trim() ? searchResults : displayedMovies;
   const filteredMoviesToDisplay = moviesToDisplay.filter(
-  movie => movie.year && movie.year !== 0 && movie.poster && movie.poster.trim() !== ""
-);
+    (movie) =>
+      movie.year &&
+      movie.year !== 0 &&
+      movie.poster &&
+      movie.poster.trim() !== "" &&
+      movie.title &&
+      movie.title.trim() !== "" &&
+      movie.genres &&
+      movie.genres.length > 0 &&
+      movie.rating &&
+      movie.rating !== 0 &&
+      movie.type &&
+      movie.type === "movie"
+  );
 
   const observerRef = useRef<HTMLDivElement | null>(null);
 
@@ -253,7 +265,8 @@ export default function MovieTracker() {
       <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-6">
           {/* Controles de navegación */}
-          <div className="absolute top-6 right-4 z-50 flex items-center gap-2">
+          <div className="fixed top-6 right-4 z-50 flex items-center gap-2">
+            {/* Avatar/menú usuario */}
             {!user ? (
               <>
                 {/* Botones de desktop (lg y superior) */}
@@ -328,14 +341,12 @@ export default function MovieTracker() {
 
             {/* Filtros */}
             {user && (
-              <>
-                <MovieFilters
-                  filterStatus={filterStatus}
-                  setFilterStatus={setFilterStatus}
-                  stats={stats}
-                  disabled={statsLoading}
-                />
-              </>
+              <MovieFilters
+                filterStatus={filterStatus}
+                setFilterStatus={setFilterStatus}
+                stats={stats}
+                disabled={statsLoading}
+              />
             )}
           </div>
         </div>

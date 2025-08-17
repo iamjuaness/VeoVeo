@@ -38,7 +38,7 @@ export function MovieSearchBar({ searchTerm, setSearchTerm, performSearch }: Pro
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
         <Input
           type="text"
-          placeholder="Buscar películas por título o género..."
+          placeholder="Buscar películas por título"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={handleKeyDown}

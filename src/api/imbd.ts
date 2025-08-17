@@ -30,6 +30,7 @@ export async function getMovieById(id: string): Promise<Movie> {
   const data = await response.json();
   return {
     id: data.id,
+    type: data.type,
     title: data.title ?? data.original_title,
     year: Number(data.release_date?.slice(0, 4)) || 0,
     genres: data.genre_ids.map((id: string | number) => genreMap[id] ?? "Desconocido"),
@@ -78,6 +79,7 @@ export async function getMoviesByIds(ids: string[]): Promise<Movie[]> {
       const data = await res.json();
       return (data.titles ?? []).map((item: any) => ({
         id: item.id,
+        type: item.type,
         title: item.primaryTitle ?? item.originalTitle ?? "",
         year: item.startYear ?? 0,
         genres: item.genres ?? [],
@@ -125,6 +127,7 @@ export async function searchMovies(query: string): Promise<Movie[]> {
   // Mapeamos resultados al tipo Movie
   return (data.titles ?? []).map((item: any) => ({
     id: item.id,
+    type: item.type,
     title: item.primaryTitle ?? item.originalTitle ?? "",
     year: item.startYear ?? 0,
     genres: item.genres ?? [],
@@ -163,6 +166,7 @@ export async function fetchMoviesFromEndpoint(nextPageToken?: string): Promise<{
 
   const movies: Movie[] = (data.titles ?? []).map((item: any) => ({
     id: item.id,
+    type: item.type,
     title: item.primaryTitle ?? item.originalTitle ?? "",
     year: item.startYear ?? 0,
     genres: item.genres ?? [],

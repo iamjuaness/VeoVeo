@@ -6,40 +6,44 @@ interface Props {
   watchLater: number;
   loading: boolean;
 }
+
 export function Stats({ total, watched, watchLater, loading }: Props) {
   return (
-    <div className="flex justify-center gap-6 mb-6">
-      <div className="text-center">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6 w-full max-w-lg mx-auto">
+      {/* Total */}
+      <div className="flex flex-col items-center bg-card rounded-lg py-3 shadow">
         {loading ? (
-          <Loader2 className="mx-auto w-6 h-6 animate-spin text-primary" />
+          <Loader2 className="w-6 h-6 animate-spin text-primary" />
         ) : (
           <div className="text-2xl font-bold text-primary">
             {total.toLocaleString("es-ES")}
           </div>
         )}
-        <div className="text-sm text-muted-foreground">Total</div>
+        <div className="text-sm text-muted-foreground mt-1">Total</div>
       </div>
 
-      <div className="text-center">
+      {/* Vistas */}
+      <div className="flex flex-col items-center bg-card rounded-lg py-3 shadow">
         {loading ? (
-          <Loader2 className="mx-auto w-6 h-6 animate-spin text-green-600" />
+          <Loader2 className="w-6 h-6 animate-spin text-green-600" />
         ) : (
           <div className="text-2xl font-bold text-green-600">
             {watched.toLocaleString("es-ES")}
           </div>
         )}
-        <div className="text-sm text-muted-foreground">Vistas</div>
+        <div className="text-sm text-muted-foreground mt-1">Vistas</div>
       </div>
 
-      <div className="text-center">
+      {/* Ver Después */}
+      <div className="flex flex-col items-center bg-card rounded-lg py-3 shadow">
         {loading ? (
-          <Loader2 className="mx-auto w-6 h-6 animate-spin text-blue-600" />
+          <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
         ) : (
           <div className="text-2xl font-bold text-blue-600">
             {watchLater.toLocaleString("es-ES")}
           </div>
         )}
-        <div className="text-sm text-muted-foreground">Ver Después</div>
+        <div className="text-sm text-muted-foreground mt-1">Ver Después</div>
       </div>
     </div>
   );

@@ -91,43 +91,54 @@ export default function StatsPage() {
   }, [moviesWatchLaterList, moviesWatchedList, totalResults]);
 
   if (statsLoading) {
-    return <FullScreenLoader message="Estamos preparando tus estadísticas 😊" />;
+    return (
+      <FullScreenLoader message="Estamos preparando tus estadísticas 😊" />
+    );
   }
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 border-b bg-card">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center gap-4">
-            <Link to="/">
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2 bg-transparent"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Volver
-              </Button>
-            </Link>
-            <div>
-              <h1 className="text-xl font-bold">📊 Mis Estadísticas</h1>
-              <p className="text-muted-foreground text-[12px]">
-                Análisis detallado de tu actividad cinematográfica
-              </p>
-            </div>
+        <div className="container mx-auto px-4 py-4 flex flex-row items-center justify-between relative">
+          {/* Botón volver: muestra solo flecha en móvil, flecha + texto en desktop */}
+          <Link to="/" className="flex-none">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 bg-transparent flex items-center"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              <span className="hidden sm:inline">Volver</span>
+            </Button>
+          </Link>
+
+          {/* Texto centrado horizontalmente en desktop, ocupa toda la fila en mobile */}
+          <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center hidden sm:block">
+            <h1 className="text-xl font-bold">📊 Mis Estadísticas</h1>
+            <p className="text-muted-foreground text-sm">
+              Análisis detallado de tu actividad cinematográfica
+            </p>
           </div>
-        </div>
-        {/* UserMenu afuera y posicionado */}
-        <div className="fixed right-4 top-6 z-50">
-          <UserMenu open={showUserMenu} setOpen={setShowUserMenu} />
+          {/* En móvil debajo del botón, apilado */}
+          <div className="flex flex-col items-start flex-1 sm:hidden ml-2">
+            <h1 className="text-lg font-bold">📊 Mis Estadísticas</h1>
+            <p className="text-muted-foreground text-xs">
+              Análisis detallado de tu actividad cinematográfica
+            </p>
+          </div>
+
+          {/* UserMenu fijo arriba a la derecha siempre visible */}
+          <div className="fixed right-4 z-50">
+            <UserMenu open={showUserMenu} setOpen={setShowUserMenu} />
+          </div>
         </div>
       </header>
 
       <main className="container mx-auto px-4 pt-28 pb-8">
         <div>
           {/* Estadísticas generales */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <Card>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 w-full max-w-4xl mx-auto">
+            <Card className="py-4 rounded-lg shadow bg-card">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 mt-1">
                 <CardTitle className="text-sm font-medium">
                   Películas Vistas
@@ -147,7 +158,7 @@ export default function StatsPage() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="py-4 rounded-lg shadow bg-card">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 mt-1">
                 <CardTitle className="text-sm font-medium">
                   Tiempo Total
@@ -164,7 +175,7 @@ export default function StatsPage() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="py-4 rounded-lg shadow bg-card">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 mt-1">
                 <CardTitle className="text-sm font-medium">
                   Rating Promedio
@@ -181,7 +192,7 @@ export default function StatsPage() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="py-4 rounded-lg shadow bg-card">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 mt-1">
                 <CardTitle className="text-sm font-medium">
                   Ver Después
@@ -203,7 +214,7 @@ export default function StatsPage() {
             {/* Primera fila - Géneros y Películas más vistas */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {/* Géneros más vistos */}
-              <Card>
+              <Card className="py-4 rounded-lg shadow bg-card">
                 <CardHeader className="mt-1">
                   <CardTitle className="flex items-center gap-2 pt-2">
                     <PieChart className="w-5 h-5" />
@@ -217,7 +228,7 @@ export default function StatsPage() {
                   <div
                     className={`space-y-4 ${
                       stats.topGenres.length > 4
-                        ? "max-h-55 overflow-y-auto pr-2"
+                        ? "max-h-56 overflow-y-auto pr-2"
                         : ""
                     }`}
                   >
@@ -251,7 +262,7 @@ export default function StatsPage() {
               </Card>
 
               {/* Películas más vistas */}
-              <Card>
+              <Card className="py-4 rounded-lg shadow bg-card">
                 <CardHeader className="mt-1">
                   <CardTitle className="flex items-center gap-2 pt-2">
                     <TrendingUp className="w-5 h-5" />
@@ -265,7 +276,7 @@ export default function StatsPage() {
                   <div
                     className={`space-y-4 ${
                       stats.mostWatchedMovies.length > 4
-                        ? "max-h-55 overflow-y-auto pr-2"
+                        ? "max-h-56 overflow-y-auto pr-2"
                         : ""
                     }`}
                   >
@@ -307,7 +318,7 @@ export default function StatsPage() {
 
             {/* Segunda fila - Décadas favoritas */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              <Card className="lg:col-span-1">
+              <Card className="py-4 rounded-lg shadow bg-card">
                 <CardHeader className="mt-1">
                   <CardTitle className="flex items-center gap-2 pt-2">
                     <BarChart3 className="w-5 h-5" />
@@ -321,7 +332,7 @@ export default function StatsPage() {
                   <div
                     className={`space-y-4 ${
                       stats.topDecades.length > 4
-                        ? "max-h-55 overflow-y-auto pr-2"
+                        ? "max-h-56 overflow-y-auto pr-2"
                         : ""
                     }`}
                   >
@@ -355,7 +366,7 @@ export default function StatsPage() {
               </Card>
 
               {/* Actividad reciente */}
-              <Card className="lg:col-span-1">
+              <Card className="py-4 rounded-lg shadow bg-card">
                 <CardHeader className="mt-1">
                   <CardTitle className="flex items-center gap-2 pt-2">
                     <Activity className="w-5 h-5" />
@@ -419,7 +430,7 @@ export default function StatsPage() {
               </Card>
 
               {/* Logros */}
-              <Card className="lg:col-span-1">
+              <Card className="py-4 rounded-lg shadow bg-card">
                 <CardHeader className="mt-1">
                   <CardTitle className="flex items-center gap-2 pt-2">
                     <Award className="w-5 h-5" />

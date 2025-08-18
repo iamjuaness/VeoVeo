@@ -96,7 +96,7 @@ export default function MovieTracker() {
       movie.rating &&
       movie.rating !== 0 &&
       movie.type &&
-      movie.type === "movie" 
+      (movie.type === "movie" || movie.type === "video")
   );
 
   const observerRef = useRef<HTMLDivElement | null>(null);

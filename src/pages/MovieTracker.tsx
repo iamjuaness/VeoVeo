@@ -197,7 +197,7 @@ export default function MovieTracker() {
     );
 
     // Actualizar backend aquí...
-    const duration = await getMovieDurationById(id).then((res) => res.duration);
+    const duration = await getMovieDurationById(id.toString()).then((res) => res.duration);
     const movieData = movies.find((m) => m.id === id);
     if (movieData?.watchLater) {
       await toggleWatchLaterApi({ movieId: id.toString() });

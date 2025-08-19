@@ -41,3 +41,21 @@ export async function getUserMovieStatus() {
   const result = await res.json();
   return result;
 }
+
+export async function getMovieWatchCount(movieId: string) {
+  const res = await fetch(`${API_URL}/count/${movieId}`, {
+    method: 'GET',
+    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+  });
+  const result = await res.json();
+  return result;
+}
+
+export async function getMovieInWatchLater(movieId: string) {
+  const res = await fetch(`${API_URL}/in-watch-later/${movieId}`, {
+    method: 'GET',
+    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+  });
+  const result = await res.json();
+  return result;
+}

@@ -19,6 +19,7 @@ import { useMovies } from "../context/MoviesContext";
 import { getMovieDurationById } from "../api/imbd";
 import { ThemeContext } from "../context/ThemeContext";
 import { Loader2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export default function MovieTracker() {
   const {
@@ -100,6 +101,7 @@ export default function MovieTracker() {
   );
 
   const observerRef = useRef<HTMLDivElement | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -263,7 +265,7 @@ export default function MovieTracker() {
       <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-6">
           {/* Controles de navegación */}
-          <div className="fixed top-6 right-4 z-50 flex items-center gap-2">
+          <div className="absolute top-6 right-4 z-50 flex items-center gap-2">
             {/* Avatar/menú usuario */}
             {!user ? (
               <>
@@ -298,7 +300,9 @@ export default function MovieTracker() {
                 />
               </>
             ) : (
-              <UserMenu open={showUserMenu} setOpen={setShowUserMenu} />
+              <div className="fixed top-6 right-4 z-50 flex items-center gap-2">
+                <UserMenu open={showUserMenu} setOpen={setShowUserMenu} />
+              </div>
             )}
           </div>
           <div className="gap-6 mb-6">
@@ -373,15 +377,27 @@ export default function MovieTracker() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 justify-items-center min-h-screen py-8">
             {filteredMoviesToDisplay.map((movie) => (
-              <MovieCard
+              <div
                 key={movie.id}
-                movie={movie}
-                incrementWatchCount={incrementWatchCount}
-                resetWatchCount={resetWatchCount}
-                toggleWatchLater={toggleWatchLater}
-                user={user}
-                openLoginModal={() => setShowLoginModal(true)}
-              />
+                className="cursor-pointer h-full"
+                tabIndex={0}
+                onClick={() => navigate(`/movie/${movie.id}`)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ")
+                    navigate(`/movie/${movie.id}`);
+                }}
+                role="button"
+                aria-label={`Ver detalles de ${movie.title}`}
+              >
+                <MovieCard
+                  movie={movie}
+                  incrementWatchCount={incrementWatchCount}
+                  resetWatchCount={resetWatchCount}
+                  toggleWatchLater={toggleWatchLater}
+                  user={user}
+                  openLoginModal={() => setShowLoginModal(true)}
+                />
+              </div>
             ))}
 
             {/* Loader pequeño y no invasivo */}

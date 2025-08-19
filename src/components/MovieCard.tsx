@@ -29,21 +29,29 @@ export function MovieCard({
   user,
   openLoginModal,
 }: Props) {
-  function handleIncrement() {
-    if (!user) {
-      openLoginModal();
-      return;
-    }
-    incrementWatchCount(movie.id);
+function handleIncrement(e: React.MouseEvent<HTMLButtonElement>) {
+  e.stopPropagation();
+  if (!user) {
+    openLoginModal();
+    return;
   }
+  incrementWatchCount(movie.id);
+}
 
-  function handleToggleWatchLater() {
-    if (!user) {
-      openLoginModal();
-      return;
-    }
-    toggleWatchLater(movie.id);
+function handleResetWatchCount(e: React.MouseEvent<HTMLButtonElement>) {
+  e.stopPropagation();
+  resetWatchCount(movie.id);
+}
+
+function handleToggleWatchLater(e: React.MouseEvent<HTMLButtonElement>) {
+  e.stopPropagation();
+  if (!user) {
+    openLoginModal();
+    return;
   }
+  toggleWatchLater(movie.id);
+}
+
 
   return (
     <Card className="overflow-hidden hover:shadow-lg transform hover:scale-102 transition-transform duration-300 ease-in-out w-72 md:w-80 lg:w-82 max-w-full p-2 sm:p-4">
@@ -96,7 +104,7 @@ export function MovieCard({
           <Button
             variant={movie.watchCount > 0 ? "default" : "outline"}
             size="sm"
-            onClick={handleIncrement}
+            onClick={(e) => handleIncrement(e)}
             className="gap-1"
           >
             <Eye className="w-4 h-4" />
@@ -107,7 +115,7 @@ export function MovieCard({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => resetWatchCount(movie.id)}
+              onClick={(e) => handleResetWatchCount(e)}
             >
               <EyeOff className="w-4 h-4" />
             </Button>
@@ -116,8 +124,8 @@ export function MovieCard({
           <Button
             variant={movie.watchLater ? "default" : "outline"}
             size="sm"
-            onClick={handleToggleWatchLater}
-            disabled={movie.watchCount > 0} // No permitir "ver después" si ya está vista
+            onClick={(e) => handleToggleWatchLater(e)}
+            disabled={movie.watchCount > 0}
           >
             <Clock className="w-4 h-4" />
           </Button>
@@ -140,7 +148,7 @@ export function MovieCard({
             <Button
               variant={movie.watchCount > 0 ? "default" : "outline"}
               size="sm"
-              onClick={handleIncrement}
+              onClick={(e) => handleIncrement(e)}
               className="flex-1 gap-1"
               title="Marcar como vista"
             >
@@ -152,7 +160,7 @@ export function MovieCard({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => resetWatchCount(movie.id)}
+                onClick={(e) => handleResetWatchCount(e)}
                 className="min-w-[36px] px-2 py-1 text-xs"
                 title="Restablecer contador de vistas"
               >
@@ -163,7 +171,7 @@ export function MovieCard({
             <Button
               variant={movie.watchLater ? "default" : "outline"}
               size="sm"
-              onClick={handleToggleWatchLater}
+              onClick={(e) => handleToggleWatchLater(e)}
               disabled={movie.watchCount > 0}
               className="min-w-[48px] gap-1 text-xs px-2 py-1"
               title={

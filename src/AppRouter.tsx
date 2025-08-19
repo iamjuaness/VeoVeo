@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import PrivateRoute from "./components/PrivateRoute";
 import Stats from "./pages/Stats";
 import MovieTracker from "./pages/MovieTracker";
+import MovieDetailPage from "./pages/MovieDetailPage";
 
 export default function AppRouter() {
 
@@ -19,6 +20,7 @@ export default function AppRouter() {
             </PrivateRoute>
           }
         />
+        <Route path="/movie/:id" element={<MovieDetailPage />} />
         <Route path="*" element={<Navigate to="/home" replace />} />
       </Routes>
     </BrowserRouter>

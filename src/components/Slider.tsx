@@ -36,7 +36,7 @@ export function Slider({
                 className="object-cover w-full h-full absolute inset-0"
                 loading="lazy"
               />
-              <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-r from-black/30 via-black/50 to-transparent" />
               <div className="absolute inset-0 flex">
                 <div className="container mx-auto px-4 mt-3">
                   <div className="max-w-2xl text-white">

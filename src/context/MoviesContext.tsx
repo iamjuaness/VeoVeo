@@ -151,19 +151,19 @@ const performSearch = async (query: string) => {
       .then(([movieData, userStatus]) => {
         const mergedMovies = movieData.movies.map((movie) => {
           const watched = userStatus.moviesWatched.find(
-            (mw: { movieId: any; }) => String(mw.movieId) === String(movie.id)
+            (mw: { movieId: string; }) => mw.movieId.toString() === movie.id.toString()
           );
           return {
             ...movie,
             watchCount: watched ? watched.count : 0,
-            watchLater: userStatus.watchLater.includes(String(movie.id)),
+            watchLater: userStatus.watchLater.includes(movie.id.toString()),
             duration: watched ? watched.duration : movie.duration,
           };
         });
 
         setMovies((prev) => {
-          const idsExistentes = new Set(prev.map((m) => m.id));
-          const nuevos = mergedMovies.filter((m) => !idsExistentes.has(m.id));
+          const idsExistentes = new Set(prev.map((m) => m.id.toString()));
+          const nuevos = mergedMovies.filter((m) => !idsExistentes.has(m.id.toString()));
           return [...prev, ...nuevos];
         });
 

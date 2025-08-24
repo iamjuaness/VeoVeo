@@ -7,9 +7,17 @@ interface Props {
   searchTerm: string;
   setSearchTerm: (value: string) => void;
   performSearch: (query: string) => Promise<void>;
+  onClick?: () => void;
+  className?: string;
 }
 
-export function MovieSearchBar({ searchTerm, setSearchTerm, performSearch }: Props) {
+export function MovieSearchBar({
+  searchTerm,
+  setSearchTerm,
+  performSearch,
+  onClick,
+  className,
+}: Props) {
   const [inputValue, setInputValue] = useState(searchTerm);
   const [isLoading] = useState(false);
 
@@ -25,13 +33,14 @@ export function MovieSearchBar({ searchTerm, setSearchTerm, performSearch }: Pro
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       handleSearch(e);
+      onClick?.();
     }
   };
 
   return (
     <form
-      className="max-w-md mx-auto mb-6"
       onSubmit={handleSearch}
+      className={`flex w-full justify-center-safe ${className ?? ""}`}
       autoComplete="off"
     >
       <div className="relative flex">
@@ -45,7 +54,12 @@ export function MovieSearchBar({ searchTerm, setSearchTerm, performSearch }: Pro
           className="pl-10"
           disabled={isLoading}
         />
-        <Button type="submit" className="ml-2" disabled={isLoading}>
+        <Button
+          type="submit"
+          className="ml-2"
+          disabled={isLoading}
+          onClick={onClick}
+        >
           {isLoading ? (
             <span className="flex items-center justify-center gap-2">
               <Loader2 className="w-5 h-5 animate-spin" />
@@ -57,7 +71,6 @@ export function MovieSearchBar({ searchTerm, setSearchTerm, performSearch }: Pro
               Buscar
             </>
           )}
-          
         </Button>
       </div>
     </form>

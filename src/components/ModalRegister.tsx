@@ -25,18 +25,17 @@ export function ModalRegister({ open, setOpen }: RegisterDialogProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setConfirm] = useState("");
-  const [selectedAvatar, setSelectedAvatar] = useState<string>(
-    predefinedAvatars[0].id
-  );
+  const [selectedAvatar, setSelectedAvatar] = useState<string>(predefinedAvatars[0].id);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Lógica para manejar el registro (puedes conectar con tu backend o localStorage aquí)
+  // Lógica para manejar el registro
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     try {
       if (password !== passwordConfirm) {
         alert("Las contraseñas no coinciden");
+        setIsLoading(false);
         return;
       }
       await register({ name, email, password, passwordConfirm, selectedAvatar });
@@ -46,9 +45,7 @@ export function ModalRegister({ open, setOpen }: RegisterDialogProps) {
       setPassword("");
       setConfirm("");
       setSelectedAvatar(predefinedAvatars[0].id);
-      setSelectedAvatar(predefinedAvatars[0].id);
     } catch (error) {
-      // Manejo de error opcional
       alert("Error al registrarse, intenta de nuevo.");
     } finally {
       setIsLoading(false);
@@ -58,19 +55,31 @@ export function ModalRegister({ open, setOpen }: RegisterDialogProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" className="gap-2">
+        <Button size="sm" className="gap-2 w-full sm:w-auto">
           <UserPlus className="w-4 h-4" />
           Registrarse
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent
+        className="
+          sm:max-w-md
+          w-full
+          px-2
+          py-4
+          rounded-lg
+          max-h-[90vh]
+          flex
+          flex-col
+        "
+        style={{ touchAction: "manipulation" }}
+      >
         <DialogHeader>
           <DialogTitle>Crear Cuenta</DialogTitle>
           <DialogDescription>
             Crea una nueva cuenta para guardar tu colección de películas
           </DialogDescription>
         </DialogHeader>
-        <form className="space-y-4" onSubmit={handleRegister}>
+        <form className="flex-1 flex flex-col gap-4 overflow-y-auto pb-24 sm:pb-6" onSubmit={handleRegister}>
           <div className="space-y-2">
             <Label htmlFor="register-name">Nombre completo</Label>
             <Input
@@ -122,8 +131,8 @@ export function ModalRegister({ open, setOpen }: RegisterDialogProps) {
           {/* Selector de Avatar */}
           <div className="space-y-3">
             <Label>Selecciona tu avatar</Label>
-            <div className="flex items-center gap-3 mb-3">
-              <Avatar className="h-20 w-20 border-2 border-primary">
+            <div className="flex flex-col xs:flex-row items-center gap-2 mb-3">
+              <Avatar className="h-16 w-16 border-2 border-primary">
                 <AvatarImage
                   src={
                     predefinedAvatars.find(
@@ -131,13 +140,13 @@ export function ModalRegister({ open, setOpen }: RegisterDialogProps) {
                     )?.url || "/placeholder.svg"
                   }
                   alt="Avatar seleccionado"
-                  className="object-cover"
+                  className="object-cover rounded-full"
                 />
                 <AvatarFallback>👤</AvatarFallback>
               </Avatar>
               <div>
-                <p className="text-sm font-medium">Avatar seleccionado</p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-sm font-medium text-center">Avatar seleccionado</p>
+                <p className="text-xs text-muted-foreground text-center">
                   {
                     predefinedAvatars.find(
                       (avatar) => avatar.id === selectedAvatar
@@ -147,7 +156,7 @@ export function ModalRegister({ open, setOpen }: RegisterDialogProps) {
               </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-3 max-h-48 overflow-y-auto p-2 border rounded-lg">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-h-36 overflow-y-auto p-2 border rounded-lg">
               {predefinedAvatars.map((avatar) => (
                 <button
                   key={avatar.id}
@@ -160,11 +169,11 @@ export function ModalRegister({ open, setOpen }: RegisterDialogProps) {
                   }`}
                   disabled={isLoading}
                 >
-                  <Avatar className="h-12 w-12">
+                  <Avatar className="h-10 w-10 rounded-full">
                     <AvatarImage
                       src={avatar.url || "/placeholder.svg"}
                       alt={avatar.name}
-                      className="object-cover"
+                      className="object-cover rounded-full"
                     />
                     <AvatarFallback>👤</AvatarFallback>
                   </Avatar>
@@ -177,31 +186,46 @@ export function ModalRegister({ open, setOpen }: RegisterDialogProps) {
               ))}
             </div>
           </div>
-          <div className="flex gap-2 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              className="flex-1 bg-transparent"
-              onClick={() => setOpen(false)}
-              disabled={isLoading}
-            >
-              Cancelar
-            </Button>
-            <Button type="submit" className="flex-1" disabled={isLoading}>
-              {isLoading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Cargando...
-                </span>
-              ) : (
-                <>
-                  <UserPlus className="w-4 h-4" />
-                  Crear Cuenta
-                </>
-              )}
-            </Button>
-          </div>
         </form>
+        {/* Botonera siempre visible abajo */}
+        <div
+          className="
+            fixed
+            left-0
+            right-0
+            bottom-0
+            px-4
+            py-3
+            bg-background
+            border-t
+            flex
+            gap-2
+            sm:static sm:px-0 sm:py-0 sm:bg-transparent sm:border-0
+          "
+        >
+          <Button
+            type="button"
+            variant="outline"
+            className="flex-1 bg-transparent"
+            onClick={() => setOpen(false)}
+            disabled={isLoading}
+          >
+            Cancelar
+          </Button>
+          <Button type="submit" className="flex-1" disabled={isLoading}>
+            {isLoading ? (
+              <span className="flex items-center justify-center gap-2">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Cargando...
+              </span>
+            ) : (
+              <>
+                <UserPlus className="w-4 h-4" />
+                Crear Cuenta
+              </>
+            )}
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );

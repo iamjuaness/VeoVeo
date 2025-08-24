@@ -4,8 +4,7 @@ import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
 import { ModalLogin } from "./ModalLogin";
 import { ModalRegister } from "./ModalRegister";
 import { Separator } from "./ui/separator";
-import { Menu, Moon, Sun } from "lucide-react";
-import { Switch } from "./ui/switch";
+import { Menu } from "lucide-react";
 
 interface HamburgerProps {
   showMobileMenu: boolean;
@@ -24,8 +23,6 @@ export function Hamburger({
   showMobileMenu,
   setShowMobileMenu,
   setUser,
-  toggleTheme,
-  isDarkMode,
   showLoginModal,
   setShowLoginModal,
   showRegisterModal,
@@ -61,7 +58,7 @@ export function Hamburger({
           <Separator />
 
           {/* Toggle de tema en el menú móvil */}
-          <div className="flex items-center justify-between p-3 rounded-lg hover:bg-accent">
+          {/* <div className="flex items-center justify-between p-3 rounded-lg hover:bg-accent">
             <div className="flex items-center gap-3">
               {isDarkMode ? (
                 <Moon className="w-5 h-5" />
@@ -71,7 +68,7 @@ export function Hamburger({
               <span>Tema {isDarkMode ? "Oscuro" : "Claro"}</span>
             </div>
             <Switch checked={isDarkMode} onCheckedChange={toggleTheme} />
-          </div>
+          </div> */}
         </div>
       </SheetContent>
     </Sheet>

@@ -175,7 +175,7 @@ export async function searchMovies(query: string): Promise<Movie[]> {
 
   const url = `${API_URL}search/titles?query=${encodeURIComponent(
     query
-  )}&limit=50`;
+  )}&limit=50&countryCodes=US`;
   const res = await fetch(url, {
     method: "GET",
     headers: { "Content-Type": "application/json" },
@@ -211,7 +211,7 @@ export async function fetchMoviesFromEndpoint(nextPageToken?: string): Promise<{
   totalResults: number;
   nextPageToken?: string;
 }> {
-  const url = `${API_URL}titles?types=MOVIE&limit=${MOVIES_PER_PAGE}&sortBy=SORT_BY_POPULARITY&sortOrder=ASC${
+  const url = `${API_URL}titles?types=MOVIE&limit=${MOVIES_PER_PAGE}&sortBy=SORT_BY_POPULARITY&sortOrder=ASC&countryCodes=US${
     nextPageToken ? `&pageToken=${nextPageToken}` : ""
   }`;
   const res = await fetch(url, {

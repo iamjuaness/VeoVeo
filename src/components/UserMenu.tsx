@@ -61,7 +61,7 @@ export function UserMenu({
           </Avatar>
         </Button>
       </SheetTrigger>
-      <SheetContent side="right" className="w-80">
+      <SheetContent side="right" className="w-80 overflow-y-auto">
         <SheetHeader>
           <div className="flex items-center gap-3">
             <Avatar className="h-12 w-12">

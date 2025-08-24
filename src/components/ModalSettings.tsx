@@ -109,13 +109,19 @@ export function ModalSettings({
           <TabsContent value="profile" className="space-y-4">
             <form onSubmit={handleUpdateProfile} className="space-y-4">
               <div className="flex items-center gap-4">
-                <Avatar className="h-20 w-20 border-2 rounded-full">
+                <Avatar className="h-12 w-12 rounded-full">
                   <AvatarImage
                     src={userAvatarObj.url || "/placeholder.svg"}
-                    alt="Avatar"
-                    className="object-cover rounded-full"
+                    alt={user.name}
+                    className="object-cover rounded-full h-12 w-12"
                   />
-                  <AvatarFallback>👤</AvatarFallback>
+                  <AvatarFallback>
+                    {user.name
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")
+                      .toUpperCase()}
+                  </AvatarFallback>
                 </Avatar>
                 <div>
                   <Button type="button" variant="outline" size="sm" disabled>

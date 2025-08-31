@@ -112,7 +112,7 @@ export async function getMoviesByIds(ids: string[]): Promise<Movie[]> {
   if (!ids.length) return [];
 
   const batchSize = 5; // máximo permitido por batch
-  const maxConcurrent = 4; // máximo permitido en paralelo por la API
+  const maxConcurrent = 3; // máximo permitido en paralelo por la API
   const allBatches: string[][] = [];
 
   for (let i = 0; i < ids.length; i += batchSize) {

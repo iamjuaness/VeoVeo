@@ -25,7 +25,6 @@ export async function getMovieDetailById(
     method: "GET",
     headers: {
       "Content-Type": "application/json",
-      "Access-Control-Allow-Origin": "*",
     },
   });
   const data = await response.json();
@@ -113,7 +112,7 @@ export async function getMoviesByIds(ids: string[]): Promise<Movie[]> {
   if (!ids.length) return [];
 
   const batchSize = 5; // máximo permitido por batch
-  const maxConcurrent = 1; // máximo permitido en paralelo por la API
+  const maxConcurrent = 2; // máximo permitido en paralelo por la API
   const allBatches: string[][] = [];
 
   for (let i = 0; i < ids.length; i += batchSize) {
@@ -131,7 +130,7 @@ export async function getMoviesByIds(ids: string[]): Promise<Movie[]> {
         .join("&")}`;
       const res = await fetch(url, {
         method: "GET",
-        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+        headers: { "Content-Type": "application/json" },
       });
 
       if (!res.ok) {
@@ -179,7 +178,7 @@ export async function searchMovies(query: string): Promise<Movie[]> {
   )}&limit=50&countryCodes=US`;
   const res = await fetch(url, {
     method: "GET",
-    headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+    headers: { "Content-Type": "application/json" },
   });
 
   if (!res.ok) {
@@ -219,7 +218,6 @@ export async function fetchMoviesFromEndpoint(nextPageToken?: string): Promise<{
     method: "GET",
     headers: {
       "Content-Type": "application/json",
-      "Access-Control-Allow-Origin": "*",
     },
   });
 
@@ -257,7 +255,6 @@ export async function getMovieDurationById(id: string): Promise<any> {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
-      "Access-Control-Allow-Origin": "*",
     },
   });
   const data = await response.json();
@@ -271,7 +268,6 @@ export async function getMovieGenresById(id: number): Promise<any> {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
-      "Access-Control-Allow-Origin": "*",
     },
   });
   const data = await response.json();

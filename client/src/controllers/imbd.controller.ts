@@ -33,8 +33,9 @@ export async function fetchMoviesBatchRaw(
       });
       if (!res.ok) {
         // Aquí capturas el ID que falló
+        const idStr = typeof id === "string" ? id : JSON.stringify(id);
         console.error(
-          `Error al obtener película con ID ${id}:`,
+          `Error al obtener película con ID ${idStr}:`,
           res.statusText
         );
         return null;

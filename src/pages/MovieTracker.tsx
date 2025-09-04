@@ -217,7 +217,9 @@ export default function MovieTracker() {
 
   // Incrementar contador de veces vista
   const incrementWatchCount = async (id: number) => {
-    const movieOriginal = movies.find((m) => m.id === id);
+    const movieOriginal =
+      movies.find((m) => m.id === id) || searchResults.find((m) => m.id === id);
+      
     setMovies((movies) =>
       movies.map((movie) =>
         movie.id === id
@@ -307,6 +309,9 @@ export default function MovieTracker() {
 
   // Toggle watchLater status
   const toggleWatchLater = (id: number) => {
+    const movieOriginal =
+      movies.find((m) => m.id === id) || searchResults.find((m) => m.id === id);
+
     setMovies((movies) =>
       movies.map((movie) =>
         movie.id === id ? { ...movie, watchLater: !movie.watchLater } : movie
@@ -319,7 +324,6 @@ export default function MovieTracker() {
       if (exists) {
         updated = prev.filter((movie) => movie.id !== id);
       } else {
-        const movieOriginal = movies.find((m) => m.id === id);
         if (!movieOriginal) return prev;
         updated = [...prev, { ...movieOriginal, watchLater: true }];
       }

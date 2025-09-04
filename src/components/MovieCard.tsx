@@ -104,6 +104,11 @@ export function MovieCard({
 
       {/* 🔹 Botones para móviles (debajo de la imagen) */}
       <div className="block sm:hidden px-1 py-2">
+        {/* Título y año */}
+        <div className="text-center mb-2 text-sm font-semibold line-clamp-1 truncate max-w-full px-2">
+          {movie.title} ({movie.year})
+        </div>
+
         <div className="flex flex-wrap gap-2 justify-center">
           <Button
             variant={movie.watchCount > 0 ? "default" : "outline"}

@@ -219,7 +219,7 @@ export default function MovieTracker() {
   const incrementWatchCount = async (id: number) => {
     const movieOriginal =
       movies.find((m) => m.id === id) || searchResults.find((m) => m.id === id);
-      
+
     setMovies((movies) =>
       movies.map((movie) =>
         movie.id === id
@@ -272,14 +272,27 @@ export default function MovieTracker() {
       )
     );
 
+    const duration = await getMovieDurationById(id.toString()).then(
+      (res) => res.duration
+    );
+
+    setMoviesWatchedList((prev) => {
+      const updatedWithDuration = prev.map((movie) =>
+        movie.id === id ? { ...movie, duration } : movie
+      );
+      localStorage.setItem(
+        "moviesWatched",
+        JSON.stringify(updatedWithDuration)
+      );
+      return updatedWithDuration;
+    });
+
     // Usa la variable declarada arriba
 
     if (movieOriginal?.watchLater) {
       await toggleWatchLaterApi({ movieId: id.toString() });
     }
-    const duration = await getMovieDurationById(id.toString()).then(
-      (res) => res.duration
-    );
+
     await addOrIncrementWatched({ movieId: id.toString(), duration });
   };
 

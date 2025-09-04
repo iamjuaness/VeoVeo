@@ -141,7 +141,7 @@ export async function getMoviesByIds(ids: string[]): Promise<Movie[]> {
     backdrop: item.primaryImage?.url ?? "",
     watchCount: 0,
     watchLater: false,
-    duration: item.runtimeSeconds ? Math.floor(item.runtimeSeconds / 60) : 0,
+    duration: item.runtimeSeconds ? item.runtimeSeconds : 0,
   }));
 }
 
@@ -214,7 +214,7 @@ export async function fetchMoviesFromEndpoint(nextPageToken?: string): Promise<{
     backdrop: item.primaryImage?.url ?? "",
     watchCount: 0,
     watchLater: false,
-    duration: item.runtimeSeconds ? Math.floor(item.runtimeSeconds / 60) : 0,
+    duration: item.runtimeSeconds ? item.runtimeSeconds : 0,
   }));
 
   return {

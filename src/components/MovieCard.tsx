@@ -29,33 +29,31 @@ export function MovieCard({
   user,
   openLoginModal,
 }: Props) {
-function handleIncrement(e: React.MouseEvent<HTMLButtonElement>) {
-  e.stopPropagation();
-  if (!user) {
-    openLoginModal();
-    return;
+  function handleIncrement(e: React.MouseEvent<HTMLButtonElement>) {
+    e.stopPropagation();
+    if (!user) {
+      openLoginModal();
+      return;
+    }
+    incrementWatchCount(movie.id);
   }
-  incrementWatchCount(movie.id);
-}
 
-function handleResetWatchCount(e: React.MouseEvent<HTMLButtonElement>) {
-  e.stopPropagation();
-  resetWatchCount(movie.id);
-}
-
-function handleToggleWatchLater(e: React.MouseEvent<HTMLButtonElement>) {
-  e.stopPropagation();
-  if (!user) {
-    openLoginModal();
-    return;
+  function handleResetWatchCount(e: React.MouseEvent<HTMLButtonElement>) {
+    e.stopPropagation();
+    resetWatchCount(movie.id);
   }
-  toggleWatchLater(movie.id);
-}
 
+  function handleToggleWatchLater(e: React.MouseEvent<HTMLButtonElement>) {
+    e.stopPropagation();
+    if (!user) {
+      openLoginModal();
+      return;
+    }
+    toggleWatchLater(movie.id);
+  }
 
   return (
     <Card className="overflow-hidden hover:shadow-lg transform hover:scale-102 transition-transform duration-300 ease-in-out w-72 md:w-80 lg:w-82 max-w-full p-2 sm:p-4">
-      
       {/* 🔹 Contenedor fijo con aspect ratio 2:3 para uniformidad */}
       <div className="relative w-full aspect-[2/3]">
         <GlareHover
@@ -66,10 +64,16 @@ function handleToggleWatchLater(e: React.MouseEvent<HTMLButtonElement>) {
           transitionDuration={1000}
         >
           <img
-            src={movie.poster || "/placeholder.svg"}
+            src={
+              movie.poster && movie.poster.trim() !== ""
+                ? movie.poster
+                : "/placeholder.svg"
+            }
             alt={movie.title}
             className="object-cover w-full h-full rounded-t-sm"
-            loading="lazy"
+            style={{ backgroundColor: "#eee" }}
+            width={300}
+            height={450}
           />
         </GlareHover>
 
@@ -137,7 +141,8 @@ function handleToggleWatchLater(e: React.MouseEvent<HTMLButtonElement>) {
         <CardHeader className="pb-2">
           <CardTitle className="text-lg line-clamp-1">{movie.title}</CardTitle>
           <CardDescription className="flex items-center gap-2 text-sm">
-            <Calendar className="w-3 h-3" /> {movie.year} • {movie.genres[0] || "Desconocido"}
+            <Calendar className="w-3 h-3" /> {movie.year} •{" "}
+            {movie.genres[0] || "Desconocido"}
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-0">

@@ -43,8 +43,8 @@ interface MoviesContextType {
   moviesWatchLaterList: Movie[];
   setMoviesWatchedList: React.Dispatch<React.SetStateAction<Movie[]>>;
   setMoviesWatchLaterList: React.Dispatch<React.SetStateAction<Movie[]>>;
-  loadMoviesWatched: () => Promise<void>;
-  loadMoviesWatchLater: () => Promise<void>;
+  loadMoviesWatched: () => Promise<Movie[]>;
+  loadMoviesWatchLater: () => Promise<Movie[]>;
   searchTerm: string;
   setSearchTerm: React.Dispatch<React.SetStateAction<string>>;
   searchResults: Movie[];
@@ -77,24 +77,102 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
     undefined
   );
   const [hasMore, setHasMore] = useState(true);
-  const [moviesWatchedList, setMoviesWatchedList] = useState<Movie[]>([]);
-  const [moviesWatchLaterList, setMoviesWatchLaterList] = useState<Movie[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<Movie[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
-  const [statsLoading, setStatsLoading] = useState(false);
   const lastLoadedUserRef = useRef<string | undefined>(undefined);
-  
+  const [moviesWatchedList, setMoviesWatchedList] = useState<Movie[]>(() => {
+    const raw = localStorage.getItem("moviesWatched");
+    if (!raw) return [];
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  });
+  const [moviesWatchLaterList, setMoviesWatchLaterList] = useState<Movie[]>(
+    () => {
+      const raw = localStorage.getItem("moviesWatchLater");
+      if (!raw) return [];
+      try {
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+  );
+  const [statsLoading, setStatsLoading] = useState(false);
+
+  // Después de cargar las lists específicas:
+  const syncMoviesFlags = (
+    baseMovies: Movie[],
+    watched: Movie[],
+    watchLater: Movie[]
+  ) => {
+    return baseMovies.map((movie) => {
+      const isWatched = watched.some((w) => w.id === movie.id);
+      const isWatchLater = watchLater.some((wl) => wl.id === movie.id);
+      return {
+        ...movie,
+        watchCount: isWatched
+          ? watched.find((w) => w.id === movie.id)?.watchCount ?? 1
+          : 0,
+        watchLater: isWatchLater,
+      };
+    });
+  };
+
   useEffect(() => {
     if (!user || !token) return;
     if (lastLoadedUserRef.current === user.id) return;
     lastLoadedUserRef.current = user.id;
 
-    setStatsLoading(true);
-    loadMoviesWatched()
-      .then(() => loadMoviesWatchLater())
-      .finally(() => setStatsLoading(false));
+    const fetchSequential = async () => {
+      setStatsLoading(true);
+      // Primero películas vistas
+      if (!moviesWatchedList.length) {
+        const moviesWatched = await loadMoviesWatched();
+        setMoviesWatchedList(moviesWatched);
+        localStorage.setItem("moviesWatched", JSON.stringify(moviesWatched));
+      }
+      // Luego películas por ver
+      if (!moviesWatchLaterList.length) {
+        const moviesWatchLater = await loadMoviesWatchLater();
+        setMoviesWatchLaterList(moviesWatchLater);
+        localStorage.setItem(
+          "moviesWatchLater",
+          JSON.stringify(moviesWatchLater)
+        );
+      }
+      setStatsLoading(false);
+    };
+
+    fetchSequential();
   }, [token, user]);
+
+  useEffect(() => {
+    localStorage.setItem("moviesWatched", JSON.stringify(moviesWatchedList));
+  }, [moviesWatchedList]);
+  useEffect(() => {
+    localStorage.setItem(
+      "moviesWatchLater",
+      JSON.stringify(moviesWatchLaterList)
+    );
+  }, [moviesWatchLaterList]);
+
+  useEffect(() => {
+    const syncedMovies = syncMoviesFlags(
+      movies,
+      moviesWatchedList,
+      moviesWatchLaterList
+    );
+    // Solo actualiza si realmente hay cambios
+    if (JSON.stringify(syncedMovies) !== JSON.stringify(movies)) {
+      setMovies(syncedMovies);
+    }
+  }, [movies, moviesWatchedList, moviesWatchLaterList]);
 
   const performSearch = async (query: string) => {
     if (!query.trim()) {
@@ -137,48 +215,7 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
     }
   };
 
-  // Función para cargar el estado del usuario y mezclar con las películas
   useEffect(() => {
-    if (!user || !token) return;
-    if (!hasMore) return; // si ya no hay más datos, no ejecutes
-    setLoading(true);
-
-    // Solo carga para la página actual
-    Promise.all([fetchMoviesFromEndpoint(nextPageToken), getUserMovieStatus()])
-      .then(([movieData, userStatus]) => {
-        const mergedMovies = movieData.movies.map((movie) => {
-          const watched = userStatus.moviesWatched.find(
-            (mw: { movieId: string }) =>
-              mw.movieId.toString() === movie.id.toString()
-          );
-          return {
-            ...movie,
-            watchCount: watched ? watched.count : 0,
-            watchLater: userStatus.watchLater.includes(movie.id.toString()),
-            duration: watched ? watched.duration : movie.duration,
-          };
-        });
-
-        setMovies((prev) => {
-          const idsExistentes = new Set(prev.map((m) => m.id.toString()));
-          const nuevos = mergedMovies.filter(
-            (m) => !idsExistentes.has(m.id.toString())
-          );
-          return [...prev, ...nuevos];
-        });
-
-        setNextPageToken(movieData.nextPageToken);
-        setHasMore(!!movieData.nextPageToken); // false si no hay más páginas
-        setTotalPages(movieData.totalPages);
-        setTotalResults(movieData.totalResults);
-      })
-      .catch((err) => console.error(err))
-      .finally(() => setLoading(false));
-  }, [user, token, currentPage]); // solo depende de estas
-
-  useEffect(() => {
-    // Solo para usuarios NO logueados
-    if (user && token) return; // si está logueado, no ejecutar este
     if (!hasMore) return; // Detener si no hay más páginas
 
     setLoading(true);
@@ -201,15 +238,14 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
       })
       .catch((err) => console.error(err))
       .finally(() => setLoading(false));
-  }, [user, token, currentPage]);
+  }, [currentPage]);
 
-  const loadMoviesWatched = async () => {
+  const loadMoviesWatched = async (): Promise<Movie[]> => {
     try {
       const status = await getUserMovieStatus();
       const ids = status.moviesWatched.map((m: any) => m.movieId);
       const movies = await getMoviesByIds(ids);
 
-      // agregamos el count
       const withCount = movies.map((movie) => {
         const watched = status.moviesWatched.find(
           (mw: any) => mw.movieId === movie.id
@@ -222,12 +258,14 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
       });
 
       setMoviesWatchedList(withCount);
+      return withCount; // <--- Agrega este return
     } catch (err) {
       console.error("Error cargando películas vistas:", err);
+      return []; // <--- En caso de error, retorna array vacío
     }
   };
 
-  const loadMoviesWatchLater = async () => {
+  const loadMoviesWatchLater = async (): Promise<Movie[]> => {
     try {
       const status = await getUserMovieStatus();
       const ids = status.watchLater;
@@ -240,8 +278,10 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
       }));
 
       setMoviesWatchLaterList(withFlag);
+      return withFlag; // <--- retorna el array
     } catch (err) {
       console.error("Error cargando películas por ver:", err);
+      return []; // <--- retorna un array vacío en caso de error
     }
   };
 
@@ -353,8 +393,8 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
         searchLoading,
         performSearch,
         setSearchResults,
-        loadMoviesWatched,
-        loadMoviesWatchLater,
+        loadMoviesWatched: loadMoviesWatched,
+        loadMoviesWatchLater: loadMoviesWatchLater,
       }}
     >
       {children}

@@ -79,13 +79,10 @@ export default function MovieTracker() {
     let filtered: Movie[] = [];
 
     if (filterStatus === "watched") {
-      // Parte 1: partir de películas vistas
-      filtered = moviesWatchedList;
+      filtered = movies.filter((movie) => movie.watchCount > 0);
     } else if (filterStatus === "watchLater") {
-      // Parte 2: partir de lista de películas para ver luego
-      filtered = moviesWatchLaterList;
+      filtered = movies.filter((movie) => movie.watchLater);
     } else {
-      // Parte 3: búsqueda general en todas las movies
       filtered = movies.filter(
         (movie) =>
           movie.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -113,14 +110,7 @@ export default function MovieTracker() {
     }
 
     return filtered;
-  }, [
-    filterStatus,
-    movies,
-    moviesWatchedList,
-    moviesWatchLaterList,
-    searchTerm,
-    selectedGenres,
-  ]);
+  }, [filterStatus, movies, searchTerm, selectedGenres]);
 
   const featuredMovies = [...movies]
     .sort((a, b) => b.rating - a.rating)
@@ -172,7 +162,7 @@ export default function MovieTracker() {
           setCurrentPage((prev) => prev + 1); // dispara el efecto en provider
         }
       },
-      { rootMargin: "200px" }
+      { rootMargin: "400px" }
     );
 
     if (observerRef.current) observer.observe(observerRef.current);
@@ -227,6 +217,7 @@ export default function MovieTracker() {
 
   // Incrementar contador de veces vista
   const incrementWatchCount = async (id: number) => {
+    const movieOriginal = movies.find((m) => m.id === id);
     setMovies((movies) =>
       movies.map((movie) =>
         movie.id === id
@@ -234,25 +225,39 @@ export default function MovieTracker() {
           : movie
       )
     );
-    // Actualizar la lista local de vistas
+
     setMoviesWatchedList((prev) => {
+      if (!movieOriginal) return prev;
+
       const exists = prev.find((m) => m.id === id);
+      let updated;
       if (exists) {
-        return prev.map((movie) =>
+        updated = prev.map((movie) =>
           movie.id === id
-            ? { ...movie, watchCount: movie.watchCount + 1, watchLater: false }
+            ? {
+                ...movieOriginal,
+                watchCount: movie.watchCount + 1,
+                watchLater: false,
+              }
             : movie
         );
       } else {
-        const movie = movies.find((m) => m.id === id);
-        if (!movie) return prev;
-        return [...prev, { ...movie, watchCount: 1, watchLater: false }];
+        updated = [
+          ...prev,
+          { ...movieOriginal, watchCount: 1, watchLater: false },
+        ];
       }
+      localStorage.setItem("moviesWatched", JSON.stringify(updated));
+      return updated;
     });
-    // Quitar de por ver, si aplica
-    setMoviesWatchLaterList((prev) => prev.filter((movie) => movie.id !== id));
 
-    // **Actualiza searchResults**
+    // Quitar de por ver
+    setMoviesWatchLaterList((prev) => {
+      const filtered = prev.filter((movie) => movie.id !== id);
+      localStorage.setItem("moviesWatchLater", JSON.stringify(filtered));
+      return filtered;
+    });
+
     setSearchResults((prev) =>
       prev.map((movie) =>
         movie.id === id
@@ -265,14 +270,14 @@ export default function MovieTracker() {
       )
     );
 
-    // Actualizar backend aquí...
+    // Usa la variable declarada arriba
+
+    if (movieOriginal?.watchLater) {
+      await toggleWatchLaterApi({ movieId: id.toString() });
+    }
     const duration = await getMovieDurationById(id.toString()).then(
       (res) => res.duration
     );
-    const movieData = movies.find((m) => m.id === id);
-    if (movieData?.watchLater) {
-      await toggleWatchLaterApi({ movieId: id.toString() });
-    }
     await addOrIncrementWatched({ movieId: id.toString(), duration });
   };
 
@@ -283,15 +288,20 @@ export default function MovieTracker() {
         movie.id === id ? { ...movie, watchCount: 0 } : movie
       )
     );
-    setMoviesWatchedList((prev) => prev.filter((movie) => movie.id !== id));
 
-    // **Actualiza searchResults visualmente**
+    setMoviesWatchedList((prev) => {
+      const updated = prev.filter((movie) => movie.id !== id);
+      localStorage.setItem("moviesWatched", JSON.stringify(updated)); // Guarda la lista actualizada
+      return updated;
+    });
+
     setSearchResults((prev) =>
       prev.map((movie) =>
         movie.id === id ? { ...movie, watchCount: 0 } : movie
       )
     );
-    // reset api call
+
+    // Llamada al backend para resetear
     resetWatched({ movieId: id.toString() });
   };
 
@@ -302,24 +312,28 @@ export default function MovieTracker() {
         movie.id === id ? { ...movie, watchLater: !movie.watchLater } : movie
       )
     );
+
     setMoviesWatchLaterList((prev) => {
       const exists = prev.some((m) => m.id === id);
+      let updated;
       if (exists) {
-        return prev.filter((movie) => movie.id !== id);
+        updated = prev.filter((movie) => movie.id !== id);
       } else {
-        const movie = movies.find((m) => m.id === id);
-        if (!movie) return prev;
-        return [...prev, { ...movie, watchLater: true }];
+        const movieOriginal = movies.find((m) => m.id === id);
+        if (!movieOriginal) return prev;
+        updated = [...prev, { ...movieOriginal, watchLater: true }];
       }
+      localStorage.setItem("moviesWatchLater", JSON.stringify(updated)); // Guarda aquí
+      return updated;
     });
 
-    // **Actualiza searchResults visualmente**
     setSearchResults((prev) =>
       prev.map((movie) =>
         movie.id === id ? { ...movie, watchLater: !movie.watchLater } : movie
       )
     );
-    // Actualizar en backend
+
+    // Actualizar backend
     toggleWatchLaterApi({ movieId: id.toString() });
   };
 
@@ -338,8 +352,10 @@ export default function MovieTracker() {
           <div className="flex items-center justify-between">
             {/* Logo/Nombre */}
             <div className="flex items-center gap-2">
-              <div className="text-2xl">🎬</div>
-              <h1 className="text-xl font-bold">CineTracker</h1>
+              <div className="w-10 h-10">
+                <img src="pelicula-de-video.png" alt="logo" typeof="icon" />
+              </div>
+              <h1 className="text-xl font-bold">VeoVeo</h1>
             </div>
 
             {/* Controles de navegación */}

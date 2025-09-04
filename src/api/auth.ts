@@ -27,7 +27,6 @@ export async function login(data: { email: string; password: string }) {
     body: JSON.stringify(data),
   });
   const result = await res.json();
-  console.log(result);
   if (result.token) {
     localStorage.setItem("authToken", result.token);
   } else {

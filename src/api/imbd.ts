@@ -1,10 +1,12 @@
 import type { Movie } from "../interfaces/Movie";
 import type { MovieDetail } from "../interfaces/MovieDetail";
 import { getMovieInWatchLater, getMovieWatchCount } from "./movie";
+import { dev_url } from "../utils/urls";
 
 // const API_URL = "https://api.themoviedb.org/3";
 const API_URL = "https://api.imdbapi.dev/";
 const MOVIES_PER_PAGE = 24;
+const token = localStorage.getItem("authToken");
 
 export async function getMoviesByGenres(genre: string) {
   const res = await fetch(`${API_URL}?genres=${genre}`, {
@@ -110,64 +112,37 @@ export async function getMovieDetailById(
 
 export async function getMoviesByIds(ids: string[]): Promise<Movie[]> {
   if (!ids.length) return [];
+  if (!token) return [];
 
-  const batchSize = 5; // máximo permitido por batch
-  const maxConcurrent = 2; // máximo permitido en paralelo por la API
-  const allBatches: string[][] = [];
+  const res = await fetch(`${dev_url}api/imbd/movies/batch`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({
+      ids: ids,
+      options: { concurrentRequests: 4, delayMs: 1000},
+    }),
+  });
 
-  for (let i = 0; i < ids.length; i += batchSize) {
-    allBatches.push(ids.slice(i, i + batchSize));
+  if (!res.ok) {
+    console.error("Error al obtener batch de películas:", res.statusText);
+    return [];
   }
 
-  let results: Movie[] = [];
-
-  for (let i = 0; i < allBatches.length; i += maxConcurrent) {
-    const concurrentBatches = allBatches.slice(i, i + maxConcurrent);
-
-    const promises = concurrentBatches.map(async (batchIds) => {
-      const url = `${API_URL}titles:batchGet?${batchIds
-        .map((id) => `titleIds=${encodeURIComponent(id)}`)
-        .join("&")}`;
-      const res = await fetch(url, {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-      });
-
-      if (!res.ok) {
-        console.error("Error al obtener batch de películas:", res.statusText);
-        return [];
-      }
-
-      const data = await res.json();
-      return (data.titles ?? []).map((item: any) => ({
-        id: item.id,
-        type: item.type,
-        title: item.primaryTitle ?? item.originalTitle ?? "",
-        year: item.startYear ?? 0,
-        genres: item.genres ?? [],
-        rating: item.rating?.aggregateRating ?? 0,
-        description: item.plot ?? "",
-        poster: item.primaryImage?.url ?? "",
-        backdrop: item.primaryImage?.url ?? "",
-        watchCount: 0,
-        watchLater: false,
-        duration: item.runtimeSeconds
-          ? Math.floor(item.runtimeSeconds / 60)
-          : 0,
-      }));
-    });
-
-    // Espera a que termine el grupo
-    const batchResults = await Promise.all(promises);
-    results = [...results, ...batchResults.flat()];
-
-    // Dormir 1 segundo para cumplir la cuota si hay más lotes
-    if (i + maxConcurrent < allBatches.length) {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-    }
-  }
-
-  return results;
+  const data = await res.json();
+  return (data.movies ?? []).map((item: any) => ({
+    id: item.id,
+    type: item.type,
+    title: item.primaryTitle ?? item.originalTitle ?? "",
+    year: item.startYear ?? 0,
+    genres: item.genres ?? [],
+    rating: item.rating?.aggregateRating ?? 0,
+    description: item.plot ?? "",
+    poster: item.primaryImage?.url ?? "",
+    backdrop: item.primaryImage?.url ?? "",
+    watchCount: 0,
+    watchLater: false,
+    duration: item.runtimeSeconds ? Math.floor(item.runtimeSeconds / 60) : 0,
+  }));
 }
 
 export async function searchMovies(query: string): Promise<Movie[]> {
@@ -211,7 +186,7 @@ export async function fetchMoviesFromEndpoint(nextPageToken?: string): Promise<{
   totalResults: number;
   nextPageToken?: string;
 }> {
-  const url = `${API_URL}titles?types=MOVIE&limit=${MOVIES_PER_PAGE}&sortBy=SORT_BY_POPULARITY&sortOrder=ASC&countryCodes=US${
+  const url = `${API_URL}titles?types=MOVIE&types=VIDEO&limit=${MOVIES_PER_PAGE}&sortBy=SORT_BY_POPULARITY&sortOrder=ASC&countryCodes=US${
     nextPageToken ? `&pageToken=${nextPageToken}` : ""
   }`;
   const res = await fetch(url, {

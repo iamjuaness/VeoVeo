@@ -1,7 +1,7 @@
 import type { Movie } from "../interfaces/Movie";
 import type { MovieDetail } from "../interfaces/MovieDetail";
 import { getMovieInWatchLater, getMovieWatchCount } from "./movie";
-import { dev_url } from "../utils/urls";
+import { prod_url } from "../utils/urls";
 
 // const API_URL = "https://api.themoviedb.org/3";
 const API_URL = "https://api.imdbapi.dev/";
@@ -114,7 +114,7 @@ export async function getMoviesByIds(ids: string[]): Promise<Movie[]> {
   if (!ids.length) return [];
   if (!token) return [];
 
-  const res = await fetch(`${dev_url}api/imbd/movies/batch`, {
+  const res = await fetch(`${prod_url}api/imbd/movies/batch`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
     body: JSON.stringify({

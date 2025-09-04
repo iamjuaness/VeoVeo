@@ -13,10 +13,7 @@ export async function fetchMoviesBatchRaw(
 ) {
   if (!ids || !Array.isArray(ids) || ids.length === 0) return null;
 
-  const {
-    concurrentRequests = 4,
-    delayMs = 1000,
-  } = options || {};
+  const { concurrentRequests = 4, delayMs = 1000 } = options || {};
 
   const batches: string[][] = [];
   for (let i = 0; i < ids.length; i += concurrentRequests) {
@@ -35,7 +32,11 @@ export async function fetchMoviesBatchRaw(
         headers: { "Content-Type": "application/json" },
       });
       if (!res.ok) {
-        console.error("Error al obtener película:", res.statusText, id);
+        // Aquí capturas el ID que falló
+        console.error(
+          `Error al obtener película con ID ${id}:`,
+          res.statusText
+        );
         return null;
       }
       return await res.json();
@@ -51,7 +52,10 @@ export async function fetchMoviesBatchRaw(
   return results;
 }
 
-export async function fetchMoviesBatchRawController(req: Request, res: Response) {
+export async function fetchMoviesBatchRawController(
+  req: Request,
+  res: Response
+) {
   const { ids, options } = req.body;
 
   if (!ids || !Array.isArray(ids)) {

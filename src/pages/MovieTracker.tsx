@@ -215,6 +215,9 @@ export default function MovieTracker() {
     }));
   };
 
+  const watchedKey = `moviesWatched_${user?.id ?? "guest"}`;
+  const watchLaterKey = `moviesWatchLater_${user?.id ?? "guest"}`;
+
   // Incrementar contador de veces vista
   const incrementWatchCount = async (id: number) => {
     const movieOriginal =
@@ -249,14 +252,14 @@ export default function MovieTracker() {
           { ...movieOriginal, watchCount: 1, watchLater: false },
         ];
       }
-      localStorage.setItem("moviesWatched", JSON.stringify(updated));
+      localStorage.setItem(watchedKey, JSON.stringify(updated));
       return updated;
     });
 
     // Quitar de por ver
     setMoviesWatchLaterList((prev) => {
       const filtered = prev.filter((movie) => movie.id !== id);
-      localStorage.setItem("moviesWatchLater", JSON.stringify(filtered));
+      localStorage.setItem(watchLaterKey, JSON.stringify(filtered));
       return filtered;
     });
 
@@ -281,7 +284,7 @@ export default function MovieTracker() {
         movie.id === id ? { ...movie, duration } : movie
       );
       localStorage.setItem(
-        "moviesWatched",
+        watchedKey,
         JSON.stringify(updatedWithDuration)
       );
       return updatedWithDuration;
@@ -306,7 +309,7 @@ export default function MovieTracker() {
 
     setMoviesWatchedList((prev) => {
       const updated = prev.filter((movie) => movie.id !== id);
-      localStorage.setItem("moviesWatched", JSON.stringify(updated)); // Guarda la lista actualizada
+      localStorage.setItem(watchedKey, JSON.stringify(updated)); // Guarda la lista actualizada
       return updated;
     });
 
@@ -340,7 +343,7 @@ export default function MovieTracker() {
         if (!movieOriginal) return prev;
         updated = [...prev, { ...movieOriginal, watchLater: true }];
       }
-      localStorage.setItem("moviesWatchLater", JSON.stringify(updated)); // Guarda aquí
+      localStorage.setItem(watchLaterKey, JSON.stringify(updated)); // Guarda aquí
       return updated;
     });
 
@@ -392,10 +395,10 @@ export default function MovieTracker() {
 
               {!user ? (
                 <>
-                  {/* Botón de tema*/}
-                  <Theme toggleTheme={toggleTheme} />
                   {/* Botones de desktop (lg y superior) */}
                   <div className="hidden lg:flex gap-2">
+                    {/* Botón de tema*/}
+                    <Theme toggleTheme={toggleTheme} />
                     {/* Modal de Inicio de Sesión */}
                     <ModalLogin
                       open={showLoginModal}

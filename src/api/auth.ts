@@ -1,6 +1,6 @@
-import { prod_url } from "../utils/urls";
+import { dev_url } from "../utils/urls";
 
-const API_URL = prod_url + "api/auth";
+const API_URL = dev_url + "api/auth";
 
 export async function register(data: {
   name: string;

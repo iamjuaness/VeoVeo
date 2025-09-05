@@ -81,8 +81,11 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
   const [searchResults, setSearchResults] = useState<Movie[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const lastLoadedUserRef = useRef<string | undefined>(undefined);
+  const watchedKey = `moviesWatched_${user?.id ?? "guest"}`;
+  const watchLaterKey = `moviesWatchLater_${user?.id ?? "guest"}`;
+
   const [moviesWatchedList, setMoviesWatchedList] = useState<Movie[]>(() => {
-    const raw = localStorage.getItem("moviesWatched");
+    const raw = localStorage.getItem(watchedKey);
     if (!raw) return [];
     try {
       const parsed = JSON.parse(raw);
@@ -93,7 +96,7 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
   });
   const [moviesWatchLaterList, setMoviesWatchLaterList] = useState<Movie[]>(
     () => {
-      const raw = localStorage.getItem("moviesWatchLater");
+      const raw = localStorage.getItem(watchLaterKey);
       if (!raw) return [];
       try {
         const parsed = JSON.parse(raw);
@@ -135,14 +138,14 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
       if (!moviesWatchedList.length) {
         const moviesWatched = await loadMoviesWatched();
         setMoviesWatchedList(moviesWatched);
-        localStorage.setItem("moviesWatched", JSON.stringify(moviesWatched));
+        localStorage.setItem(watchedKey, JSON.stringify(moviesWatched));
       }
       // Luego películas por ver
       if (!moviesWatchLaterList.length) {
         const moviesWatchLater = await loadMoviesWatchLater();
         setMoviesWatchLaterList(moviesWatchLater);
         localStorage.setItem(
-          "moviesWatchLater",
+          watchLaterKey,
           JSON.stringify(moviesWatchLater)
         );
       }
@@ -153,11 +156,11 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
   }, [token, user]);
 
   useEffect(() => {
-    localStorage.setItem("moviesWatched", JSON.stringify(moviesWatchedList));
+    localStorage.setItem(watchedKey, JSON.stringify(moviesWatchedList));
   }, [moviesWatchedList]);
   useEffect(() => {
     localStorage.setItem(
-      "moviesWatchLater",
+      watchLaterKey,
       JSON.stringify(moviesWatchLaterList)
     );
   }, [moviesWatchLaterList]);

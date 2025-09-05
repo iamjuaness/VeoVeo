@@ -215,9 +215,6 @@ export default function MovieTracker() {
     }));
   };
 
-  const watchedKey = `moviesWatched_${user?.id ?? "guest"}`;
-  const watchLaterKey = `moviesWatchLater_${user?.id ?? "guest"}`;
-
   // Incrementar contador de veces vista
   const incrementWatchCount = async (id: number) => {
     const movieOriginal =
@@ -252,14 +249,14 @@ export default function MovieTracker() {
           { ...movieOriginal, watchCount: 1, watchLater: false },
         ];
       }
-      localStorage.setItem(watchedKey, JSON.stringify(updated));
+      localStorage.setItem("moviesWatched", JSON.stringify(updated));
       return updated;
     });
 
     // Quitar de por ver
     setMoviesWatchLaterList((prev) => {
       const filtered = prev.filter((movie) => movie.id !== id);
-      localStorage.setItem(watchLaterKey, JSON.stringify(filtered));
+      localStorage.setItem("moviesWatchLater", JSON.stringify(filtered));
       return filtered;
     });
 
@@ -284,7 +281,7 @@ export default function MovieTracker() {
         movie.id === id ? { ...movie, duration } : movie
       );
       localStorage.setItem(
-        watchedKey,
+        "moviesWatched",
         JSON.stringify(updatedWithDuration)
       );
       return updatedWithDuration;
@@ -309,7 +306,7 @@ export default function MovieTracker() {
 
     setMoviesWatchedList((prev) => {
       const updated = prev.filter((movie) => movie.id !== id);
-      localStorage.setItem(watchedKey, JSON.stringify(updated)); // Guarda la lista actualizada
+      localStorage.setItem("moviesWatched", JSON.stringify(updated)); // Guarda la lista actualizada
       return updated;
     });
 
@@ -343,7 +340,7 @@ export default function MovieTracker() {
         if (!movieOriginal) return prev;
         updated = [...prev, { ...movieOriginal, watchLater: true }];
       }
-      localStorage.setItem(watchLaterKey, JSON.stringify(updated)); // Guarda aquí
+      localStorage.setItem("moviesWatchLater", JSON.stringify(updated)); // Guarda aquí
       return updated;
     });
 

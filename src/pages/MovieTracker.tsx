@@ -63,6 +63,21 @@ export default function MovieTracker() {
     watched: "All",
     watchLater: "All",
   });
+
+  // Tipo para el filtro de rating
+  type RatingValue = "All" | 5 | 6 | 7 | 8 | 9 | 10;
+
+  // Estado por pestaña (all / watched / watchLater)
+  const [selectedRatings, setSelectedRatings] = useState<{
+    all: RatingValue;
+    watched: RatingValue;
+    watchLater: RatingValue;
+  }>({
+    all: "All",
+    watched: "All",
+    watchLater: "All",
+  });
+
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const { user, setUser, logout } = useAuth();
@@ -73,6 +88,15 @@ export default function MovieTracker() {
   const [showScrollSearch, setShowScrollSearch] = useState(false);
   const [showFloatingSearch, setShowFloatingSearch] = useState(false);
   const [scrollY, setScrollY] = useState(0);
+
+  // Handler para Select (shadcn/ui Select envía string)
+  const handleRatingChange = (value: string) => {
+    const parsed = value === "All" ? "All" : (Number(value) as RatingValue);
+    setSelectedRatings((prev) => ({
+      ...prev,
+      [filterStatus]: parsed,
+    }));
+  };
 
   // Filtrar películas basado en búsqueda y estado
   const displayedMovies = useMemo(() => {
@@ -109,8 +133,16 @@ export default function MovieTracker() {
       });
     }
 
+    // NUEVO: filtro por rating mínimo
+    const currentRating = selectedRatings[filterStatus];
+    if (currentRating !== "All") {
+      filtered = filtered.filter(
+        (movie) => (movie.rating ?? 0) >= Number(currentRating)
+      );
+    }
+
     return filtered;
-  }, [filterStatus, movies, searchTerm, selectedGenres]);
+  }, [filterStatus, movies, searchTerm, selectedGenres, selectedRatings]);
 
   const featuredMovies = [...movies]
     .sort((a, b) => b.rating - a.rating)
@@ -538,6 +570,25 @@ export default function MovieTracker() {
                   {movieGenres.map((genre) => (
                     <SelectItem key={genre} value={genre}>
                       {genre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* NUEVO: Rating mínimo */}
+              <span className="text-sm font-medium ml-4">Rating:</span>
+              <Select
+                value={String(selectedRatings[filterStatus])}
+                onValueChange={handleRatingChange}
+              >
+                <SelectTrigger className="w-32">
+                  <SelectValue placeholder="All" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All">All</SelectItem>
+                  {[5, 6, 7, 8, 9, 10].map((r) => (
+                    <SelectItem key={r} value={String(r)}>
+                      {r}+
                     </SelectItem>
                   ))}
                 </SelectContent>

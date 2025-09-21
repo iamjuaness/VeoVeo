@@ -142,6 +142,7 @@ export async function getMoviesByIds(ids: string[]): Promise<Movie[]> {
     watchCount: 0,
     watchLater: false,
     duration: item.runtimeSeconds ? item.runtimeSeconds : 0,
+    watchedAt: item.watchedAt ?? [],
   }));
 }
 

@@ -41,6 +41,61 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
+.color-scale-1 { fill: #38bdf8; }
+.color-scale-2 { fill: #3b82a0; }
+.color-scale-3 { fill: #2b5d72; }
+.color-scale-4 { fill: #18333f; }
+.color-empty  { fill: #252a2f; }
+
+.react-calendar-heatmap text {
+  font-size: 10px;
+  fill: #aaa;
+}
+
+.react-calendar-heatmap .react-calendar-heatmap-small-text {
+  font-size: 5px;
+}
+
+.react-calendar-heatmap rect:hover {
+  stroke: #555;
+  stroke-width: 1px;
+}
+
+/*
+ * Default color scale
+ */
+
+.react-calendar-heatmap .color-empty {
+  fill: #252a2f;
+}
+
+.react-calendar-heatmap .color-filled {
+  fill: #8cc665;
+}
+
+/*
+ * Github color scale
+ */
+
+.react-calendar-heatmap .color-veoveo-0 {
+  fill: #18333f;
+}
+.react-calendar-heatmap .color-veoveo-1 {
+  fill: #2b5d72;
+}
+.react-calendar-heatmap .color-veoveo-2 {
+  fill: #3b82a0;
+}
+.react-calendar-heatmap .color-veoveo-3 {
+  fill: #38bdf8;
+}
+.react-calendar-heatmap .color-veoveo-4 {
+  fill: #55c6f7;
+}
+.react-calendar-heatmap .color-veoveo-5 {
+  fill: #7dd1f5;
+}
+
 :root {
   --background: #c9d2c8;
   --card: #ffe;   

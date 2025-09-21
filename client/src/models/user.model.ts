@@ -5,7 +5,7 @@ export interface IUser extends Document {
   email: string;
   password: string;
   selectedAvatar: string;
-  moviesWatched: { movieId: string, count: number, duration: number }[];
+  moviesWatched: { movieId: string, count: number, duration: number, watchedAt: string[] }[];
   watchLater: string[];
 }
 

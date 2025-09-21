@@ -68,134 +68,118 @@ export default function MovieDetailPage() {
     if (id) fetchMovie();
   }, [id, token]); // sólo cambia si cambia id o token
 
-  const incrementWatchCount = async () => {
-    if (!movie) return;
+  const incrementWatchCount = async (id: number) => {
+    const movieOriginal =
+      movies.find((m) => m.id === id);
 
-    const id: string = movie.id;
-
-    // Actualiza estado local de movie
-    setMovie((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        watchCount: (prev.watchCount || 0) + 1,
-        watchLater: false,
-      };
-    });
-
-    // Actualiza lista global de películas
+    // Sube el contador en la lista principal
     setMovies((movies) =>
-      movies.map((m) =>
-        m.id.toString() === id
-          ? { ...m, watchCount: (m.watchCount || 0) + 1, watchLater: false }
-          : m
+      movies.map((movie) =>
+        movie.id === id
+          ? {
+              ...movie,
+              watchCount: (movie.watchCount ?? 0) + 1,
+              watchLater: false,
+            }
+          : movie
       )
     );
 
-    // Actualiza lista global de películas vistas
-    setMoviesWatchedList((prev) => {
-      const exists = prev.find((m) => m.id.toString() === id);
-      if (exists) {
-        return prev.map((m) =>
-          m.id.toString() === id
-            ? { ...m, watchCount: (m.watchCount || 0) + 1, watchLater: false }
-            : m
-        );
-      } else {
-        const movieFull = movies.find((m) => m.id.toString() === id);
-        if (!movieFull) return prev;
-        return [...prev, { ...movieFull, watchCount: 1, watchLater: false }];
-      }
+    // Quita de por ver
+    setMoviesWatchLaterList((prev) => {
+      const filtered = prev.filter((movie) => movie.id !== id);
+      localStorage.setItem("moviesWatchLater", JSON.stringify(filtered));
+      return filtered;
     });
 
-    // Remover de lista de ver después si estaba
-    setMoviesWatchLaterList((prev) =>
-      prev.filter((m) => m.id.toString() !== id)
+    // Información para la visualización
+    const duration = await getMovieDurationById(id.toString()).then(
+      (res) => res.duration
     );
+    const watchedAtNew = new Date().toISOString();
 
-    // Actualiza la lista de resultados de búsqueda visualmente
-    // setSearchResults((prev) =>
-    //   prev.map((m) =>
-    //     m.id === id
-    //       ? {
-    //           ...m,
-    //           watchCount: (m.watchCount || 0) + 1,
-    //           watchLater: false,
-    //         }
-    //       : m
-    //   )
-    // );
+    setMoviesWatchedList((prev) => {
+      let found = false;
+      const updated = prev.map((movie) => {
+        if (movie.id === id) {
+          found = true;
+          return {
+            ...movie,
+            ...(movieOriginal || {}),
+            watchCount: (movie.watchCount ?? 0) + 1,
+            watchLater: false,
+            duration,
+            watchedAt: Array.isArray(movie.watchedAt)
+              ? [...movie.watchedAt, watchedAtNew]
+              : [watchedAtNew],
+          };
+        }
+        return movie;
+      });
+      if (!found && movieOriginal) {
+        updated.push({
+          ...movieOriginal,
+          watchCount: 1,
+          watchLater: false,
+          duration,
+          watchedAt: [watchedAtNew],
+        });
+      }
+      localStorage.setItem("moviesWatched", JSON.stringify(updated));
+      return updated;
+    });
 
-    // Actualiza backend
-    const duration = await getMovieDurationById(id).then((res) => res.duration);
-
-    // Si la película estaba en watchLater antes, desmárcala en backend
-    const movieData = movies.find((m) => m.id.toString() === id);
-    if (movieData?.watchLater) {
+    // Backend
+    if (movieOriginal?.watchLater) {
       await toggleWatchLaterApi({ movieId: id.toString() });
     }
-    await addOrIncrementWatched({ movieId: id.toString(), duration });
-  };
-  const resetWatchCount = async () => {
-    if (!movie) return;
-
-    const id = movie.id;
-
-    // Actualizar estado local
-    setMovie({ ...movie, watchCount: 0 });
-
-    // Actualizar listas globales
-    setMovies((movies) =>
-      movies.map((m) => (m.id.toString() === id ? { ...m, watchCount: 0 } : m))
-    );
-
-    setMoviesWatchedList((prev) => prev.filter((m) => m.id.toString() !== id));
-
-    //     setSearchResults((prev) =>
-    //     prev.map((m) => (m.id === id ? { ...m, watchCount: 0 } : m))
-    //   );
-
-    // Llamada al backend para resetear
-    await resetWatched({ movieId: id.toString() });
+    await addOrIncrementWatched({
+      movieId: id.toString(),
+      duration,
+      watchedAt: [watchedAtNew],
+    });
   };
 
-  const toggleWatchLater = async () => {
-    if (!movie) return;
-
-    const id = movie.id;
-    const newWatchLater = !movie.watchLater;
-
-    // Actualiza estado local
-    setMovie({ ...movie, watchLater: newWatchLater });
-
-    // Actualiza lista global movies
+  const resetWatchCount = (id: number) => {
     setMovies((movies) =>
-      movies.map((m) =>
-        m.id.toString() === id ? { ...m, watchLater: newWatchLater } : m
+      movies.map((movie) =>
+        movie.id === id ? { ...movie, watchCount: 0 } : movie
       )
     );
 
-    // Actualiza lista global watchLater
-    setMoviesWatchLaterList((prev) => {
-      const exists = prev.some((m) => m.id.toString() === id);
-      if (exists) {
-        return prev.filter((m) => m.id.toString() !== id);
-      } else {
-        const movieFull = movies.find((m) => m.id.toString() === id);
-        if (!movieFull) return prev;
-        return [...prev, { ...movieFull, watchLater: true }];
-      }
+    setMoviesWatchedList((prev) => {
+      const updated = prev.filter((movie) => movie.id !== id);
+      localStorage.setItem("moviesWatched", JSON.stringify(updated)); // Guarda la lista actualizada
+      return updated;
     });
 
-    // Actualiza search results visualmente
-    //   setSearchResults((prev) =>
-    //     prev.map((m) =>
-    //       m.id === id ? { ...m, watchLater: newWatchLater } : m
-    //     )
-    //   );
+    // Llamada al backend para resetear
+    resetWatched({ movieId: id.toString() });
+  };
 
-    // Llama al backend para persistir el cambio
-    await toggleWatchLaterApi({ movieId: id.toString() });
+  const toggleWatchLater = (id: number) => {
+    const movieOriginal = movies.find((m) => m.id === id);
+
+    setMovies((movies) =>
+      movies.map((movie) =>
+        movie.id === id ? { ...movie, watchLater: !movie.watchLater } : movie
+      )
+    );
+
+    setMoviesWatchLaterList((prev) => {
+      const exists = prev.some((m) => m.id === id);
+      let updated;
+      if (exists) {
+        updated = prev.filter((movie) => movie.id !== id);
+      } else {
+        if (!movieOriginal) return prev;
+        updated = [...prev, { ...movieOriginal, watchLater: true }];
+      }
+      localStorage.setItem("moviesWatchLater", JSON.stringify(updated)); // Guarda aquí
+      return updated;
+    });
+    // Actualizar backend
+    toggleWatchLaterApi({ movieId: id.toString() });
   };
 
   const formatRuntime = (seconds: number) => {
@@ -366,7 +350,7 @@ export default function MovieDetailPage() {
                         : "outline"
                     }
                     size="lg"
-                    onClick={incrementWatchCount}
+                    onClick={() => incrementWatchCount(Number(movie.id))}
                     className="gap-2 bg-white/10 border-white/30 text-white hover:bg-white/20"
                   >
                     <Eye className="w-5 h-5" />
@@ -381,7 +365,7 @@ export default function MovieDetailPage() {
                       <Button
                         variant="outline"
                         size="lg"
-                        onClick={resetWatchCount}
+                        onClick={() => resetWatchCount(Number(movie.id))}
                         className="gap-2 bg-white/10 border-white/30 text-white hover:bg-white/20"
                       >
                         <EyeOff className="w-5 h-5" />
@@ -391,7 +375,7 @@ export default function MovieDetailPage() {
                   <Button
                     variant={movie.watchLater ? "default" : "outline"}
                     size="lg"
-                    onClick={toggleWatchLater}
+                    onClick={() => toggleWatchLater(Number(movie.id))}
                     className="gap-2 bg-white/10 border-white/30 text-white hover:bg-white/20"
                     disabled={(movie.watchCount ?? 0) > 0}
                   >

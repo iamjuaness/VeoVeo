@@ -198,6 +198,7 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
             watchCount: watched ? watched.count : 0,
             watchLater: userStatus.watchLater.includes(String(movie.id)),
             duration: watched ? watched.duration : movie.duration,
+            watchedAt: watched ? watched.watchedAt : [],
           };
         });
 
@@ -254,6 +255,7 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
           ...movie,
           watchCount: watched?.count ?? 0,
           duration: watched?.duration ?? movie.duration,
+          watchedAt: watched?.watchedAt ?? [],
         };
       });
 

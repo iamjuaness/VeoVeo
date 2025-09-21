@@ -6,24 +6,42 @@ import { io } from "../app";
 
 export async function addOrIncrementWatched(req: Request, res: Response) {
   const { id } = req;
-  const { movieId, duration } = req.body;
+  const { movieId, duration, watchedAt } = req.body;
 
   const user = await User.findById(id);
   if (!user) return res.status(404).json({ message: "User not found" });
 
   const found = user.moviesWatched.find((item) => item.movieId === movieId);
+
   if (found) {
-    found.count += 1;
+    found.count += watchedAt?.length ?? 1;  // suma las vistas nuevas
+    if (watchedAt && watchedAt.length > 0) {
+      // Evita fechas duplicadas (si lo deseas)
+      const set = new Set([...(found.watchedAt || []), ...watchedAt]);
+      found.watchedAt = Array.from(set).sort(); // ordena si quieres por fecha
+    }
+    // Actualiza duration si lo necesitas...
   } else {
-    user.moviesWatched.push({ movieId, count: 1, duration });
+    user.moviesWatched.push({
+      movieId,
+      count: watchedAt?.length ?? 1,
+      duration,
+      watchedAt: watchedAt || []
+    });
   }
   await user.save();
   io.to(String(id)).emit("movies-watched", {
     type: "add",
-    data: { movieId, count: found ? found.count : 1, duration },
+    data: {
+      movieId,
+      count: found ? found.count : (watchedAt?.length ?? 1),
+      duration,
+      watchedAt: found ? found.watchedAt : (watchedAt || [])
+    },
   });
   return res.json({ moviesWatched: user.moviesWatched });
 }
+
 
 // POST /api/user/movies/reset
 // Body: { movieId: string }

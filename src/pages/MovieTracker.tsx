@@ -252,46 +252,20 @@ export default function MovieTracker() {
     const movieOriginal =
       movies.find((m) => m.id === id) || searchResults.find((m) => m.id === id);
 
+    // Sube el contador en la lista principal
     setMovies((movies) =>
       movies.map((movie) =>
         movie.id === id
-          ? { ...movie, watchCount: movie.watchCount + 1, watchLater: false }
+          ? {
+              ...movie,
+              watchCount: (movie.watchCount ?? 0) + 1,
+              watchLater: false,
+            }
           : movie
       )
     );
 
-    setMoviesWatchedList((prev) => {
-      if (!movieOriginal) return prev;
-
-      const exists = prev.find((m) => m.id === id);
-      let updated;
-      if (exists) {
-        updated = prev.map((movie) =>
-          movie.id === id
-            ? {
-                ...movieOriginal,
-                watchCount: movie.watchCount + 1,
-                watchLater: false,
-              }
-            : movie
-        );
-      } else {
-        updated = [
-          ...prev,
-          { ...movieOriginal, watchCount: 1, watchLater: false },
-        ];
-      }
-      localStorage.setItem("moviesWatched", JSON.stringify(updated));
-      return updated;
-    });
-
-    // Quitar de por ver
-    setMoviesWatchLaterList((prev) => {
-      const filtered = prev.filter((movie) => movie.id !== id);
-      localStorage.setItem("moviesWatchLater", JSON.stringify(filtered));
-      return filtered;
-    });
-
+    // Sube el contador en los resultados de búsqueda
     setSearchResults((prev) =>
       prev.map((movie) =>
         movie.id === id
@@ -304,28 +278,59 @@ export default function MovieTracker() {
       )
     );
 
+    // Quita de por ver
+    setMoviesWatchLaterList((prev) => {
+      const filtered = prev.filter((movie) => movie.id !== id);
+      localStorage.setItem("moviesWatchLater", JSON.stringify(filtered));
+      return filtered;
+    });
+
+    // Información para la visualización
     const duration = await getMovieDurationById(id.toString()).then(
       (res) => res.duration
     );
+    const watchedAtNew = new Date().toISOString();
 
     setMoviesWatchedList((prev) => {
-      const updatedWithDuration = prev.map((movie) =>
-        movie.id === id ? { ...movie, duration } : movie
-      );
-      localStorage.setItem(
-        "moviesWatched",
-        JSON.stringify(updatedWithDuration)
-      );
-      return updatedWithDuration;
+      let found = false;
+      const updated = prev.map((movie) => {
+        if (movie.id === id) {
+          found = true;
+          return {
+            ...movie,
+            ...(movieOriginal || {}),
+            watchCount: (movie.watchCount ?? 0) + 1,
+            watchLater: false,
+            duration,
+            watchedAt: Array.isArray(movie.watchedAt)
+              ? [...movie.watchedAt, watchedAtNew]
+              : [watchedAtNew],
+          };
+        }
+        return movie;
+      });
+      if (!found && movieOriginal) {
+        updated.push({
+          ...movieOriginal,
+          watchCount: 1,
+          watchLater: false,
+          duration,
+          watchedAt: [watchedAtNew],
+        });
+      }
+      localStorage.setItem("moviesWatched", JSON.stringify(updated));
+      return updated;
     });
 
-    // Usa la variable declarada arriba
-
+    // Backend 68cfa6f5d0ad3917b78fa2bf
     if (movieOriginal?.watchLater) {
       await toggleWatchLaterApi({ movieId: id.toString() });
     }
-
-    await addOrIncrementWatched({ movieId: id.toString(), duration });
+    await addOrIncrementWatched({
+      movieId: id.toString(),
+      duration,
+      watchedAt: [watchedAtNew],
+    });
   };
 
   // Resetear contador de veces vista

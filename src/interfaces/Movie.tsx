@@ -11,4 +11,5 @@ export interface Movie {
   watchCount: number
   watchLater: boolean
   duration: number
+  watchedAt: string[]
 }

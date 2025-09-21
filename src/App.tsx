@@ -9,9 +9,9 @@ function App() {
   return (
     <>
       <ThemeProvider>
+        <Analytics />
         <AuthProvider>
           <MoviesProvider>
-            <Analytics/>
             <AppRouter />
           </MoviesProvider>
         </AuthProvider>

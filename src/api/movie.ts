@@ -1,6 +1,6 @@
-import { dev_url } from "../utils/urls";
+import { prod_url } from "../utils/urls";
 
-const API_URL = dev_url + 'api/user';
+const API_URL = prod_url + 'api/user';
 const token = localStorage.getItem("authToken");
 
 export async function addOrIncrementWatched(data: { movieId: string, duration: number, watchedAt: string[] }) {

@@ -7,6 +7,7 @@ import { io } from "../app";
 export async function addOrIncrementWatched(req: Request, res: Response) {
   const { id } = req;
   const { movieId, duration, watchedAt } = req.body;
+  
 
   const user = await User.findById(id);
   if (!user) return res.status(404).json({ message: "User not found" });
@@ -22,6 +23,7 @@ export async function addOrIncrementWatched(req: Request, res: Response) {
     }
     // Actualiza duration si lo necesitas...
   } else {
+    console.log("Array que vas a guardar (watchedAt):", watchedAt);
     user.moviesWatched.push({
       movieId,
       count: watchedAt?.length ?? 1,
@@ -30,6 +32,7 @@ export async function addOrIncrementWatched(req: Request, res: Response) {
     });
   }
   await user.save();
+  console.log("Película guardada en Mongo:", user.moviesWatched[user.moviesWatched.length - 1]);
   io.to(String(id)).emit("movies-watched", {
     type: "add",
     data: {

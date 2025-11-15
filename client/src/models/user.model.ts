@@ -18,7 +18,8 @@ const userSchema = new Schema<IUser>({
     {
       movieId: { type: String, required: true },
       count: { type: Number, default: 1 },
-      duration: { type: Number, required: true }
+      duration: { type: Number, required: true },
+      watchedAt: { type: [String], default: [] }
     }
   ],
   watchLater: [String]

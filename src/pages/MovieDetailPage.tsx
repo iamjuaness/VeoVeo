@@ -52,6 +52,10 @@ export default function MovieDetailPage() {
   const { movies, setMovies, setMoviesWatchedList, setMoviesWatchLaterList } =
     useMovies();
 
+  const movieFromContext = movies.find((m) => m.id === id);
+  const watchCount = movieFromContext?.watchCount ?? 0;
+  const watchLater = movieFromContext?.watchLater ?? false;
+
   useEffect(() => {
     async function fetchMovie() {
       if (!id || !token) return;
@@ -68,9 +72,8 @@ export default function MovieDetailPage() {
     if (id) fetchMovie();
   }, [id, token]); // sólo cambia si cambia id o token
 
-  const incrementWatchCount = async (id: number) => {
-    const movieOriginal =
-      movies.find((m) => m.id === id);
+  const incrementWatchCount = async (id: string) => {
+    const movieOriginal = movies.find((m) => m.id === id);
 
     // Sube el contador en la lista principal
     setMovies((movies) =>
@@ -140,7 +143,7 @@ export default function MovieDetailPage() {
     });
   };
 
-  const resetWatchCount = (id: number) => {
+  const resetWatchCount = (id: string) => {
     setMovies((movies) =>
       movies.map((movie) =>
         movie.id === id ? { ...movie, watchCount: 0 } : movie
@@ -157,7 +160,7 @@ export default function MovieDetailPage() {
     resetWatched({ movieId: id.toString() });
   };
 
-  const toggleWatchLater = (id: number) => {
+  const toggleWatchLater = (id: string) => {
     const movieOriginal = movies.find((m) => m.id === id);
 
     setMovies((movies) =>
@@ -345,27 +348,27 @@ export default function MovieDetailPage() {
                 <div className="flex flex-wrap gap-3">
                   <Button
                     variant={
-                      movie.watchCount && movie.watchCount > 0
+                      watchCount && watchCount > 0
                         ? "default"
                         : "outline"
                     }
                     size="lg"
-                    onClick={() => incrementWatchCount(Number(movie.id))}
+                    onClick={() => incrementWatchCount(movie.id)}
                     className="gap-2 bg-white/10 border-white/30 text-white hover:bg-white/20"
                   >
                     <Eye className="w-5 h-5" />
-                    {movie.watchCount && movie.watchCount > 0
-                      ? `Vista (${movie.watchCount})`
+                    {watchCount && watchCount > 0
+                      ? `Vista (${watchCount})`
                       : "Marcar Vista"}
                   </Button>
 
-                  {movie.watchCount &&
-                    movie.watchCount > 0 &&
-                    movie.watchLater !== true && (
+                  {watchCount &&
+                    watchCount > 0 &&
+                    watchLater !== true && (
                       <Button
                         variant="outline"
                         size="lg"
-                        onClick={() => resetWatchCount(Number(movie.id))}
+                        onClick={() => resetWatchCount(movie.id)}
                         className="gap-2 bg-white/10 border-white/30 text-white hover:bg-white/20"
                       >
                         <EyeOff className="w-5 h-5" />
@@ -373,13 +376,13 @@ export default function MovieDetailPage() {
                       </Button>
                     )}
                   <Button
-                    variant={movie.watchLater ? "default" : "outline"}
+                    variant={watchLater ? "default" : "outline"}
                     size="lg"
-                    onClick={() => toggleWatchLater(Number(movie.id))}
+                    onClick={() => toggleWatchLater(movie.id)}
                     className="gap-2 bg-white/10 border-white/30 text-white hover:bg-white/20"
-                    disabled={(movie.watchCount ?? 0) > 0}
+                    disabled={(watchCount ?? 0) > 0}
                   >
-                    {movie.watchLater ? (
+                    {watchLater ? (
                       <>
                         <Check className="w-5 h-5" />
                         En Lista

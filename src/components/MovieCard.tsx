@@ -14,9 +14,9 @@ import GlareHover from "./ui/glarehover";
 
 interface Props {
   movie: Movie;
-  incrementWatchCount: (id: number) => void;
-  resetWatchCount: (id: number) => void;
-  toggleWatchLater: (id: number) => void;
+  incrementWatchCount: (id: string) => void;
+  resetWatchCount: (id: string) => void;
+  toggleWatchLater: (id: string) => void;
   user: User | null;
   openLoginModal: () => void;
 }

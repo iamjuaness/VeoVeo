@@ -248,7 +248,7 @@ export default function MovieTracker() {
   };
 
   // Incrementar contador de veces vista
-  const incrementWatchCount = async (id: number) => {
+  const incrementWatchCount = async (id: string) => {
     const movieOriginal =
       movies.find((m) => m.id === id) || searchResults.find((m) => m.id === id);
 
@@ -322,7 +322,6 @@ export default function MovieTracker() {
       return updated;
     });
 
-    // Backend 68cfa6f5d0ad3917b78fa2bf
     if (movieOriginal?.watchLater) {
       await toggleWatchLaterApi({ movieId: id.toString() });
     }
@@ -334,7 +333,7 @@ export default function MovieTracker() {
   };
 
   // Resetear contador de veces vista
-  const resetWatchCount = (id: number) => {
+  const resetWatchCount = (id: string) => {
     setMovies((movies) =>
       movies.map((movie) =>
         movie.id === id ? { ...movie, watchCount: 0 } : movie
@@ -358,7 +357,7 @@ export default function MovieTracker() {
   };
 
   // Toggle watchLater status
-  const toggleWatchLater = (id: number) => {
+  const toggleWatchLater = (id: string) => {
     const movieOriginal =
       movies.find((m) => m.id === id) || searchResults.find((m) => m.id === id);
 
@@ -482,7 +481,7 @@ export default function MovieTracker() {
               searchTerm={searchTerm}
               setSearchTerm={setSearchTerm}
               performSearch={performSearch}
-              className="flex-grow"
+              className="grow"
             />
 
             {/* Botón cerrar sin posicionamiento absoluto */}
@@ -491,7 +490,7 @@ export default function MovieTracker() {
               size="sm"
               onClick={() => setShowFloatingSearch(false)}
               aria-label="Cerrar búsqueda"
-              className="p-1 flex-shrink-0"
+              className="p-1 shrink-0"
             >
               ✕
             </Button>

@@ -1,8 +1,8 @@
 // POST /api/user/movies/watched
 // Body: { movieId: string }
 import { Request, Response } from "express";
-import User from "../users/user.model";
-import { io } from "../../app";
+import User from "../users/user.model.js";
+import { io } from "../../app.js";
 
 export async function addOrIncrementWatched(req: Request, res: Response) {
   const { id } = req;

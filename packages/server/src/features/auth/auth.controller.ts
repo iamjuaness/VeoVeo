@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import bcrypt from "bcryptjs";
-import User from "../users/user.model";
-import { signToken } from "../../core/config/jwt";
+import User from "../users/user.model.js";
+import { signToken } from "../../core/config/jwt.js";
 
 export async function register(req: Request, res: Response) {
   const { name, email, password, passwordConfirm, selectedAvatar } = req.body;

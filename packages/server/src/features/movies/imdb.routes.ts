@@ -1,8 +1,8 @@
 import { Router } from "express";
-import { authMiddleware } from "../../core/middleware/authMiddleware";
+import { authMiddleware } from "../../core/middleware/authMiddleware.js";
 import {
   fetchMoviesBatchRawController as fetchMoviesBatchRaw,
-} from "./imdb.controller";
+} from "./imdb.controller.js";
 
 const router = Router();
 

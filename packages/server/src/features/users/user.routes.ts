@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { authMiddleware } from "../../core/middleware/authMiddleware";
-import { addOrIncrementWatched, resetWatched, toggleWatchLater, getUserMovieStatus } from "../movies/movie.controller";
-import { getMovieInWatchLater, getMovieWatchCount } from "../users/user.controller";
+import { authMiddleware } from "../../core/middleware/authMiddleware.js";
+import { addOrIncrementWatched, resetWatched, toggleWatchLater, getUserMovieStatus } from "../movies/movie.controller.js";
+import { getMovieInWatchLater, getMovieWatchCount } from "../users/user.controller.js";
 
 const router = Router();
 

@@ -2,9 +2,9 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import "dotenv/config";
-import authRouter from "./features/auth/auth.routes";
-import userRouter from "./features/users/user.routes";
-import imbdRouter from "./features/movies/imdb.routes";
+import authRouter from "./features/auth/auth.routes.js";
+import userRouter from "./features/users/user.routes.js";
+import imbdRouter from "./features/movies/imdb.routes.js";
 import http from "http";
 import { Server } from "socket.io";
 

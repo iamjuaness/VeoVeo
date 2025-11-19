@@ -7,11 +7,27 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependencies
 node_modules
+**/node_modules
+
+# Build outputs
 dist
 dist-ssr
-*.local
+build
+**/dist
+**/build
+
+# Environment files
 .env
+.env.local
+.env.*.local
+**/.env
+**/.env.local
+
+# TypeScript
+*.tsbuildinfo
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -22,3 +38,26 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Monorepo specific
+# Package build artifacts
+packages/*/dist
+packages/*/build
+packages/*/.tsbuildinfo
+
+# Package environment files
+packages/*/.env
+packages/*/.env.local
+
+# Shared package output
+packages/shared/dist
+
+# Server package
+packages/server/dist
+
+# Web package
+packages/web/dist
+packages/web/.vite
+
+# OS specific
+Thumbs.db

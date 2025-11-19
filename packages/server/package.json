@@ -1,0 +1,41 @@
+{
+  "name": "@veoveo/server",
+  "version": "2.1.1",
+  "description": "VeoVeo Backend API Server",
+  "license": "ISC",
+  "author": "",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx watch src/index.ts"
+  },
+  "dependencies": {
+    "@veoveo/shared": "workspace:*",
+    "bcryptjs": "^3.0.2",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.0",
+    "express": "^5.1.0",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "jwt-decode": "^4.0.0",
+    "mongodb": "^6.17.0",
+    "mongoose": "^8.16.4",
+    "node-localstorage": "^3.0.5",
+    "socket.io": "^4.8.1",
+    "zod": "^4.0.7"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/mongoose": "^5.11.96",
+    "@types/node": "^24.1.0",
+    "@types/node-localstorage": "^1.3.3",
+    "tsx": "^4.7.0",
+    "typescript": "~5.9.2"
+  }
+}

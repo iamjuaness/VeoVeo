@@ -1,6 +1,6 @@
-import { dev_url } from "../../../shared/utils/urls";
+import { prod_url } from "../../../shared/utils/urls";
 
-const API_URL = dev_url + "api/user";
+const API_URL = prod_url + "api/user";
 const token = localStorage.getItem("authToken");
 
 export async function addOrIncrementWatched(data: {

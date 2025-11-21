@@ -38,6 +38,9 @@ All notable changes to this project will be documented in this file.
   - Reset to page 1 when switching between tabs
   - Reset when changing sort order, genres, or ratings
   - Prevents showing empty results after filter changes
+- **TypeScript Type Error**: Fixed type mismatch in calendar heatmap tooltips
+  - Added type assertions to `tooltipDataAttrs` in `StatsPage.tsx`
+  - Resolved incompatibility with `react-calendar-heatmap` type definitions
 
 ### Technical Improvements
 

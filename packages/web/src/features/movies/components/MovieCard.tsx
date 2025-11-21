@@ -188,8 +188,8 @@ export function MovieCard({
                 movie.watchCount > 0
                   ? "Ya marcada como vista"
                   : movie.watchLater
-                    ? "Quitar de lista de ver después"
-                    : "Agregar a lista de ver después"
+                  ? "Quitar de lista de ver después"
+                  : "Agregar a lista de ver después"
               }
             >
               <Clock className="w-4 h-4" />

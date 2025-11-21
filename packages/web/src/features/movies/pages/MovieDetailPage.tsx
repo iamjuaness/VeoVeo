@@ -20,7 +20,11 @@ import {
   Award,
   Timer,
 } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "../../../shared/components/ui/avatar";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "../../../shared/components/ui/avatar";
 import { Separator } from "../../../shared/components/ui/separator";
 import type { MovieDetail } from "../../../interfaces/MovieDetail";
 import { getMovieDetailById, getMovieDurationById } from "../services/imdb";
@@ -80,10 +84,10 @@ export default function MovieDetailPage() {
       movies.map((movie) =>
         movie.id === id
           ? {
-            ...movie,
-            watchCount: (movie.watchCount ?? 0) + 1,
-            watchLater: false,
-          }
+              ...movie,
+              watchCount: (movie.watchCount ?? 0) + 1,
+              watchLater: false,
+            }
           : movie
       )
     );
@@ -99,7 +103,10 @@ export default function MovieDetailPage() {
     const duration = await getMovieDurationById(id.toString()).then(
       (res) => res.duration
     );
-    const watchedAtNew = new Date().toISOString();
+    const userOffset = new Date().getTimezoneOffset();
+    const watchedAtNew = new Date(
+      new Date().getTime() - userOffset * 60 * 1000
+    ).toISOString();
 
     setMoviesWatchedList((prev) => {
       let found = false;
@@ -348,9 +355,7 @@ export default function MovieDetailPage() {
                 <div className="flex flex-wrap gap-3">
                   <Button
                     variant={
-                      watchCount && watchCount > 0
-                        ? "default"
-                        : "outline"
+                      watchCount && watchCount > 0 ? "default" : "outline"
                     }
                     size="lg"
                     onClick={() => incrementWatchCount(movie.id)}
@@ -362,19 +367,17 @@ export default function MovieDetailPage() {
                       : "Marcar Vista"}
                   </Button>
 
-                  {watchCount &&
-                    watchCount > 0 &&
-                    watchLater !== true && (
-                      <Button
-                        variant="outline"
-                        size="lg"
-                        onClick={() => resetWatchCount(movie.id)}
-                        className="gap-2 bg-white/10 border-white/30 text-white hover:bg-white/20"
-                      >
-                        <EyeOff className="w-5 h-5" />
-                        Reset
-                      </Button>
-                    )}
+                  {watchCount && watchCount > 0 && watchLater !== true && (
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      onClick={() => resetWatchCount(movie.id)}
+                      className="gap-2 bg-white/10 border-white/30 text-white hover:bg-white/20"
+                    >
+                      <EyeOff className="w-5 h-5" />
+                      Reset
+                    </Button>
+                  )}
                   <Button
                     variant={watchLater ? "default" : "outline"}
                     size="lg"

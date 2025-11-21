@@ -35,6 +35,8 @@ export default function MovieTracker() {
   const {
     movies,
     setMovies,
+    moviesPerPage,
+    currentPage,
     setCurrentPage,
     totalResults,
     loading,
@@ -50,10 +52,9 @@ export default function MovieTracker() {
     searchResults,
     setSearchResults,
     searchLoading,
+    filterStatus,
+    setFilterStatus,
   } = useMovies();
-  const [filterStatus, setFilterStatus] = useState<
-    "all" | "watched" | "watchLater"
-  >("all");
   const [selectedGenres, setSelectedGenres] = useState<{
     all: Genre;
     watched: Genre;
@@ -78,6 +79,8 @@ export default function MovieTracker() {
     watchLater: "All",
   });
 
+  const [watchedOrder, setWatchedOrder] = useState<"asc" | "desc">("desc");
+
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const { user, setUser, logout } = useAuth();
@@ -88,6 +91,7 @@ export default function MovieTracker() {
   const [showScrollSearch, setShowScrollSearch] = useState(false);
   const [showFloatingSearch, setShowFloatingSearch] = useState(false);
   const [scrollY, setScrollY] = useState(0);
+  const [orderedWatchedMovies, setOrderedWatchedMovies] = useState<Movie[]>([]);
 
   // Handler para Select (shadcn/ui Select envía string)
   const handleRatingChange = (value: string) => {
@@ -100,14 +104,22 @@ export default function MovieTracker() {
 
   // Filtrar películas basado en búsqueda y estado
   const displayedMovies = useMemo(() => {
-    let filtered: Movie[] = [];
+    let base: Movie[] = [];
 
     if (filterStatus === "watched") {
-      filtered = movies.filter((movie) => movie.watchCount > 0);
+      base = [...moviesWatchedList].sort((a, b) => {
+        const aArr = Array.isArray(a.watchedAt) ? a.watchedAt : [];
+        const bArr = Array.isArray(b.watchedAt) ? b.watchedAt : [];
+        const aLast = aArr[aArr.length - 1];
+        const bLast = bArr[bArr.length - 1];
+        const aDate = aLast ? new Date(aLast).getTime() : 0;
+        const bDate = bLast ? new Date(bLast).getTime() : 0;
+        return watchedOrder === "asc" ? aDate - bDate : bDate - aDate;
+      });
     } else if (filterStatus === "watchLater") {
-      filtered = movies.filter((movie) => movie.watchLater);
+      base = [...moviesWatchLaterList];
     } else {
-      filtered = movies.filter(
+      base = movies.filter(
         (movie) =>
           movie.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
           movie.genres.some((genre) =>
@@ -120,7 +132,7 @@ export default function MovieTracker() {
     const currentGenre = selectedGenres[filterStatus];
 
     if (currentGenre && currentGenre !== "All") {
-      filtered = filtered.filter((movie) => {
+      base = base.filter((movie) => {
         // En el primer código movie.genre es string
         // En el segundo movie.genres es array, así que para unificar:
         if (Array.isArray(movie.genres)) {
@@ -136,12 +148,12 @@ export default function MovieTracker() {
     // NUEVO: filtro por rating mínimo
     const currentRating = selectedRatings[filterStatus];
     if (currentRating !== "All") {
-      filtered = filtered.filter(
+      base = base.filter(
         (movie) => (movie.rating ?? 0) >= Number(currentRating)
       );
     }
 
-    return filtered;
+    return base;
   }, [filterStatus, movies, searchTerm, selectedGenres, selectedRatings]);
 
   const featuredMovies = [...movies]
@@ -169,8 +181,68 @@ export default function MovieTracker() {
       (movie.type === "movie" || movie.type === "video")
   );
 
+  const paginatedMovies = filteredMoviesToDisplay.slice(
+    0,
+    currentPage * moviesPerPage
+  );
+
   const observerRef = useRef<HTMLDivElement | null>(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Incluye aquí rating, géneros (si quieres pre-filtrar antes de ordenar)
+    const obj = {} as Record<string, Movie>;
+    moviesWatchedList.forEach((m) => {
+      obj[m.id] = m;
+    });
+    let sorted = Object.values(obj);
+
+    // Filtros antes de ordenar (opcional)
+    if (selectedGenres.watched && selectedGenres.watched !== "All") {
+      sorted = sorted.filter((movie) =>
+        Array.isArray(movie.genres)
+          ? movie.genres.includes(selectedGenres.watched)
+          : movie.genres === selectedGenres.watched
+      );
+    }
+    const rating = selectedRatings.watched;
+    if (rating !== "All") {
+      sorted = sorted.filter((movie) => (movie.rating ?? 0) >= Number(rating));
+    }
+
+    // Ordena globalmente por la última fecha vista
+    sorted.sort((a, b) => {
+      const aArr = Array.isArray(a.watchedAt) ? a.watchedAt : [];
+      const bArr = Array.isArray(b.watchedAt) ? b.watchedAt : [];
+      const aLast = aArr[aArr.length - 1];
+      const bLast = bArr[bArr.length - 1];
+      const aDate = aLast ? new Date(aLast).getTime() : 0;
+      const bDate = bLast ? new Date(bLast).getTime() : 0;
+      return watchedOrder === "asc" ? aDate - bDate : bDate - aDate;
+    });
+
+    setOrderedWatchedMovies(sorted);
+  }, [
+    moviesWatchedList,
+    watchedOrder,
+    selectedGenres.watched,
+    selectedRatings.watched,
+  ]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [
+    filterStatus,
+    watchedOrder,
+    selectedGenres.watched,
+    selectedRatings.watched,
+    searchTerm,
+  ]);
+
+  const paginatedWatchedMovies = orderedWatchedMovies.slice(
+    0,
+    currentPage * moviesPerPage
+  );
 
   // Detectar scroll
   useEffect(() => {
@@ -187,11 +259,15 @@ export default function MovieTracker() {
   }, []);
 
   useEffect(() => {
+    setCurrentPage(1);
+  }, [filterStatus, watchedOrder, selectedGenres, selectedRatings, searchTerm]);
+
+  useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
         const entry = entries[0];
         if (entry.isIntersecting && !loading && hasMore) {
-          setCurrentPage((prev) => prev + 1); // dispara el efecto en provider
+          setCurrentPage((prev) => prev + 1);
         }
       },
       { rootMargin: "400px" }
@@ -202,7 +278,7 @@ export default function MovieTracker() {
     return () => {
       if (observerRef.current) observer.unobserve(observerRef.current);
     };
-  }, [loading, hasMore, setCurrentPage]);
+  }, [loading, hasMore, setCurrentPage, filterStatus]);
 
   // Auto-play del slider
   useEffect(() => {
@@ -257,10 +333,10 @@ export default function MovieTracker() {
       movies.map((movie) =>
         movie.id === id
           ? {
-            ...movie,
-            watchCount: (movie.watchCount ?? 0) + 1,
-            watchLater: false,
-          }
+              ...movie,
+              watchCount: (movie.watchCount ?? 0) + 1,
+              watchLater: false,
+            }
           : movie
       )
     );
@@ -270,10 +346,10 @@ export default function MovieTracker() {
       prev.map((movie) =>
         movie.id === id
           ? {
-            ...movie,
-            watchCount: (movie.watchCount || 0) + 1,
-            watchLater: false,
-          }
+              ...movie,
+              watchCount: (movie.watchCount || 0) + 1,
+              watchLater: false,
+            }
           : movie
       )
     );
@@ -289,7 +365,10 @@ export default function MovieTracker() {
     const duration = await getMovieDurationById(id.toString()).then(
       (res) => res.duration
     );
-    const watchedAtNew = new Date().toISOString();
+    const userOffset = new Date().getTimezoneOffset();
+    const watchedAtNew = new Date(
+      new Date().getTime() - userOffset * 60 * 1000
+    ).toISOString();
 
     setMoviesWatchedList((prev) => {
       let found = false;
@@ -509,7 +588,7 @@ export default function MovieTracker() {
                   prevSlide={prevSlide}
                   nextSlide={nextSlide}
                   goToSlide={goToSlide}
-                  toggleWatchLater={() => { }}
+                  toggleWatchLater={() => {}}
                 />
               </div>
 
@@ -597,9 +676,87 @@ export default function MovieTracker() {
                   ))}
                 </SelectContent>
               </Select>
+
+              {filterStatus === "watched" && (
+                <>
+                  <span className="text-sm font-medium ml-4">Sort:</span>
+                  <Select
+                    value={watchedOrder}
+                    onValueChange={(value) =>
+                      setWatchedOrder(value as "asc" | "desc")
+                    }
+                  >
+                    <SelectTrigger className="w-40">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="desc">Newest</SelectItem>
+                      <SelectItem value="asc">Oldest</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </>
+              )}
             </div>
           </div>
-          {filteredMoviesToDisplay.length === 0 ? (
+          {/* Grid para 'watched' con lista ordenada global */}
+          {filterStatus === "watched" ? (
+            paginatedWatchedMovies.length === 0 ? (
+              loading || searchLoading ? (
+                <div className="flex justify-center py-12">
+                  <Loader2 className="w-10 h-10 animate-spin text-gray-400" />
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <div className="text-6xl mb-4">🔍</div>
+                  <h3 className="text-xl font-semibold mb-2">
+                    No se encontraron películas
+                  </h3>
+                  <p className="text-muted">
+                    {searchTerm
+                      ? `No hay resultados para "${searchTerm}"`
+                      : "No hay películas en esta categoría"}
+                  </p>
+                </div>
+              )
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 justify-items-center min-h-screen py-8">
+                {paginatedWatchedMovies.map((movie) => (
+                  <div
+                    key={movie.id}
+                    className="cursor-pointer h-full"
+                    tabIndex={0}
+                    onClick={() => navigate(`/movie/${movie.id}`)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ")
+                        navigate(`/movie/${movie.id}`);
+                    }}
+                    role="button"
+                    aria-label={`Ver detalles de ${movie.title}`}
+                  >
+                    <MovieCard
+                      movie={movie}
+                      incrementWatchCount={incrementWatchCount}
+                      resetWatchCount={resetWatchCount}
+                      toggleWatchLater={toggleWatchLater}
+                      user={user}
+                      openLoginModal={() => setShowLoginModal(true)}
+                    />
+                  </div>
+                ))}
+                {/* Loader pequeño y no invasivo */}
+                {loading && hasMore && !searchTerm && (
+                  <div className="col-span-full flex justify-center py-6 text-gray-400">
+                    <span className="animate-pulse text-lg">
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    </span>
+                  </div>
+                )}
+                {/* Elemento sentinel para IntersectionObserver */}
+                <div ref={observerRef} className="h-10 col-span-full"></div>
+              </div>
+            )
+          ) : // Otros tabs: usa tu lógica/slice habitual (ejemplo con paginatedMovies)
+          paginatedMovies.length === 0 ? (
             loading || searchLoading ? (
               <div className="flex justify-center py-12">
                 <Loader2 className="w-10 h-10 animate-spin text-gray-400" />
@@ -619,7 +776,7 @@ export default function MovieTracker() {
             )
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 justify-items-center min-h-screen py-8">
-              {filteredMoviesToDisplay.map((movie) => (
+              {paginatedMovies.map((movie) => (
                 <div
                   key={movie.id}
                   className="cursor-pointer h-full"
@@ -642,7 +799,6 @@ export default function MovieTracker() {
                   />
                 </div>
               ))}
-
               {/* Loader pequeño y no invasivo */}
               {loading && hasMore && !searchTerm && (
                 <div className="col-span-full flex justify-center py-6 text-gray-400">
@@ -651,8 +807,6 @@ export default function MovieTracker() {
                   </span>
                 </div>
               )}
-
-              {/* Elemento sentinel para IntersectionObserver */}
               <div ref={observerRef} className="h-10 col-span-full"></div>
             </div>
           )}

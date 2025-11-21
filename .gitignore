@@ -59,5 +59,8 @@ packages/server/dist
 packages/web/dist
 packages/web/.vite
 
+# Planning
+planning/
+
 # OS specific
 Thumbs.db

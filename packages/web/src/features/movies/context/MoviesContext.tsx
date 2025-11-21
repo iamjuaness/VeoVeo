@@ -51,6 +51,10 @@ interface MoviesContextType {
   searchLoading: boolean;
   performSearch: (query: string) => Promise<void>;
   setSearchResults: React.Dispatch<React.SetStateAction<Movie[]>>;
+  filterStatus: "all" | "watched" | "watchLater";
+  setFilterStatus: React.Dispatch<
+    React.SetStateAction<"all" | "watched" | "watchLater">
+  >;
 }
 
 const MoviesContext = createContext<MoviesContextType | undefined>(undefined);
@@ -81,6 +85,9 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
   const [searchResults, setSearchResults] = useState<Movie[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const lastLoadedUserRef = useRef<string | undefined>(undefined);
+  const [filterStatus, setFilterStatus] = useState<
+    "all" | "watched" | "watchLater"
+  >("all");
   const [moviesWatchedList, setMoviesWatchedList] = useState<Movie[]>(() => {
     const raw = localStorage.getItem("moviesWatched");
     if (!raw) return [];
@@ -112,6 +119,7 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
     watchLater: Movie[]
   ) => {
     return baseMovies.map((movie) => {
+      const watchedMovie = watched.find((w) => w.id === movie.id);
       const isWatched = watched.some((w) => w.id === movie.id);
       const isWatchLater = watchLater.some((wl) => wl.id === movie.id);
       return {
@@ -120,6 +128,8 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
           ? watched.find((w) => w.id === movie.id)?.watchCount ?? 1
           : 0,
         watchLater: isWatchLater,
+        watchedAt: watchedMovie ? watchedMovie.watchedAt : [],
+        duration: watchedMovie ? watchedMovie.duration : movie.duration,
       };
     });
   };
@@ -217,6 +227,7 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
   };
 
   useEffect(() => {
+    if (filterStatus !== "all") return;
     if (!hasMore) return; // Detener si no hay más páginas
 
     setLoading(true);
@@ -397,6 +408,8 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
         setSearchResults,
         loadMoviesWatched: loadMoviesWatched,
         loadMoviesWatchLater: loadMoviesWatchLater,
+        filterStatus,
+        setFilterStatus,
       }}
     >
       {children}

@@ -650,7 +650,12 @@ export default function StatsPage() {
                         } as any;
                       }
 
-                      const date = new Date(value.date);
+                      // Parse date as local time to avoid timezone issues
+                      const [year, month, day] = value.date
+                        .split("-")
+                        .map(Number);
+                      const date = new Date(year, month - 1, day);
+
                       const diasSemana = [
                         "Domingo",
                         "Lunes",

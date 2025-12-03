@@ -4,6 +4,27 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.2.0] - 2025-12-03
+
+### Added
+
+- **Stats Page Visual Overhaul**: Complete redesign of the statistics dashboard for a more professional and engaging look.
+  - **New Achievements System**: Added 9 new achievements (Planificador, Coleccionista, Rey del Drama, etc.) with a visual medal grid layout and progress tracking.
+  - **Enhanced Charts**:
+    - Full-width "Favorite Genres" horizontal bar chart.
+    - "Most Watched Movies" grid with poster art and rankings.
+    - "Recent Activity" KPI dashboard with key metrics.
+    - "Favorite Decades" bar chart.
+- **PDF Report Optimization**:
+  - Significantly reduced PDF file size using JPEG compression and optimized scaling.
+  - Fixed color rendering issues for dark mode themes.
+
+### Changed
+
+- **Chart Modernization**: Replaced legacy scatter/line charts with modern `AreaChart` and `BarChart` components using gradients and consistent styling.
+- **Data Accuracy**: Fixed critical bug in duration calculations (seconds vs minutes) ensuring accurate "Rating vs Duration" analysis.
+- **UI Refinements**: Improved "Detailed Stats" cards (Percentiles, Diversity, Rewatch Habits) with cleaner layouts, better tooltips, and consistent design language.
+
 ## [2.1.1] - 2025-11-20
 
 ### Added

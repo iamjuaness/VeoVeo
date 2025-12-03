@@ -8,7 +8,13 @@ import {
   Eye,
   Star,
   TrendingUp,
+  Download,
+  Info,
+  Trophy,
+  Medal,
 } from "lucide-react";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 import { Button } from "../../../shared/components/ui/button";
 import {
   Card,
@@ -22,7 +28,7 @@ import { Badge } from "../../../shared/components/ui/badge";
 import { useMovies } from "../../movies/context/MoviesContext";
 import { Link } from "react-router-dom";
 import { UserMenu } from "../../auth/components/UserMenu";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef } from "react";
 import { FullScreenLoader } from "../../../shared/components/common/Loader";
 import {
   percentile,
@@ -47,10 +53,11 @@ import {
   ResponsiveContainer,
   PieChart,
   LabelList,
-  LineChart,
-  Line,
-  ScatterChart,
-  Scatter,
+  AreaChart,
+  Area,
+  CartesianGrid,
+  Cell,
+  Pie,
 } from "recharts";
 import CalendarHeatmap from "react-calendar-heatmap";
 import { Tooltip as ReactTooltip } from "react-tooltip";
@@ -66,6 +73,8 @@ function shiftDate(date: Date, numDays: number): Date {
 export default function StatsPage() {
   const { totalResults } = useMovies();
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const reportRef = useRef<HTMLDivElement>(null);
   const { moviesWatchedList, moviesWatchLaterList, statsLoading } = useMovies();
 
   // Calcular estadísticas
@@ -126,6 +135,14 @@ export default function StatsPage() {
         ) /
         moviesWatchedList.reduce((acc, m) => acc + Math.max(1, m.watchCount), 0)
       : 0;
+
+    // Watch Later duration calculation
+    const watchLaterTotalSeconds = moviesWatchLaterList.reduce((acc, movie) => {
+      return acc + (movie.duration ?? 0);
+    }, 0);
+    const watchLaterTotalMinutes = Math.floor(watchLaterTotalSeconds / 60);
+    const watchLaterTotalHours = Math.floor(watchLaterTotalMinutes / 60);
+    const watchLaterRemainingMinutes = watchLaterTotalMinutes % 60;
 
     const p50Rating = percentile(ratings, 50);
     const p75Rating = percentile(ratings, 75);
@@ -200,6 +217,11 @@ export default function StatsPage() {
       classicModern,
       durationRatingCorr,
       outliers,
+      watchLaterTotalSeconds,
+      watchLaterTotalMinutes,
+      watchLaterTotalHours,
+      watchLaterRemainingMinutes,
+      genreCountMap, // Expose map for achievements
     };
   }, [moviesWatchLaterList, moviesWatchedList, totalResults]);
 
@@ -242,7 +264,7 @@ export default function StatsPage() {
       id: "cinefilo1",
       name: "Cinéfilo Novato",
       desc: "5 películas vistas",
-      icon: "🎬",
+      icon: `🎬`,
       achieved: stats.watchedMovies >= 5,
       progress: Math.min(stats.watchedMovies, 5) + "/5",
       left: Math.max(0, 5 - stats.watchedMovies),
@@ -419,6 +441,87 @@ export default function StatsPage() {
           50 - moviesWatchedList.filter((m) => m.rating >= 7.5).length
         ) + " pelis",
     },
+    {
+      id: "planificador",
+      name: "Planificador",
+      desc: "50+ películas en Watchlist",
+      icon: "📝",
+      achieved: stats.watchLaterCount >= 50,
+      progress: Math.min(stats.watchLaterCount, 50) + "/50",
+      left: Math.max(0, 50 - stats.watchLaterCount),
+    },
+    {
+      id: "indeciso",
+      name: "Coleccionista",
+      desc: "100+ películas en Watchlist",
+      icon: "📚",
+      achieved: stats.watchLaterCount >= 100,
+      progress: Math.min(stats.watchLaterCount, 100) + "/100",
+      left: Math.max(0, 100 - stats.watchLaterCount),
+    },
+    {
+      id: "critico-duro",
+      name: "Crítico Duro",
+      desc: "Calificar una película con 1 estrella",
+      icon: "🔨",
+      achieved: moviesWatchedList.some((m) => m.rating === 1),
+      progress: moviesWatchedList.some((m) => m.rating === 1) ? "1/1" : "0/1",
+      left: moviesWatchedList.some((m) => m.rating === 1) ? 0 : 1,
+    },
+    {
+      id: "perfeccionista",
+      name: "Perfeccionista",
+      desc: "Calificar una película con 10 estrellas",
+      icon: "💎",
+      achieved: moviesWatchedList.some((m) => m.rating === 10),
+      progress: moviesWatchedList.some((m) => m.rating === 10) ? "1/1" : "0/1",
+      left: moviesWatchedList.some((m) => m.rating === 10) ? 0 : 1,
+    },
+    {
+      id: "rey-drama",
+      name: "Rey del Drama",
+      desc: "Ver 10 películas de Drama",
+      icon: "🎭",
+      achieved: (stats.genreCountMap["Drama"] || 0) >= 10,
+      progress: (stats.genreCountMap["Drama"] || 0) + "/10",
+      left: Math.max(0, 10 - (stats.genreCountMap["Drama"] || 0)),
+    },
+    {
+      id: "accion-hero",
+      name: "Héroe de Acción",
+      desc: "Ver 10 películas de Acción",
+      icon: "💥",
+      achieved: (stats.genreCountMap["Action"] || 0) >= 10,
+      progress: (stats.genreCountMap["Action"] || 0) + "/10",
+      left: Math.max(0, 10 - (stats.genreCountMap["Action"] || 0)),
+    },
+    {
+      id: "risa-asegurada",
+      name: "Risa Asegurada",
+      desc: "Ver 10 Comedias",
+      icon: "😂",
+      achieved: (stats.genreCountMap["Comedy"] || 0) >= 10,
+      progress: (stats.genreCountMap["Comedy"] || 0) + "/10",
+      left: Math.max(0, 10 - (stats.genreCountMap["Comedy"] || 0)),
+    },
+    {
+      id: "terrorifico",
+      name: "Amante del Terror",
+      desc: "Ver 10 películas de Terror",
+      icon: "👻",
+      achieved: (stats.genreCountMap["Horror"] || 0) >= 10,
+      progress: (stats.genreCountMap["Horror"] || 0) + "/10",
+      left: Math.max(0, 10 - (stats.genreCountMap["Horror"] || 0)),
+    },
+    {
+      id: "futurista",
+      name: "Futurista",
+      desc: "Ver 10 películas de Sci-Fi",
+      icon: "👽",
+      achieved: (stats.genreCountMap["Sci-Fi"] || 0) >= 10,
+      progress: (stats.genreCountMap["Sci-Fi"] || 0) + "/10",
+      left: Math.max(0, 10 - (stats.genreCountMap["Sci-Fi"] || 0)),
+    },
   ];
 
   const bins = Array.from({ length: 11 }, (_, i) => ({
@@ -496,6 +599,168 @@ export default function StatsPage() {
   const byDOW = getViewsByDayOfWeek(moviesWatchedList);
   const byRewatch = getRewatchDistribution(moviesWatchedList);
 
+  // Data for Duration Category Chart
+  const durationCategories = useMemo(() => {
+    const short = moviesWatchedList.filter((m) => (m.duration || 0) / 60 < 90);
+    const medium = moviesWatchedList.filter(
+      (m) => (m.duration || 0) / 60 >= 90 && (m.duration || 0) / 60 <= 120
+    );
+    const long = moviesWatchedList.filter((m) => (m.duration || 0) / 60 > 120);
+
+    const getAvg = (list: any[]) =>
+      list.length
+        ? list.reduce((a, b) => a + (b.rating || 0), 0) / list.length
+        : 0;
+
+    return [
+      {
+        name: "Cortas (<90m)",
+        rating: getAvg(short),
+        count: short.length,
+        fill: "#f472b6",
+      },
+      {
+        name: "Medias (90-120m)",
+        rating: getAvg(medium),
+        count: medium.length,
+        fill: "#60a5fa",
+      },
+      {
+        name: "Largas (>120m)",
+        rating: getAvg(long),
+        count: long.length,
+        fill: "#a3e635",
+      },
+    ];
+  }, [moviesWatchedList]);
+
+  // Data for Rating vs Duration Interval Chart
+  const ratingByDurationInterval = useMemo(() => {
+    const intervals: Record<string, { sum: number; count: number }> = {};
+
+    moviesWatchedList.forEach((m) => {
+      if (!m.duration || !m.rating) return;
+      // Convert seconds to minutes
+      const durationMin = m.duration / 60;
+      // Round to nearest 10 min for smoother curve
+      const interval = Math.floor(durationMin / 10) * 10;
+      const key = `${interval}`;
+      if (!intervals[key]) intervals[key] = { sum: 0, count: 0 };
+      intervals[key].sum += m.rating;
+      intervals[key].count++;
+    });
+
+    return Object.entries(intervals)
+      .map(([min, data]) => ({
+        duration: parseInt(min),
+        avgRating: data.sum / data.count,
+        count: data.count,
+        label: `${min}m`,
+      }))
+      .sort((a, b) => a.duration - b.duration)
+      .filter((d) => d.duration >= 60 && d.duration <= 180); // Focus on common movie lengths
+  }, [moviesWatchedList]);
+
+  // PDF export function
+  const handleDownloadPDF = async () => {
+    if (!reportRef.current) return;
+
+    setIsGeneratingPDF(true);
+    try {
+      const element = reportRef.current;
+      const canvas = await html2canvas(element, {
+        scale: 1.5,
+        useCORS: true,
+        logging: false,
+        backgroundColor: "#000000",
+        onclone: (clonedDoc) => {
+          // Replace all oklch and oklab colors with fallback hex colors
+          const allElements = clonedDoc.querySelectorAll("*");
+          allElements.forEach((el) => {
+            const htmlEl = el as HTMLElement;
+            const computedStyle = window.getComputedStyle(htmlEl);
+
+            // Replace background colors
+            if (
+              computedStyle.backgroundColor?.includes("oklch") ||
+              computedStyle.backgroundColor?.includes("oklab")
+            ) {
+              htmlEl.style.backgroundColor = "#0a0a0a";
+            }
+
+            // Replace text colors
+            if (
+              computedStyle.color?.includes("oklch") ||
+              computedStyle.color?.includes("oklab")
+            ) {
+              htmlEl.style.color = "#ffffff";
+            }
+
+            // Replace border colors
+            if (
+              computedStyle.borderColor?.includes("oklch") ||
+              computedStyle.borderColor?.includes("oklab")
+            ) {
+              htmlEl.style.borderColor = "#27272a";
+            }
+          });
+        },
+      });
+
+      const imgData = canvas.toDataURL("image/jpeg", 0.85);
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+        compress: true,
+      });
+
+      const imgWidth = 210; // A4 width in mm
+      const pageHeight = 297; // A4 height in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      // Add first page
+      pdf.addImage(
+        imgData,
+        "JPEG",
+        0,
+        position,
+        imgWidth,
+        imgHeight,
+        undefined,
+        "FAST"
+      );
+      heightLeft -= pageHeight;
+
+      // Add additional pages if needed
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(
+          imgData,
+          "JPEG",
+          0,
+          position,
+          imgWidth,
+          imgHeight,
+          undefined,
+          "FAST"
+        );
+        heightLeft -= pageHeight;
+      }
+
+      const date = new Date().toLocaleDateString("es-ES");
+      pdf.save(`VeoVeo-Stats-${date}.pdf`);
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      alert("Error al generar el PDF. Por favor, inténtalo de nuevo.");
+    } finally {
+      setIsGeneratingPDF(false);
+    }
+  };
+
   if (statsLoading) {
     return (
       <FullScreenLoader message="Estamos preparando tus estadísticas 😊" />
@@ -504,7 +769,7 @@ export default function StatsPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 border-b bg-card">
+      <header className="fixed top-0 left-0 right-0 z-50 border-b bg-card shadow-md">
         <div className="container mx-auto px-4 py-4 flex flex-row items-center justify-between relative">
           {/* Botón volver: muestra solo flecha en móvil, flecha + texto en desktop */}
           <Link to="/" className="flex-none">
@@ -540,9 +805,34 @@ export default function StatsPage() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 pt-28 pb-8">
+      {/* Download Report Button - Outside PDF capture area */}
+      <div className="container mx-auto px-4 pt-28 pb-4">
+        <div className="flex justify-end">
+          <Button
+            onClick={handleDownloadPDF}
+            disabled={isGeneratingPDF}
+            className="gap-2 bg-linear-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold shadow-lg"
+          >
+            <Download className="w-4 h-4" />
+            {isGeneratingPDF ? "Generando PDF..." : "Descargar Reporte PDF"}
+          </Button>
+        </div>
+      </div>
+
+      <main className="container mx-auto px-4 pb-8" ref={reportRef}>
         <div>
           {/* Estadísticas generales */}
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+              <BarChart3 className="w-6 h-6 text-primary" />
+              Resumen General
+            </h2>
+            <p className="text-muted-foreground mb-4 text-sm">
+              <Info className="w-4 h-4 inline mr-1" />
+              Vista panorámica de tu actividad cinematográfica: películas
+              vistas, tiempo invertido, calidad promedio y lista de pendientes.
+            </p>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 w-full max-w-4xl mx-auto">
             <Card className="py-4 rounded-lg shadow bg-card">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 mt-1">
@@ -584,16 +874,19 @@ export default function StatsPage() {
             <Card className="py-4 rounded-lg shadow bg-card">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 mt-1">
                 <CardTitle className="text-sm font-medium">
-                  Rating Promedio
+                  Rating General
                 </CardTitle>
                 <Star className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-yellow-600">
-                  {stats.averageRating.toFixed(1)}
+                  {stats.weightedRating.toFixed(2)}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Calidad de tu selección
+                  Ponderado por veces vistas
+                </p>
+                <p className="text-xs text-yellow-500 mt-1">
+                  Simple: {stats.averageRating.toFixed(2)}
                 </p>
               </CardContent>
             </Card>
@@ -610,7 +903,8 @@ export default function StatsPage() {
                   {stats.watchLaterCount}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  En tu lista de pendientes
+                  Tiempo restante: {stats.watchLaterTotalHours}h{" "}
+                  {stats.watchLaterRemainingMinutes}m
                 </p>
               </CardContent>
             </Card>
@@ -618,9 +912,15 @@ export default function StatsPage() {
 
           {/* Actividad reciente - Calendar Heatmap */}
           <section className="mt-8 mb-8">
-            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+            <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
               🔥 Actividad Reciente
             </h2>
+            <p className="text-muted-foreground mb-4 text-sm">
+              <Info className="w-4 h-4 inline mr-1" />
+              Mapa de calor que muestra tu constancia cinematográfica. Cada
+              celda representa un día, y su intensidad refleja cuántas películas
+              viste. Identifica tus rachas y días más activos.
+            </p>
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
               {/* Calendar Heatmap */}
               <Card className="py-4 rounded-lg shadow bg-card flex flex-col col-span-1 sm:col-span-2 lg:col-span-3">
@@ -707,280 +1007,344 @@ export default function StatsPage() {
 
           {/* Actividad reciente - Calendar Heatmap */}
           <div className="space-y-8">
-            {/* Primera fila - Géneros y Películas más vistas */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Primera fila - Géneros (Full Width) */}
+            <div className="grid grid-cols-1 gap-8">
               {/* Géneros más vistos */}
-              <Card className="py-4 rounded-lg shadow bg-card">
-                <CardHeader className="mt-1">
-                  <CardTitle className="flex items-center gap-2 pt-2">
-                    <PieChart className="w-5 h-5" />
-                    Géneros Más Vistos
+              <Card className="py-4 rounded-lg shadow bg-card hover:shadow-xl transition-shadow">
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <PieChart className="w-5 h-5 text-primary" />
+                    Géneros Favoritos
                   </CardTitle>
                   <CardDescription>
-                    Tus preferencias por categoría
+                    Tus preferencias principales por género.
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="mb-5">
-                  <div
-                    className={`space-y-4 ${
-                      stats.topGenres.length > 4
-                        ? "max-h-56 overflow-y-auto pr-2"
-                        : ""
-                    }`}
-                  >
-                    {stats.topGenres.map(([genre, count], index) => {
-                      const percentage =
-                        (count /
-                          stats.topGenres.reduce((acc, [, c]) => acc + c, 0)) *
-                        100;
-                      return (
-                        <div key={genre} className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <Badge
-                                variant="outline"
-                                className="w-6 h-6 p-0 flex items-center justify-center text-xs"
-                              >
-                                {index + 1}
-                              </Badge>
-                              <span className="font-medium">{genre}</span>
-                            </div>
-                            <span className="text-sm text-muted-foreground">
-                              {count} película{count > 1 ? "s" : ""}
-                            </span>
-                          </div>
-                          <Progress value={percentage} className="h-2" />
-                        </div>
-                      );
-                    })}
-                  </div>
+                <CardContent className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={stats.topGenres
+                        .map(([name, value]) => ({ name, value }))
+                        .slice(0, 10)}
+                      layout="vertical"
+                      margin={{ left: 20, right: 20, top: 10, bottom: 10 }}
+                    >
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        opacity={0.1}
+                        horizontal={false}
+                      />
+                      <XAxis type="number" hide />
+                      <YAxis
+                        dataKey="name"
+                        type="category"
+                        width={100}
+                        tick={{ fontSize: 13, fontWeight: 500 }}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+                      <Tooltip
+                        cursor={{ fill: "rgba(255,255,255,0.05)" }}
+                        contentStyle={{
+                          backgroundColor: "#1f2937",
+                          borderColor: "#374151",
+                          color: "#f3f4f6",
+                        }}
+                      />
+                      <Bar
+                        dataKey="value"
+                        fill="#8b5cf6"
+                        radius={[0, 4, 4, 0]}
+                        barSize={32}
+                      >
+                        <LabelList
+                          dataKey="value"
+                          position="right"
+                          style={{
+                            fill: "#9ca3af",
+                            fontSize: 12,
+                            fontWeight: "bold",
+                          }}
+                        />
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
                 </CardContent>
               </Card>
+            </div>
 
+            {/* Segunda fila - Películas más vistas y Décadas */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {/* Películas más vistas */}
-              <Card className="py-4 rounded-lg shadow bg-card">
-                <CardHeader className="mt-1">
-                  <CardTitle className="flex items-center gap-2 pt-2">
-                    <TrendingUp className="w-5 h-5" />
-                    Películas Más Vistas
+              <Card className="py-4 rounded-lg shadow bg-card hover:shadow-xl transition-shadow">
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <TrendingUp className="w-5 h-5 text-primary" />
+                    Películas Más Repetidas
                   </CardTitle>
                   <CardDescription>
-                    Tus favoritas de todos los tiempos
+                    Tus verdaderos clásicos personales.
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="mb-5">
-                  <div
-                    className={`space-y-4 ${
-                      stats.mostWatchedMovies.length > 4
-                        ? "max-h-56 overflow-y-auto pr-2"
-                        : ""
-                    }`}
-                  >
-                    {stats.mostWatchedMovies.map((movie, index) => (
-                      <div key={movie.id} className="flex items-center gap-3">
-                        <Badge
-                          variant="outline"
-                          className="w-6 h-6 p-0 flex items-center justify-center text-xs"
-                        >
-                          {index + 1}
-                        </Badge>
-                        <img
-                          src={movie.poster || "/placeholder.svg"}
-                          width={40}
-                          height={60}
-                          className="rounded object-cover"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{movie.title}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {movie.year} • {movie.genres.join(", ")}
-                          </p>
+                <CardContent>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {stats.mostWatchedMovies.slice(0, 6).map((movie, index) => (
+                      <div
+                        key={movie.id}
+                        className="flex items-start gap-3 p-3 rounded-lg bg-muted/20 border border-border/50"
+                      >
+                        <div className="relative shrink-0">
+                          <img
+                            src={movie.poster || "/placeholder.svg"}
+                            alt={movie.title}
+                            className="w-12 h-16 rounded object-cover shadow-sm"
+                          />
+                          <div className="absolute -top-2 -left-2 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold shadow-md">
+                            #{index + 1}
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <Badge className="bg-green-600">
-                            <Eye className="w-3 h-3 mr-1" />
-                            {movie.watchCount}x
-                          </Badge>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            ⭐ {movie.rating}
-                          </p>
+                        <div className="flex-1 min-w-0">
+                          <h4
+                            className="font-semibold text-sm truncate"
+                            title={movie.title}
+                          >
+                            {movie.title}
+                          </h4>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                            <span>{movie.year}</span>
+                            <span>•</span>
+                            <span className="flex items-center text-yellow-500">
+                              ★ {movie.rating}
+                            </span>
+                          </div>
+                          <div className="mt-2">
+                            <Badge
+                              variant="secondary"
+                              className="text-xs h-5 bg-green-500/10 text-green-600 hover:bg-green-500/20 border-green-500/20"
+                            >
+                              <Eye className="w-3 h-3 mr-1" />
+                              {movie.watchCount} vistas
+                            </Badge>
+                          </div>
                         </div>
                       </div>
                     ))}
                   </div>
                 </CardContent>
               </Card>
-            </div>
 
-            {/* Segunda fila - Décadas favoritas */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               {/* Décadas favoritas */}
-              <Card className="py-4 rounded-lg shadow bg-card">
-                <CardHeader className="mt-1">
-                  <CardTitle className="flex items-center gap-2 pt-2">
-                    <BarChart3 className="w-5 h-5" />
+              <Card className="py-4 rounded-lg shadow bg-card hover:shadow-xl transition-shadow">
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Calendar className="w-5 h-5 text-primary" />
                     Décadas Favoritas
                   </CardTitle>
                   <CardDescription>
-                    Épocas cinematográficas que más disfrutas
+                    Tu viaje en el tiempo cinematográfico.
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="mb-5">
-                  <div
-                    className={`space-y-4 ${
-                      stats.topDecades.length > 4
-                        ? "max-h-86 overflow-y-auto pr-2"
-                        : ""
-                    }`}
-                  >
-                    {stats.topDecades.map(([decade, count], index) => {
-                      const percentage =
-                        (count /
-                          stats.topDecades.reduce((acc, [, c]) => acc + c, 0)) *
-                        100;
-                      return (
-                        <div key={decade} className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <Badge
-                                variant="outline"
-                                className="w-6 h-6 p-0 flex items-center justify-center text-xs"
-                              >
-                                {index + 1}
-                              </Badge>
-                              <span className="font-medium">{decade}s</span>
-                            </div>
-                            <span className="text-sm text-muted-foreground">
-                              {count} visualización{count > 1 ? "es" : ""}
-                            </span>
-                          </div>
-                          <Progress value={percentage} className="h-2" />
-                        </div>
-                      );
-                    })}
-                  </div>
+                <CardContent className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={stats.topDecades
+                        .map(([name, value]) => ({ name: `${name}s`, value }))
+                        .sort((a, b) => parseInt(a.name) - parseInt(b.name))}
+                      margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                    >
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        opacity={0.1}
+                        vertical={false}
+                      />
+                      <XAxis
+                        dataKey="name"
+                        tick={{ fontSize: 11 }}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+                      <YAxis
+                        tick={{ fontSize: 11 }}
+                        tickLine={false}
+                        axisLine={false}
+                        allowDecimals={false}
+                      />
+                      <Tooltip
+                        cursor={{ fill: "rgba(255,255,255,0.05)" }}
+                        contentStyle={{
+                          backgroundColor: "#1f2937",
+                          borderColor: "#374151",
+                          color: "#f3f4f6",
+                        }}
+                      />
+                      <Bar
+                        dataKey="value"
+                        fill="#ec4899"
+                        radius={[4, 4, 0, 0]}
+                        barSize={30}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
                 </CardContent>
               </Card>
+            </div>
 
-              {/* Actividad reciente */}
-              <Card className="py-4 rounded-lg shadow bg-card">
-                <CardHeader className="mt-1">
-                  <CardTitle className="flex items-center gap-2 pt-2">
-                    <Activity className="w-5 h-5" />
-                    Actividad Reciente
+            {/* Tercera fila - Actividad y Logros */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Actividad reciente (KPIs) */}
+              <Card className="py-4 rounded-lg shadow bg-card hover:shadow-xl transition-shadow col-span-1">
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Activity className="w-5 h-5 text-primary" />
+                    Resumen de Actividad
                   </CardTitle>
                   <CardDescription>
-                    Tu comportamiento cinematográfico
+                    Métricas clave de tu perfil.
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4 mb-5 h-86">
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">
-                        Promedio por película
-                      </span>
-                      <span className="text-sm text-muted-foreground">
-                        {(stats.totalMinutes / stats.watchedMovies).toFixed(1)}
-                        min
-                      </span>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                      <div className="text-xs text-muted-foreground mb-1">
+                        Promedio/Peli
+                      </div>
+                      <div className="text-xl font-bold text-blue-600">
+                        {(stats.totalMinutes / stats.watchedMovies).toFixed(0)}m
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">
-                        Película más larga vista
-                      </span>
-                      <span className="text-sm text-muted-foreground">
+                    <div className="p-3 rounded-lg bg-orange-500/10 border border-orange-500/20">
+                      <div className="text-xs text-muted-foreground mb-1">
+                        Max Duración
+                      </div>
+                      <div className="text-xl font-bold text-orange-600">
                         {Math.max(
                           ...stats.mostWatchedMovies.map((m) => m.duration / 60)
-                        )}
-                        min
-                      </span>
+                        ).toFixed(0)}
+                        m
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">
-                        Re-visualizaciones
-                      </span>
-                      <span className="text-sm text-muted-foreground">
+                    <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/20">
+                      <div className="text-xs text-muted-foreground mb-1">
+                        Total Rewatch
+                      </div>
+                      <div className="text-xl font-bold text-purple-600">
                         {moviesWatchedList.reduce(
                           (acc, m) => acc + Math.max(0, m.watchCount - 1),
                           0
                         )}
-                      </span>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">
-                        Género favorito
-                      </span>
-                      <span className="text-sm text-muted-foreground">
+                    <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+                      <div className="text-xs text-muted-foreground mb-1">
+                        Género Top
+                      </div>
+                      <div
+                        className="text-lg font-bold text-green-600 truncate"
+                        title={stats.topGenres[0]?.[0] || "N/A"}
+                      >
                         {stats.topGenres[0]?.[0] || "N/A"}
-                      </span>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">
-                        Década favorita
-                      </span>
-                      <span className="text-sm text-muted-foreground">
-                        {stats.topDecades[0]?.[0]}s
-                      </span>
-                    </div>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted/30 border border-border/50 flex items-center justify-between">
+                    <span className="text-sm font-medium">Década Top</span>
+                    <Badge variant="outline" className="text-sm">
+                      {stats.topDecades[0]?.[0]}s
+                    </Badge>
                   </div>
                 </CardContent>
               </Card>
 
               {/* Logros */}
-              <Card className="py-4 rounded-lg shadow bg-card">
-                <CardHeader className="mt-1">
-                  <CardTitle className="flex items-center gap-2 pt-2">
-                    <Award className="h-4 w-4" />
-                    Logros Desbloqueados & Pendientes
+              <Card className="py-4 rounded-lg shadow bg-card hover:shadow-xl transition-shadow col-span-1 lg:col-span-2">
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Trophy className="w-5 h-5 text-yellow-500" />
+                    Logros y Medallas
                   </CardTitle>
                   <CardDescription>
-                    Avanza hacia tus logros de cinéfilo
+                    {LOGROS.filter((l) => l.achieved).length} de {LOGROS.length}{" "}
+                    desbloqueados
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="mb-5 overflow-y-auto h-86">
-                  <div className="space-y-3">
-                    <span className="font-bold text-green-600 dark:text-green-300 text-xs pl-2">
-                      Ganados
-                    </span>
+                <CardContent className="h-80 overflow-y-auto pr-2 custom-scrollbar">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
                     {LOGROS.filter((l) => l.achieved).length === 0 && (
-                      <span className="ml-2 text-sm text-muted-foreground">
-                        ¡Aún no tienes logros! Sigue viendo películas.
-                      </span>
-                    )}
-                    {LOGROS.filter((l) => l.achieved).map((logro) => (
-                      <div
-                        key={logro.id}
-                        className={`flex items-center gap-3 p-3 rounded-lg border bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800`}
-                      >
-                        <div className="text-2xl">{logro.icon}</div>
-                        <div>
-                          <p className="font-medium">{logro.name}</p>
-                          <p className="text-xs">{logro.desc}</p>
-                          <p className="text-xs text-green-700 dark:text-green-400">
-                            {"Progreso: " + logro.progress}
-                          </p>
-                        </div>
+                      <div className="col-span-full text-center py-8 text-muted-foreground text-sm">
+                        ¡Sigue viendo películas para desbloquear logros!
                       </div>
-                    ))}
-
-                    <span className="font-bold text-gray-400 dark:text-gray-500 text-xs pl-2">
-                      Pendientes
-                    </span>
-                    {LOGROS.filter((l) => !l.achieved).map((logro) => (
+                    )}
+                    {LOGROS.sort((a, b) =>
+                      a.achieved === b.achieved ? 0 : a.achieved ? -1 : 1
+                    ).map((logro) => (
                       <div
                         key={logro.id}
-                        className={`flex items-center gap-3 p-3 rounded-lg opacity-60 border-2 border-dashed bg-white/10`}
+                        className={`relative flex items-center gap-3 p-3 rounded-xl border transition-all duration-200 ${
+                          logro.achieved
+                            ? "bg-gradient-to-br from-yellow-500/5 to-orange-500/5 border-yellow-500/20 shadow-sm hover:shadow-md hover:border-yellow-500/40"
+                            : "bg-muted/20 border-border/30 opacity-50 grayscale hover:opacity-70"
+                        }`}
                       >
-                        <div className="text-2xl grayscale">{logro.icon}</div>
-                        <div>
-                          <p className="font-medium">{logro.name}</p>
-                          <p className="text-xs">{logro.desc}</p>
-                          <p className="text-xs text-yellow-600 dark:text-yellow-200">
-                            {"Te falta: " +
-                              (typeof logro.left === "number" && logro.left > 0
-                                ? logro.left
-                                : logro.left || logro.progress)}
+                        <div
+                          className={`w-12 h-12 shrink-0 rounded-full flex items-center justify-center text-2xl shadow-inner ${
+                            logro.achieved
+                              ? "bg-gradient-to-br from-yellow-400 to-orange-500 text-white ring-2 ring-yellow-500/20"
+                              : "bg-muted text-muted-foreground"
+                          }`}
+                        >
+                          {logro.icon}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-0.5">
+                            <p
+                              className={`font-bold text-sm truncate ${
+                                logro.achieved
+                                  ? "text-foreground"
+                                  : "text-muted-foreground"
+                              }`}
+                            >
+                              {logro.name}
+                            </p>
+                            {logro.achieved && (
+                              <Medal className="w-4 h-4 text-yellow-500 shrink-0" />
+                            )}
+                          </div>
+                          <p
+                            className="text-xs text-muted-foreground line-clamp-2 leading-tight mb-1.5"
+                            title={logro.desc}
+                          >
+                            {logro.desc}
                           </p>
+
+                          {/* Progress Bar for unachieved */}
+                          {!logro.achieved && (
+                            <div className="w-full bg-muted/50 rounded-full h-1.5 mt-1 overflow-hidden">
+                              <div
+                                className="bg-orange-400 h-full rounded-full transition-all duration-500"
+                                style={{
+                                  width: `${Math.min(
+                                    100,
+                                    typeof logro.progress === "string"
+                                      ? 0
+                                      : parseFloat(logro.progress as any) || 0
+                                  )}%`,
+                                }}
+                              ></div>
+                            </div>
+                          )}
+                          {!logro.achieved && (
+                            <p className="text-[10px] text-orange-500 font-medium mt-1 text-right">
+                              Falta:{" "}
+                              {typeof logro.left === "number" && logro.left > 0
+                                ? logro.left
+                                : logro.left || logro.progress}
+                            </p>
+                          )}
+                          {logro.achieved && (
+                            <p className="text-[10px] text-green-600 font-medium mt-1">
+                              ¡Completado!
+                            </p>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -992,234 +1356,380 @@ export default function StatsPage() {
         </div>
         {}
         <section className="mt-20">
-          <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-            <BarChart3 className="w-5 h-5 text-primary" /> Analítica Básica
+          <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+            <BarChart3 className="w-6 h-6 text-primary" /> Analítica Básica
           </h2>
+          <p className="text-muted-foreground mb-6 text-sm">
+            <Info className="w-4 h-4 inline mr-1" />
+            Métricas estadísticas avanzadas que revelan patrones ocultos en tus
+            preferencias cinematográficas.
+          </p>
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
             {/* Por Género */}
-            <Card className="py-4 rounded-lg shadow bg-card">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 mt-1">
+            {/* Percentiles de Rating */}
+            <Card className="py-4 rounded-lg shadow bg-card hover:shadow-xl transition-shadow">
+              <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium flex gap-2 items-center">
                   <BarChart3 className="h-4 w-4 text-muted-foreground" />
                   Percentiles de Rating
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center justify-between">
-                    <span>P50 (Mediana)</span>
-                    <Badge className="bg-yellow-600">
-                      {stats.p50Rating.toFixed(2)}
-                    </Badge>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="bg-muted/30 p-2 rounded-lg">
+                      <div className="text-xs text-muted-foreground mb-1">
+                        P50
+                      </div>
+                      <div className="font-bold text-yellow-600 text-lg">
+                        {stats.p50Rating.toFixed(1)}
+                      </div>
+                    </div>
+                    <div className="bg-muted/30 p-2 rounded-lg">
+                      <div className="text-xs text-muted-foreground mb-1">
+                        P75
+                      </div>
+                      <div className="font-bold text-yellow-500 text-lg">
+                        {stats.p75Rating.toFixed(1)}
+                      </div>
+                    </div>
+                    <div className="bg-muted/30 p-2 rounded-lg">
+                      <div className="text-xs text-muted-foreground mb-1">
+                        P90
+                      </div>
+                      <div className="font-bold text-yellow-400 text-lg">
+                        {stats.p90Rating.toFixed(1)}
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span>P75</span>
-                    <Badge className="bg-yellow-500">
-                      {stats.p75Rating.toFixed(2)}
-                    </Badge>
+                  <div className="text-xs text-muted-foreground bg-muted/30 p-3 rounded-md flex gap-2">
+                    <Info className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span>
+                      El 50% de tus películas tienen{" "}
+                      {stats.p50Rating.toFixed(1)} o menos. El top 10% supera el{" "}
+                      {stats.p90Rating.toFixed(1)}.
+                    </span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span>P90</span>
-                    <Badge className="bg-yellow-400">
-                      {stats.p90Rating.toFixed(2)}
-                    </Badge>
-                  </div>
-                </div>
-                <div className="mt-3 text-xs text-muted-foreground">
-                  Distribución cortesía de la mediana y percentiles altos para
-                  entender la calidad de tus selecciones.
                 </div>
               </CardContent>
             </Card>
-            {/* Por Duración */}
-            <Card className="py-4 rounded-lg shadow bg-card">
-              <CardHeader>
-                <CardTitle className="flex gap-2 items-center">
-                  <Clock className="h-4 w-4" />
+
+            {/* Percentiles de Duración */}
+            <Card className="py-4 rounded-lg shadow bg-card hover:shadow-xl transition-shadow">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex gap-2 items-center">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
                   Percentiles de Duración
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="flex flex-col gap-2">
-                  <div className="flex justify-between">
-                    <span>P50</span>{" "}
-                    <Badge>{(stats.p50Duration / 60).toFixed(1)} min</Badge>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="bg-muted/30 p-2 rounded-lg">
+                      <div className="text-xs text-muted-foreground mb-1">
+                        P50
+                      </div>
+                      <div className="font-bold text-blue-500 text-lg">
+                        {(stats.p50Duration / 60).toFixed(0)}m
+                      </div>
+                    </div>
+                    <div className="bg-muted/30 p-2 rounded-lg">
+                      <div className="text-xs text-muted-foreground mb-1">
+                        P75
+                      </div>
+                      <div className="font-bold text-blue-600 text-lg">
+                        {(stats.p75Duration / 60).toFixed(0)}m
+                      </div>
+                    </div>
+                    <div className="bg-muted/30 p-2 rounded-lg">
+                      <div className="text-xs text-muted-foreground mb-1">
+                        P90
+                      </div>
+                      <div className="font-bold text-blue-700 text-lg">
+                        {(stats.p90Duration / 60).toFixed(0)}m
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex justify-between">
-                    <span>P75</span>{" "}
-                    <Badge>{(stats.p75Duration / 60).toFixed(1)} min</Badge>
+                  <div className="text-xs text-muted-foreground bg-muted/30 p-3 rounded-md flex gap-2">
+                    <Info className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span>
+                      La mitad de lo que ves dura menos de{" "}
+                      {(stats.p50Duration / 60).toFixed(0)} min. Solo el 10%
+                      supera los {(stats.p90Duration / 60).toFixed(0)} min.
+                    </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span>P90</span>{" "}
-                    <Badge>{(stats.p90Duration / 60).toFixed(1)} min</Badge>
-                  </div>
-                </div>
-                <div className="mt-3 text-xs text-muted-foreground">
-                  ¿Prefieres pelis largas? Aquí lo puedes ver.
                 </div>
               </CardContent>
             </Card>
+
             {/* Diversidad de Géneros */}
-            <Card className="py-4 rounded-lg shadow bg-card">
-              <CardHeader>
-                <CardTitle className="flex gap-2 items-center">
-                  <PieChart className="h-4 w-4" />
+            <Card className="py-4 rounded-lg shadow bg-card hover:shadow-xl transition-shadow">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex gap-2 items-center">
+                  <PieChart className="h-4 w-4 text-muted-foreground" />
                   Diversidad de Géneros
                 </CardTitle>
-                <CardDescription>
-                  ¿Cuántos géneros diferentes has explorado?
-                </CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="flex flex-col gap-1">
-                  <span>
-                    <strong>{stats.genreDiversity.unique}</strong> géneros
-                    únicos vistos
-                  </span>
-                  <Progress
-                    value={100 * stats.genreDiversity.ratio}
-                    className="h-2 my-1"
-                  />
-                  <span className="text-xs text-muted-foreground">
-                    Diversidad: {(100 * stats.genreDiversity.ratio).toFixed(1)}%
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    Top 3 géneros concentran{" "}
-                    {(100 * stats.genreConcentration.ratio).toFixed(1)}% de tu
-                    historial
-                  </span>
+              <CardContent className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <div className="text-2xl font-bold">
+                    {stats.genreDiversity.unique}{" "}
+                    <span className="text-sm font-normal text-muted-foreground">
+                      / 19
+                    </span>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Géneros explorados
+                  </div>
+                  <div className="text-xs font-medium text-green-500">
+                    {(100 * stats.genreDiversity.ratio).toFixed(0)}% Cobertura
+                  </div>
+                </div>
+                <div className="h-24 w-24">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={[
+                          {
+                            name: "Vistos",
+                            value: stats.genreDiversity.unique,
+                            fill: "#22c55e",
+                          },
+                          {
+                            name: "Restantes",
+                            value: 19 - stats.genreDiversity.unique,
+                            fill: "#374151",
+                          },
+                        ]}
+                        dataKey="value"
+                        innerRadius={25}
+                        outerRadius={40}
+                        stroke="none"
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
                 </div>
               </CardContent>
             </Card>
-            {/* Repetición */}
-            <Card className="py-4 rounded-lg shadow bg-card">
-              <CardHeader>
-                <CardTitle className="flex gap-2 items-center">
-                  <TrendingUp className="h-4 w-4" />
+
+            {/* Hábito de Repetición */}
+            <Card className="py-4 rounded-lg shadow bg-card hover:shadow-xl transition-shadow">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex gap-2 items-center">
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
                   Hábito de Repetición
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="flex flex-col gap-1">
-                  <span>
-                    <Badge className="bg-purple-600">
-                      {(100 * stats.rewatchRate).toFixed(1)}%
-                    </Badge>
-                    <span className="ml-2 text-muted-foreground">
-                      {" "}
-                      de re-visualizaciones
-                    </span>
-                  </span>
-                  <span>
-                    Rating ponderado por veces vistas:
-                    <Badge className="bg-yellow-600 ml-2">
+              <CardContent className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <div className="text-2xl font-bold">
+                    {(100 * stats.rewatchRate).toFixed(1)}%
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Tasa de re-visualización
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Rating Ponderado:{" "}
+                    <span className="text-yellow-500 font-medium">
                       {stats.weightedRating.toFixed(2)}
-                    </Badge>
-                  </span>
+                    </span>
+                  </div>
                 </div>
-                <div className="mt-2 text-xs text-muted-foreground">
-                  El rating ponderado refleja lo que REALMENTE sueles re-ver.
+                <div className="h-24 w-24">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={[
+                          {
+                            name: "Rewatch",
+                            value: stats.rewatchRate,
+                            fill: "#9333ea",
+                          },
+                          {
+                            name: "Nuevas",
+                            value: 1 - stats.rewatchRate,
+                            fill: "#374151",
+                          },
+                        ]}
+                        dataKey="value"
+                        innerRadius={25}
+                        outerRadius={40}
+                        startAngle={90}
+                        endAngle={-270}
+                        stroke="none"
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
                 </div>
               </CardContent>
             </Card>
-            {/* Afinidad por Género */}
-            <Card className="py-4 rounded-lg shadow bg-card">
-              <CardHeader>
-                <CardTitle className="flex gap-2 items-center">
-                  <PieChart className="h-4 w-4" />
-                  Afinidad por Género (Top 3)
+
+            {/* Afinidad por Género (Top 3) */}
+            <Card className="py-4 rounded-lg shadow bg-card hover:shadow-xl transition-shadow col-span-1 sm:col-span-2 lg:col-span-1">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex gap-2 items-center">
+                  <Award className="h-4 w-4 text-muted-foreground" />
+                  Top 3 Géneros Favoritos
                 </CardTitle>
-                <CardDescription>
-                  Géneros que viste y están mejor valorados
-                </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-1">
+                <div className="space-y-3">
                   {stats.genreAffinity.slice(0, 3).map((item, idx) => (
-                    <div key={item.genre} className="flex items-center gap-2">
-                      <Badge
-                        variant="outline"
-                        className="w-6 h-6 p-0 flex items-center justify-center text-xs"
+                    <div
+                      key={item.genre}
+                      className="flex items-center gap-3 p-2 rounded-lg bg-muted/20"
+                    >
+                      <div
+                        className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
+                          idx === 0
+                            ? "bg-yellow-500/20 text-yellow-500"
+                            : idx === 1
+                            ? "bg-gray-400/20 text-gray-400"
+                            : "bg-orange-700/20 text-orange-700"
+                        }`}
                       >
-                        {idx + 1}
-                      </Badge>
-                      <span className="font-medium">{item.genre}</span>
-                      <span className="ml-auto text-xs text-muted-foreground">
-                        Rating: {item.avg.toFixed(2)} · {item.count} vistas
-                      </span>
+                        #{idx + 1}
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-medium text-sm">{item.genre}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {item.count} vistas
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-bold text-sm text-yellow-500">
+                          ★ {item.avg.toFixed(1)}
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
               </CardContent>
             </Card>
+
             {/* Clásicos vs Modernos */}
-            <Card className="py-4 rounded-lg shadow bg-card">
-              <CardHeader>
-                <CardTitle className="flex gap-2 items-center">
-                  <Calendar className="h-4 w-4" />
+            <Card className="py-4 rounded-lg shadow bg-card hover:shadow-xl transition-shadow">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex gap-2 items-center">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
                   Clásicos vs Modernos
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="flex flex-col gap-2">
-                  <span>
-                    <Badge className="bg-blue-700">
-                      Clásicas: {stats.classicModern.classic}
-                    </Badge>
-                    <span className="mx-2">/</span>
-                    <Badge className="bg-pink-700">
-                      Modernas: {stats.classicModern.modern}
-                    </Badge>
-                  </span>
-                  <Progress
-                    value={
-                      (stats.classicModern.classic * 100) /
-                      (stats.classicModern.classic + stats.classicModern.modern)
-                    }
-                    className="h-2 my-1"
-                  />
-                  <span className="text-xs text-muted-foreground">
-                    Promedios — Clásicos:{" "}
-                    {stats.classicModern.avgClassic.toFixed(2)} / Modernos:{" "}
-                    {stats.classicModern.avgModern.toFixed(2)}
-                  </span>
+              <CardContent className="flex items-center justify-between gap-4">
+                <div className="space-y-2 flex-1">
+                  <div className="flex justify-between text-xs">
+                    <span className="flex items-center gap-1">
+                      <div className="w-2 h-2 rounded-full bg-blue-600"></div>{" "}
+                      Clásicas
+                    </span>
+                    <span className="font-medium">
+                      {stats.classicModern.classic}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="flex items-center gap-1">
+                      <div className="w-2 h-2 rounded-full bg-pink-600"></div>{" "}
+                      Modernas
+                    </span>
+                    <span className="font-medium">
+                      {stats.classicModern.modern}
+                    </span>
+                  </div>
+                  <div className="pt-2 text-xs text-muted-foreground border-t border-border/50 mt-2">
+                    Avg:{" "}
+                    <span className="text-blue-400">
+                      {stats.classicModern.avgClassic.toFixed(1)}
+                    </span>{" "}
+                    vs{" "}
+                    <span className="text-pink-400">
+                      {stats.classicModern.avgModern.toFixed(1)}
+                    </span>
+                  </div>
+                </div>
+                <div className="h-24 w-24 shrink-0">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={[
+                          {
+                            name: "Clásicas",
+                            value: stats.classicModern.classic,
+                            fill: "#2563eb",
+                          },
+                          {
+                            name: "Modernas",
+                            value: stats.classicModern.modern,
+                            fill: "#db2777",
+                          },
+                        ]}
+                        dataKey="value"
+                        innerRadius={0}
+                        outerRadius={40}
+                        stroke="none"
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
                 </div>
               </CardContent>
             </Card>
             {/* Tendencia Duración vs Rating */}
-            <Card className="py-4 rounded-lg shadow bg-card">
+            <Card className="py-4 rounded-lg shadow bg-card hover:shadow-xl transition-shadow">
               <CardHeader>
                 <CardTitle className="flex gap-2 items-center">
                   <Activity className="h-4 w-4" />
-                  Tendencia Duración vs Rating
+                  Rating por Duración
                 </CardTitle>
+                <CardDescription>
+                  ¿De qué tanta duración prefieres tus películas?
+                </CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-2">
-                  <span>Tendencia:</span>
-                  <Badge
-                    className={`ml-2 ${
-                      stats.durationRatingCorr > 0.15
-                        ? "bg-green-600"
-                        : stats.durationRatingCorr < -0.15
-                        ? "bg-red-600"
-                        : "bg-gray-600"
-                    }`}
+              <CardContent className="h-48">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={durationCategories}
+                    layout="vertical"
+                    margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
                   >
-                    {stats.durationRatingCorr > 0.15
-                      ? "Prefieres películas largas"
-                      : stats.durationRatingCorr < -0.15
-                      ? "Prefieres películas cortas"
-                      : "Neutro"}
-                  </Badge>
-                  <span className="ml-4 text-xs text-muted-foreground">
-                    ({stats.durationRatingCorr.toFixed(2)} correlación)
-                  </span>
-                </div>
+                    <XAxis type="number" domain={[0, 10]} hide />
+                    <YAxis
+                      type="category"
+                      dataKey="name"
+                      width={100}
+                      tick={{ fontSize: 11 }}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "#1f2937",
+                        borderColor: "#374151",
+                        color: "#f3f4f6",
+                      }}
+                      formatter={(value: number) => [
+                        `★ ${value.toFixed(2)}`,
+                        "Rating Promedio",
+                      ]}
+                    />
+                    <Bar
+                      dataKey="rating"
+                      radius={[0, 4, 4, 0]}
+                      barSize={20}
+                      background={{ fill: "#374151" }}
+                    >
+                      {durationCategories.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                      ))}
+                      <LabelList
+                        dataKey="rating"
+                        position="right"
+                        formatter={(val: number) => val.toFixed(1)}
+                        style={{ fill: "#9ca3af", fontSize: 11 }}
+                      />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
               </CardContent>
             </Card>
             {/* Récords Personales */}
-            <Card className="py-4 rounded-lg shadow bg-card flex flex-col col-span-1 lg:col-span-2">
+            <Card className="py-4 rounded-lg shadow bg-card hover:shadow-xl transition-shadow flex flex-col col-span-1 lg:col-span-2">
               <CardHeader>
                 <CardTitle className="flex gap-2 items-center">
                   <Award className="h-4 w-4" />
@@ -1228,29 +1738,111 @@ export default function StatsPage() {
                 <CardDescription>Tus extremos cinematográficos</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 gap-2">
-                  <Badge className="bg-blue-800">
-                    Más larga: {stats.outliers.longest.title}
-                  </Badge>
-                  <Badge className="bg-pink-800">
-                    Más corta: {stats.outliers.shortest.title}
-                  </Badge>
-                  <Badge className="bg-yellow-700">
-                    Mayor rating: {stats.outliers.highest.title}
-                  </Badge>
-                  <Badge className="bg-red-700">
-                    Menor rating: {stats.outliers.lowest.title}
-                  </Badge>
-                  <Badge className="bg-green-900">
-                    Más reciente: {stats.outliers.newest.title}
-                  </Badge>
-                  <Badge className="bg-gray-600">
-                    Más antigua: {stats.outliers.oldest.title}
-                  </Badge>
-                  <Badge className="bg-purple-700">
-                    +Rewatched: {stats.outliers.mostRewatched.title} (
-                    {stats.outliers.mostRewatched.watchCount}x)
-                  </Badge>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1 p-2 bg-blue-950/30 rounded border border-blue-900/50">
+                    <span className="text-xs text-blue-400 font-semibold uppercase tracking-wider">
+                      Más larga
+                    </span>
+                    <span
+                      className="font-medium truncate"
+                      title={stats.outliers.longest.title}
+                    >
+                      {stats.outliers.longest.title}
+                    </span>
+                    <span className="text-sm text-muted-foreground">
+                      {Math.round(stats.outliers.longest.duration / 60)} min
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col gap-1 p-2 bg-pink-950/30 rounded border border-pink-900/50">
+                    <span className="text-xs text-pink-400 font-semibold uppercase tracking-wider">
+                      Más corta
+                    </span>
+                    <span
+                      className="font-medium truncate"
+                      title={stats.outliers.shortest.title}
+                    >
+                      {stats.outliers.shortest.title}
+                    </span>
+                    <span className="text-sm text-muted-foreground">
+                      {Math.round(stats.outliers.shortest.duration / 60)} min
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col gap-1 p-2 bg-yellow-950/30 rounded border border-yellow-900/50">
+                    <span className="text-xs text-yellow-400 font-semibold uppercase tracking-wider">
+                      Mayor Rating
+                    </span>
+                    <span
+                      className="font-medium truncate"
+                      title={stats.outliers.highest.title}
+                    >
+                      {stats.outliers.highest.title}
+                    </span>
+                    <span className="text-sm text-muted-foreground">
+                      ★ {stats.outliers.highest.rating?.toFixed(1)}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col gap-1 p-2 bg-red-950/30 rounded border border-red-900/50">
+                    <span className="text-xs text-red-400 font-semibold uppercase tracking-wider">
+                      Menor Rating
+                    </span>
+                    <span
+                      className="font-medium truncate"
+                      title={stats.outliers.lowest.title}
+                    >
+                      {stats.outliers.lowest.title}
+                    </span>
+                    <span className="text-sm text-muted-foreground">
+                      ★ {stats.outliers.lowest.rating?.toFixed(1)}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col gap-1 p-2 bg-green-950/30 rounded border border-green-900/50">
+                    <span className="text-xs text-green-400 font-semibold uppercase tracking-wider">
+                      Más Reciente
+                    </span>
+                    <span
+                      className="font-medium truncate"
+                      title={stats.outliers.newest.title}
+                    >
+                      {stats.outliers.newest.title}
+                    </span>
+                    <span className="text-sm text-muted-foreground">
+                      Año {stats.outliers.newest.year}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col gap-1 p-2 bg-gray-800/30 rounded border border-gray-700/50">
+                    <span className="text-xs text-gray-400 font-semibold uppercase tracking-wider">
+                      Más Antigua
+                    </span>
+                    <span
+                      className="font-medium truncate"
+                      title={stats.outliers.oldest.title}
+                    >
+                      {stats.outliers.oldest.title}
+                    </span>
+                    <span className="text-sm text-muted-foreground">
+                      Año {stats.outliers.oldest.year}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col gap-1 p-2 bg-purple-950/30 rounded border border-purple-900/50 col-span-1 sm:col-span-2">
+                    <span className="text-xs text-purple-400 font-semibold uppercase tracking-wider">
+                      Más Rewatched
+                    </span>
+                    <span
+                      className="font-medium truncate"
+                      title={stats.outliers.mostRewatched.title}
+                    >
+                      {stats.outliers.mostRewatched.title}
+                    </span>
+                    <span className="text-sm text-muted-foreground">
+                      {stats.outliers.mostRewatched.watchCount} visualizaciones
+                    </span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -1258,28 +1850,50 @@ export default function StatsPage() {
         </section>
         {/* Segunda sección - Gráficos avanzados */}
         <section className="mt-20">
-          <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-            <BarChart3 className="w-5 h-5 text-primary" />
+          <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+            <BarChart3 className="w-6 h-6 text-primary" />
             Analítica & Gráficos Avanzados
           </h2>
+          <p className="text-muted-foreground mb-6 text-sm">
+            <Info className="w-4 h-4 inline mr-1" />
+            Visualizaciones interactivas que transforman tus datos en insights
+            accionables. Descubre tendencias, patrones y evolución temporal.
+          </p>
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
             {/* Histograma de Ratings */}
-            <Card className="py-4 rounded-lg shadow bg-card flex flex-col">
+            <Card className="py-4 rounded-lg shadow bg-card hover:shadow-xl transition-shadow flex flex-col">
               <CardHeader>
                 <CardTitle className="flex gap-2 items-center">
                   <BarChart3 className="h-4 w-4" />
                   Histograma de Ratings
                 </CardTitle>
                 <CardDescription>
-                  Frecuencia de tus valoraciones
+                  Distribución de tus calificaciones.
                 </CardDescription>
               </CardHeader>
               <CardContent className="h-54 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={bins}>
-                    <XAxis dataKey="bin" fontSize={10} />
-                    <YAxis fontSize={10} />
-                    <Tooltip />
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      opacity={0.1}
+                      vertical={false}
+                    />
+                    <XAxis
+                      dataKey="bin"
+                      fontSize={10}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis fontSize={10} tickLine={false} axisLine={false} />
+                    <Tooltip
+                      cursor={{ fill: "rgba(255,255,255,0.05)" }}
+                      contentStyle={{
+                        backgroundColor: "#1f2937",
+                        borderColor: "#374151",
+                        color: "#f3f4f6",
+                      }}
+                    />
                     <Bar dataKey="count" fill="#f59e42" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -1287,20 +1901,43 @@ export default function StatsPage() {
             </Card>
 
             {/* Histograma de Duraciones */}
-            <Card className="py-4 rounded-lg shadow bg-card flex flex-col">
+            <Card className="py-4 rounded-lg shadow bg-card hover:shadow-xl transition-shadow flex flex-col">
               <CardHeader>
                 <CardTitle className="flex gap-2 items-center">
                   <Clock className="h-4 w-4" />
                   Histograma de Duraciones
                 </CardTitle>
-                <CardDescription>Predilección por duraciones</CardDescription>
+                <CardDescription>
+                  Preferencias de duración (minutos).
+                </CardDescription>
               </CardHeader>
               <CardContent className="h-54 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={binsDur}>
-                    <XAxis dataKey="bin" fontSize={10} />
-                    <YAxis fontSize={10} />
-                    <Tooltip />
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      opacity={0.1}
+                      vertical={false}
+                    />
+                    <XAxis
+                      dataKey="bin"
+                      fontSize={10}
+                      tickLine={false}
+                      axisLine={false}
+                      interval={0}
+                      angle={-45}
+                      textAnchor="end"
+                      height={60}
+                    />
+                    <YAxis fontSize={10} tickLine={false} axisLine={false} />
+                    <Tooltip
+                      cursor={{ fill: "rgba(255,255,255,0.05)" }}
+                      contentStyle={{
+                        backgroundColor: "#1f2937",
+                        borderColor: "#374151",
+                        color: "#f3f4f6",
+                      }}
+                    />
                     <Bar dataKey="count" fill="#4f46e5" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -1308,26 +1945,55 @@ export default function StatsPage() {
             </Card>
 
             {/* Afinidad por Género: Mini Ranking gráfico */}
-            <Card className="py-4 rounded-lg shadow bg-card flex flex-col">
+            <Card className="py-4 rounded-lg shadow bg-card hover:shadow-xl transition-shadow flex flex-col">
               <CardHeader>
                 <CardTitle className="flex gap-2 items-center">
                   <Star className="h-4 w-4" />
-                  Afinidad por Género (Rating)
+                  Afinidad por Género
                 </CardTitle>
+                <CardDescription>
+                  Top géneros por rating promedio.
+                </CardDescription>
               </CardHeader>
               <CardContent className="h-54 w-full">
                 <ResponsiveContainer width="99%" height="95%">
-                  <BarChart data={affinityData.slice(0, 7)} layout="vertical">
-                    <XAxis type="number" domain={[0, 10]} fontSize={10} />
-                    <YAxis dataKey="genre" type="category" fontSize={10} />
-                    <Tooltip />
-                    <Bar dataKey="avg" fill="#60a5fa">
+                  <BarChart
+                    data={affinityData.slice(0, 7)}
+                    layout="vertical"
+                    margin={{ left: 10 }}
+                  >
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      opacity={0.1}
+                      horizontal={false}
+                    />
+                    <XAxis type="number" domain={[0, 10]} fontSize={10} hide />
+                    <YAxis
+                      dataKey="genre"
+                      type="category"
+                      fontSize={10}
+                      width={70}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <Tooltip
+                      cursor={{ fill: "rgba(255,255,255,0.05)" }}
+                      contentStyle={{
+                        backgroundColor: "#1f2937",
+                        borderColor: "#374151",
+                        color: "#f3f4f6",
+                      }}
+                      formatter={(val: number) => [
+                        `★ ${val.toFixed(2)}`,
+                        "Rating",
+                      ]}
+                    />
+                    <Bar dataKey="avg" fill="#60a5fa" radius={[0, 4, 4, 0]}>
                       <LabelList
                         dataKey="avg"
                         position="right"
-                        formatter={(val: number | string) =>
-                          typeof val === "number" ? val.toFixed(2) : val
-                        }
+                        formatter={(val: number) => val.toFixed(1)}
+                        style={{ fill: "#9ca3af", fontSize: 10 }}
                       />
                     </Bar>
                   </BarChart>
@@ -1336,66 +2002,135 @@ export default function StatsPage() {
             </Card>
 
             {/* Top años más vistos */}
-            <Card className="py-4 rounded-lg shadow bg-card flex flex-col">
+            <Card className="py-4 rounded-lg shadow bg-card hover:shadow-xl transition-shadow flex flex-col">
               <CardHeader>
                 <CardTitle className="flex gap-2 items-center">
                   <BarChart3 className="h-4 w-4" />
                   Top Años Más Vistos
                 </CardTitle>
-                <CardDescription>
-                  ¿Prefieres los clásicos o lo moderno?
-                </CardDescription>
+                <CardDescription>Tu "edad de oro" del cine.</CardDescription>
               </CardHeader>
               <CardContent className="h-54 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={yearsRanking} layout="vertical">
-                    <XAxis type="number" />
-                    <YAxis dataKey="year" type="category" />
-                    <Tooltip />
-                    <Bar dataKey="count" fill="#6366f1" />
+                  <BarChart
+                    data={yearsRanking}
+                    layout="vertical"
+                    margin={{ left: 10 }}
+                  >
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      opacity={0.1}
+                      horizontal={false}
+                    />
+                    <XAxis type="number" hide />
+                    <YAxis
+                      dataKey="year"
+                      type="category"
+                      fontSize={10}
+                      width={40}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <Tooltip
+                      cursor={{ fill: "rgba(255,255,255,0.05)" }}
+                      contentStyle={{
+                        backgroundColor: "#1f2937",
+                        borderColor: "#374151",
+                        color: "#f3f4f6",
+                      }}
+                    />
+                    <Bar dataKey="count" fill="#6366f1" radius={[0, 4, 4, 0]}>
+                      <LabelList
+                        dataKey="count"
+                        position="right"
+                        style={{ fill: "#9ca3af", fontSize: 10 }}
+                      />
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
 
-            {/* Top géneros y años más vistos */}
-            <Card className="py-4 rounded-lg shadow bg-card flex flex-col">
+            {/* Días de la semana */}
+            <Card className="py-4 rounded-lg shadow bg-card hover:shadow-xl transition-shadow flex flex-col">
               <CardHeader>
                 <CardTitle className="flex gap-2 items-center">
                   <Calendar className="h-4 w-4" />
-                  ¿Qué día ves más películas?
+                  Actividad Semanal
                 </CardTitle>
-                <CardDescription>Día preferido para ver cine</CardDescription>
+                <CardDescription>¿Qué día ves más películas?</CardDescription>
               </CardHeader>
               <CardContent className="h-54 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={byDOW}>
-                    <XAxis dataKey="day" />
-                    <YAxis allowDecimals={false} />
-                    <Tooltip />
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      opacity={0.1}
+                      vertical={false}
+                    />
+                    <XAxis
+                      dataKey="day"
+                      fontSize={10}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis
+                      allowDecimals={false}
+                      fontSize={10}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <Tooltip
+                      cursor={{ fill: "rgba(255,255,255,0.05)" }}
+                      contentStyle={{
+                        backgroundColor: "#1f2937",
+                        borderColor: "#374151",
+                        color: "#f3f4f6",
+                      }}
+                    />
                     <Bar dataKey="count" fill="#10b981" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
 
-            {/* Distribución por género y año */}
-            <Card className="py-4 rounded-lg shadow bg-card flex flex-col">
+            {/* Distribución de Revisiones */}
+            <Card className="py-4 rounded-lg shadow bg-card hover:shadow-xl transition-shadow flex flex-col">
               <CardHeader>
                 <CardTitle className="flex gap-2 items-center">
                   <Eye className="h-4 w-4" />
-                  Distribución de Revisiones
+                  Rewatch
                 </CardTitle>
-                <CardDescription>
-                  ¿Cuántas veces repites una película?
-                </CardDescription>
+                <CardDescription>Veces que repites películas.</CardDescription>
               </CardHeader>
               <CardContent className="h-54 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={byRewatch}>
-                    <XAxis dataKey="times" />
-                    <YAxis allowDecimals={false} />
-                    <Tooltip />
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      opacity={0.1}
+                      vertical={false}
+                    />
+                    <XAxis
+                      dataKey="times"
+                      fontSize={10}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis
+                      allowDecimals={false}
+                      fontSize={10}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <Tooltip
+                      cursor={{ fill: "rgba(255,255,255,0.05)" }}
+                      contentStyle={{
+                        backgroundColor: "#1f2937",
+                        borderColor: "#374151",
+                        color: "#f3f4f6",
+                      }}
+                    />
                     <Bar dataKey="count" fill="#a21caf" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -1403,97 +2138,190 @@ export default function StatsPage() {
             </Card>
 
             {/* Evolución de visualizaciones y rating */}
-            <Card className="py-4 rounded-lg shadow bg-card flex flex-col col-span-1 sm:col-span-2 lg:col-span-3">
+            <Card className="py-4 rounded-lg shadow bg-card hover:shadow-xl transition-shadow flex flex-col col-span-1 sm:col-span-2 lg:col-span-3">
               <CardHeader>
                 <CardTitle className="flex gap-2 items-center">
                   <BarChart3 className="h-4 w-4" />
                   Evolución de Visualizaciones
                 </CardTitle>
-                <CardDescription>Películas vistas por mes</CardDescription>
+                <CardDescription>
+                  Línea temporal de tu actividad mensual. Identifica tus meses
+                  más activos y rachas.
+                </CardDescription>
               </CardHeader>
-              <CardContent className="h-100 w-full">
+              <CardContent className="h-80 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={viewsByMonth}>
+                  <AreaChart
+                    data={viewsByMonth}
+                    margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                  >
+                    <defs>
+                      <linearGradient
+                        id="colorViews"
+                        x1="0"
+                        y1="0"
+                        x2="0"
+                        y2="1"
+                      >
+                        <stop
+                          offset="5%"
+                          stopColor="#2563eb"
+                          stopOpacity={0.8}
+                        />
+                        <stop
+                          offset="95%"
+                          stopColor="#2563eb"
+                          stopOpacity={0}
+                        />
+                      </linearGradient>
+                    </defs>
                     <XAxis dataKey="month" />
                     <YAxis allowDecimals={false} />
-                    <Tooltip />
-                    <Line
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "#1f2937",
+                        borderColor: "#374151",
+                        color: "#f3f4f6",
+                      }}
+                    />
+                    <Area
                       type="monotone"
                       dataKey="count"
                       stroke="#2563eb"
-                      strokeWidth={2}
+                      fillOpacity={1}
+                      fill="url(#colorViews)"
                     />
-                  </LineChart>
+                  </AreaChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
 
             {/* Evolución del rating */}
-            <Card className="py-4 rounded-lg shadow bg-card flex flex-col col-span-1 sm:col-span-2 lg:col-span-3">
+            <Card className="py-4 rounded-lg shadow bg-card hover:shadow-xl transition-shadow flex flex-col col-span-1 sm:col-span-2 lg:col-span-3">
               <CardHeader>
                 <CardTitle className="flex gap-2 items-center">
                   <Star className="h-4 w-4" />
                   Evolución del Rating Visto
                 </CardTitle>
                 <CardDescription>
-                  ¿Te has vuelto más exigente en lo que ves?
+                  Evolución de tu criterio de calidad a lo largo del tiempo. ¿Te
+                  vuelves más exigente?
                 </CardDescription>
               </CardHeader>
-              <CardContent className="h-100 w-full">
+              <CardContent className="h-80 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={avgRatingByMonth}>
+                  <AreaChart
+                    data={avgRatingByMonth}
+                    margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                  >
+                    <defs>
+                      <linearGradient
+                        id="colorRating"
+                        x1="0"
+                        y1="0"
+                        x2="0"
+                        y2="1"
+                      >
+                        <stop
+                          offset="5%"
+                          stopColor="#f59e42"
+                          stopOpacity={0.8}
+                        />
+                        <stop
+                          offset="95%"
+                          stopColor="#f59e42"
+                          stopOpacity={0}
+                        />
+                      </linearGradient>
+                    </defs>
                     <XAxis dataKey="month" />
                     <YAxis domain={[0, 10]} />
-                    <Tooltip />
-                    <Line
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "#1f2937",
+                        borderColor: "#374151",
+                        color: "#f3f4f6",
+                      }}
+                      formatter={(value: number) => [
+                        `★ ${value.toFixed(2)}`,
+                        "Rating Promedio",
+                      ]}
+                    />
+                    <Area
                       type="monotone"
                       dataKey="avg"
                       stroke="#f59e42"
-                      strokeWidth={2}
+                      fillOpacity={1}
+                      fill="url(#colorRating)"
                     />
-                  </LineChart>
+                  </AreaChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
 
-            {/* Rating vs. Duración */}
-            <Card className="py-4 rounded-lg shadow bg-card flex flex-col col-span-1 sm:col-span-2 lg:col-span-3">
+            {/* Evolución del Rating por Duración */}
+            <Card className="py-4 rounded-lg shadow bg-card hover:shadow-xl transition-shadow flex flex-col col-span-1 sm:col-span-2 lg:col-span-3">
               <CardHeader>
                 <CardTitle className="flex gap-2 items-center">
                   <Activity className="h-4 w-4" />
-                  Rating vs. Duración
+                  Evolución del Rating por Duración
                 </CardTitle>
                 <CardDescription>
-                  ¿Valoras más las pelis largas o cortas? (color por género)
+                  Rating promedio agrupado por duración (intervalos de 10 min).
+                  Descubre tu "duración ideal".
                 </CardDescription>
               </CardHeader>
-              <CardContent className="h-100 w-full">
+              <CardContent className="h-80 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <ScatterChart>
-                    <XAxis
-                      type="number"
-                      dataKey="duration"
-                      name="Duración (min)"
-                    />
-                    <YAxis
-                      type="number"
-                      domain={[0, 10]}
-                      dataKey="rating"
-                      name="Rating"
-                    />
-                    <Tooltip cursor={{ strokeDasharray: "3 3" }} />
-                    {/* Si tienes pocos géneros: un Scatter por genre para colores */}
-                    {Array.from(new Set(scatterData.map((d) => d.genre)))
-                      .slice(0, 7)
-                      .map((g, i) => (
-                        <Scatter
-                          data={scatterData.filter((d) => d.genre === g)}
-                          key={g}
-                          name={g}
-                          fill={genreColors[i % genreColors.length]}
+                  <AreaChart
+                    data={ratingByDurationInterval}
+                    margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                  >
+                    <defs>
+                      <linearGradient
+                        id="colorRatingDuration"
+                        x1="0"
+                        y1="0"
+                        x2="0"
+                        y2="1"
+                      >
+                        <stop
+                          offset="5%"
+                          stopColor="#8884d8"
+                          stopOpacity={0.8}
                         />
-                      ))}
-                  </ScatterChart>
+                        <stop
+                          offset="95%"
+                          stopColor="#8884d8"
+                          stopOpacity={0}
+                        />
+                      </linearGradient>
+                    </defs>
+                    <XAxis dataKey="label" />
+                    <YAxis domain={[0, 10]} />
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "#1f2937",
+                        borderColor: "#374151",
+                        color: "#f3f4f6",
+                      }}
+                      formatter={(value: number) => [
+                        `★ ${value.toFixed(2)}`,
+                        "Rating Promedio",
+                      ]}
+                      labelFormatter={(label) => `Duración: ${label}`}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="avgRating"
+                      stroke="#8884d8"
+                      fillOpacity={1}
+                      fill="url(#colorRatingDuration)"
+                    />
+                  </AreaChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>

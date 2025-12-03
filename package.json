@@ -36,6 +36,10 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
+    "@types/html2canvas": "^1.0.0",
+    "@types/jspdf": "^2.0.0",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^3.0.4",
     "lucide-react": "^0.544.0",
     "react-router-dom": "^7.9.1",
     "recharts": "^2.15.4"

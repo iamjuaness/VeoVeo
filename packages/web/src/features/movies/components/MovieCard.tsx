@@ -1,10 +1,4 @@
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "../../../shared/components/ui/card";
+import { Card } from "../../../shared/components/ui/card";
 import { Badge } from "../../../shared/components/ui/badge";
 import { Eye, EyeOff, Clock, Star, Calendar } from "lucide-react";
 import type { Movie } from "../../../interfaces/Movie";
@@ -53,15 +47,15 @@ export function MovieCard({
   }
 
   return (
-    <Card className="overflow-hidden hover:shadow-lg transform hover:scale-102 transition-transform duration-300 ease-in-out w-72 md:w-80 lg:w-82 max-w-full p-2 sm:p-4">
-      {/* 🔹 Contenedor fijo con aspect ratio 2:3 para uniformidad */}
-      <div className="relative w-full aspect-[2/3]">
+    <Card className="group relative overflow-hidden hover:shadow-xl transition-all duration-300 ease-out w-full h-full flex flex-col border-border/50 bg-card/50 backdrop-blur-sm hover:border-primary/50">
+      {/* 🔹 Contenedor de imagen con aspect ratio 2:3 */}
+      <div className="relative w-full aspect-2/3 overflow-hidden rounded-t-lg">
         <GlareHover
           glareColor="#ffffff"
-          glareOpacity={0.3}
-          glareAngle={-30}
-          glareSize={300}
-          transitionDuration={1000}
+          glareOpacity={0.2}
+          glareAngle={-20}
+          glareSize={200}
+          transitionDuration={500}
         >
           <img
             src={
@@ -70,135 +64,113 @@ export function MovieCard({
                 : "/placeholder.svg"
             }
             alt={movie.title}
-            className="object-cover w-full h-full rounded-t-sm"
-            style={{ backgroundColor: "#eee" }}
-            width={300}
-            height={450}
+            className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105"
+            loading="lazy"
           />
         </GlareHover>
 
+        {/* Overlay gradiente para mejor legibilidad de badges */}
+        <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
         {/* Badges de estado */}
-        <div className="absolute top-2 left-2 flex flex-col gap-1">
+        <div className="absolute top-2 left-2 flex flex-col gap-1.5 z-10">
           {movie.watchCount > 0 && (
-            <Badge className="bg-green-600 hover:bg-green-700">
-              <Eye className="w-3 h-3 mr-1" />
+            <Badge className="bg-green-500/90 hover:bg-green-600 text-white backdrop-blur-md shadow-sm border-0">
+              <Eye className="w-3 h-3 mr-1.5" />
               Vista {movie.watchCount > 1 ? `${movie.watchCount}x` : ""}
             </Badge>
           )}
           {movie.watchLater && (
-            <Badge className="bg-blue-600 hover:bg-blue-700">
-              <Clock className="w-3 h-3 mr-1" />
-              Ver Después
+            <Badge className="bg-blue-500/90 hover:bg-blue-600 text-white backdrop-blur-md shadow-sm border-0">
+              <Clock className="w-3 h-3 mr-1.5" />
+              Pendiente
             </Badge>
           )}
         </div>
 
         {/* Calificación */}
-        <div className="absolute top-2 right-2">
-          <Badge variant="secondary" className="gap-1">
+        <div className="absolute top-2 right-2 z-10">
+          <Badge
+            variant="secondary"
+            className="gap-1 bg-black/60 text-white backdrop-blur-md border-0"
+          >
             <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-            {movie.rating}
+            {movie.rating.toFixed(1)}
           </Badge>
         </div>
       </div>
 
-      {/* 🔹 Botones para móviles (debajo de la imagen) */}
-      <div className="block sm:hidden px-1 py-2">
-        {/* Título y año */}
-        <div className="text-center mb-2 text-sm font-semibold line-clamp-1 truncate max-w-full px-2">
-          {movie.title} ({movie.year})
+      {/* 🔹 Contenido de la tarjeta */}
+      <div className="flex flex-col flex-1 p-3 sm:p-4 gap-2">
+        <div className="space-y-1">
+          <h3
+            className="font-bold text-base leading-tight line-clamp-1 group-hover:text-primary transition-colors"
+            title={movie.title}
+          >
+            {movie.title}
+          </h3>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <Calendar className="w-3 h-3" /> {movie.year}
+            </span>
+            <span>•</span>
+            <span
+              className="truncate max-w-[120px]"
+              title={
+                Array.isArray(movie.genres)
+                  ? movie.genres.join(", ")
+                  : movie.genres
+              }
+            >
+              {Array.isArray(movie.genres) ? movie.genres[0] : movie.genres}
+            </span>
+          </div>
         </div>
 
-        <div className="flex flex-wrap gap-2 justify-center">
+        {/* Descripción (solo desktop) */}
+        <p className="hidden sm:block text-xs text-muted-foreground line-clamp-2 mt-1 flex-1">
+          {movie.description}
+        </p>
+
+        {/* 🔹 Botones de acción */}
+        <div className="flex items-center gap-2 mt-auto pt-2">
           <Button
-            variant={movie.watchCount > 0 ? "default" : "outline"}
+            variant={movie.watchCount > 0 ? "default" : "secondary"}
             size="sm"
-            onClick={(e) => handleIncrement(e)}
-            className="gap-1"
+            onClick={handleIncrement}
+            className={`flex-1 gap-1.5 h-8 text-xs font-medium transition-all ${
+              movie.watchCount > 0 ? "bg-green-600 hover:bg-green-700" : ""
+            }`}
           >
-            <Eye className="w-4 h-4" />
-            {movie.watchCount > 0 ? `(${movie.watchCount})` : ""}
+            <Eye className="w-3.5 h-3.5" />
+            {movie.watchCount > 0 ? "Visto" : "Ver"}
           </Button>
 
           {movie.watchCount > 0 && (
             <Button
               variant="outline"
               size="sm"
-              onClick={(e) => handleResetWatchCount(e)}
+              onClick={handleResetWatchCount}
+              className="h-8 w-8 p-0 shrink-0 text-muted-foreground hover:text-destructive hover:border-destructive/50"
+              title="Resetear"
             >
-              <EyeOff className="w-4 h-4" />
+              <EyeOff className="w-3.5 h-3.5" />
             </Button>
           )}
 
           <Button
             variant={movie.watchLater ? "default" : "outline"}
             size="sm"
-            onClick={(e) => handleToggleWatchLater(e)}
+            onClick={handleToggleWatchLater}
             disabled={movie.watchCount > 0}
+            className={`h-8 w-8 p-0 shrink-0 transition-colors ${
+              movie.watchLater ? "bg-blue-600 hover:bg-blue-700 text-white" : ""
+            }`}
+            title={movie.watchLater ? "Quitar de pendientes" : "Ver después"}
           >
-            <Clock className="w-4 h-4" />
+            <Clock className="w-3.5 h-3.5" />
           </Button>
         </div>
-      </div>
-
-      {/* 🔹 Info y botones para desktop */}
-      <div className="hidden sm:block">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-lg line-clamp-1">{movie.title}</CardTitle>
-          <CardDescription className="flex items-center gap-2 text-sm">
-            <Calendar className="w-3 h-3" /> {movie.year} •{" "}
-            {movie.genres[0] || "Desconocido"}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-            {movie.description}
-          </p>
-          <div className="flex flex-wrap gap-2 pb-3">
-            <Button
-              variant={movie.watchCount > 0 ? "default" : "outline"}
-              size="sm"
-              onClick={(e) => handleIncrement(e)}
-              className="flex-1 gap-1"
-              title="Marcar como vista"
-            >
-              <Eye className="w-4 h-4" />
-              {movie.watchCount > 0 ? `(${movie.watchCount})` : ""}
-            </Button>
-
-            {movie.watchCount > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={(e) => handleResetWatchCount(e)}
-                className="min-w-[36px] px-2 py-1 text-xs"
-                title="Restablecer contador de vistas"
-              >
-                <EyeOff className="w-4 h-4" />
-              </Button>
-            )}
-
-            <Button
-              variant={movie.watchLater ? "default" : "outline"}
-              size="sm"
-              onClick={(e) => handleToggleWatchLater(e)}
-              disabled={movie.watchCount > 0}
-              className="min-w-[48px] gap-1 text-xs px-2 py-1"
-              title={
-                movie.watchCount > 0
-                  ? "Ya marcada como vista"
-                  : movie.watchLater
-                  ? "Quitar de lista de ver después"
-                  : "Agregar a lista de ver después"
-              }
-            >
-              <Clock className="w-4 h-4" />
-              <span className="hidden xs:inline">
-                {movie.watchLater ? "Quitar de Lista" : "Ver Después"}
-              </span>
-            </Button>
-          </div>
-        </CardContent>
       </div>
     </Card>
   );

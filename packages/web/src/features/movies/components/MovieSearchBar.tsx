@@ -40,35 +40,35 @@ export function MovieSearchBar({
   return (
     <form
       onSubmit={handleSearch}
-      className={`flex w-full justify-center-safe ${className ?? ""}`}
+      className={`flex w-full justify-center ${className ?? ""}`}
       autoComplete="off"
     >
-      <div className="relative flex">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
+      <div className="relative flex w-full max-w-2xl">
+        <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5 pointer-events-none z-10" />
         <Input
           type="text"
-          placeholder="Buscar películas por título"
+          placeholder="Buscar películas por título o género..."
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={handleKeyDown}
-          className="pl-10"
+          className="pl-12 pr-4 h-11 rounded-lg border-border/50 bg-background/50 backdrop-blur-sm focus:bg-background transition-all shadow-sm"
           disabled={isLoading}
         />
         <Button
           type="submit"
-          className="ml-2"
+          className="ml-2 h-11 px-6 rounded-lg gap-2 font-medium shadow-sm hover:shadow-md transition-all"
           disabled={isLoading}
           onClick={onClick}
         >
           {isLoading ? (
             <span className="flex items-center justify-center gap-2">
-              <Loader2 className="w-5 h-5 animate-spin" />
-              Buscando...
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span className="hidden sm:inline">Buscando...</span>
             </span>
           ) : (
             <>
               <Search className="w-4 h-4" />
-              Buscar
+              <span className="hidden sm:inline">Buscar</span>
             </>
           )}
         </Button>

@@ -274,49 +274,63 @@ export default function MovieDetailPage() {
         )}
       </div>
       {/* Hero Section */}
-      <div className="relative h-96 md:h-[500px] bg-gray-900">
-        {/* Fondo sólido en lugar de imagen grande para poster */}
-        <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/80 to-transparent" />
+      <div className="relative h-[500px] md:h-[600px] lg:h-[700px] overflow-hidden">
+        {/* Backdrop Image */}
+        <div className="absolute inset-0">
+          <img
+            src={movie.primaryImage.url || "/placeholder.svg"}
+            alt={movie.primaryTitle}
+            className="w-full h-full object-cover blur-sm scale-110"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-black via-black/80 to-black/40" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
+        </div>
 
         {/* Botón Volver */}
-        <div className="absolute top-4 left-4 z-20">
+        <div className="absolute top-6 left-6 z-20">
           <Link to="/">
             <Button
               variant="outline"
-              size="sm"
-              className="gap-2 bg-black/50 border-white/30 text-white hover:bg-black/70 flex items-center"
+              size="lg"
+              className="gap-2 bg-black/60 backdrop-blur-md border-white/30 text-white hover:bg-white hover:text-black transition-all hover:scale-105 shadow-xl"
             >
-              <ArrowLeft className="w-4 h-4" />
-              <span className="hidden sm:inline">Volver</span>
+              <ArrowLeft className="w-5 h-5" />
+              <span className="hidden sm:inline font-semibold">Volver</span>
             </Button>
           </Link>
         </div>
         {/* Movie Info Overlay */}
-        <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8 bg-gradient-to-t from-black/90 via-black/70 to-transparent z-10">
+        <div className="absolute bottom-0 left-0 right-0 p-6 md:p-10 lg:p-12 z-10">
           <div className="container mx-auto">
-            <div className="flex flex-col md:flex-row gap-6">
+            <div className="flex flex-col md:flex-row gap-8 items-end">
               {/* Poster */}
-              <div className="flex-shrink-0 mx-auto md:mx-0 hidden md:block">
-                <img
-                  src={movie.primaryImage.url || "/placeholder.svg"}
-                  alt={movie.primaryTitle}
-                  width={200}
-                  height={300}
-                  className="rounded-lg shadow-2xl object-cover"
-                />
+              <div className="flex-shrink-0 mx-auto md:mx-0 hidden md:block group">
+                <div className="relative">
+                  <img
+                    src={movie.primaryImage.url || "/placeholder.svg"}
+                    alt={movie.primaryTitle}
+                    width={250}
+                    height={375}
+                    className="rounded-2xl shadow-2xl object-cover border-4 border-white/10 group-hover:scale-105 transition-transform duration-300"
+                  />
+                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
               </div>
 
               {/* Info */}
-              <div className="flex-1 text-white p-4">
+              <div className="flex-1 text-white">
                 {/* Badges arriba con espaciado suficiente (y padding para móvil) */}
-                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mb-3 pt-10 sm:pt-0">
-                  <Badge className="bg-yellow-600 hover:bg-yellow-700 flex items-center gap-1">
-                    <Star className="w-4 h-4 fill-current" />
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mb-4 pt-10 sm:pt-0">
+                  <Badge className="bg-yellow-500/90 hover:bg-yellow-600 text-black font-bold flex items-center gap-1 px-3 py-1.5 text-base backdrop-blur-sm">
+                    <Star className="w-5 h-5 fill-current" />
                     {movie.rating.aggregateRating.toFixed(1)}
                   </Badge>
 
                   {movie.genres.map((genre) => (
-                    <Badge key={genre} variant="secondary" className="text-xs">
+                    <Badge
+                      key={genre}
+                      className="bg-white/20 hover:bg-white/30 text-white border-0 backdrop-blur-sm px-3 py-1"
+                    >
                       {genre}
                     </Badge>
                   ))}
@@ -337,29 +351,31 @@ export default function MovieDetailPage() {
                   </Badge>
                 </div>
 
-                <h1 className="text-xl md:text-5xl font-bold mb-2 max-w-xl leading-tight">
+                <h1 className="text-3xl md:text-5xl lg:text-6xl font-extrabold mb-3 max-w-3xl leading-tight drop-shadow-2xl">
                   {movie.primaryTitle}
                 </h1>
 
                 {movie.originalTitle !== movie.primaryTitle && (
-                  <p className="text-xl text-gray-300 mb-4 italic max-w-xl">
-                    ({movie.originalTitle})
+                  <p className="text-lg md:text-xl text-white/80 mb-4 italic max-w-2xl drop-shadow-lg">
+                    {movie.originalTitle}
                   </p>
                 )}
 
-                <p className="text-sm md:text-xl mb-6 text-gray-200 max-w-3xl leading-relaxed">
+                <p className="text-base md:text-lg mb-8 text-white/90 max-w-3xl leading-relaxed drop-shadow-lg">
                   {movie.plot}
                 </p>
 
                 {/* Action Buttons */}
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-wrap gap-4">
                   <Button
-                    variant={
-                      watchCount && watchCount > 0 ? "default" : "outline"
-                    }
+                    variant="default"
                     size="lg"
                     onClick={() => incrementWatchCount(movie.id)}
-                    className="gap-2 bg-white/10 border-white/30 text-white hover:bg-white/20"
+                    className={`gap-2 font-bold shadow-xl hover:scale-105 transition-all px-6 ${
+                      watchCount && watchCount > 0
+                        ? "bg-green-600 hover:bg-green-700"
+                        : "bg-white text-black hover:bg-white/90"
+                    }`}
                   >
                     <Eye className="w-5 h-5" />
                     {watchCount && watchCount > 0
@@ -372,17 +388,21 @@ export default function MovieDetailPage() {
                       variant="outline"
                       size="lg"
                       onClick={() => resetWatchCount(movie.id)}
-                      className="gap-2 bg-white/10 border-white/30 text-white hover:bg-white/20"
+                      className="gap-2 bg-black/40 backdrop-blur-md border-white/30 text-white hover:bg-red-600 hover:border-red-600 transition-all shadow-xl"
                     >
                       <EyeOff className="w-5 h-5" />
-                      Reset
+                      Resetear
                     </Button>
                   )}
                   <Button
-                    variant={watchLater ? "default" : "outline"}
+                    variant="outline"
                     size="lg"
                     onClick={() => toggleWatchLater(movie.id)}
-                    className="gap-2 bg-white/10 border-white/30 text-white hover:bg-white/20"
+                    className={`gap-2 backdrop-blur-md shadow-xl transition-all ${
+                      watchLater
+                        ? "bg-blue-600 border-blue-600 text-white hover:bg-blue-700"
+                        : "bg-black/40 border-white/30 text-white hover:bg-white hover:text-black"
+                    }`}
                     disabled={(watchCount ?? 0) > 0}
                   >
                     {watchLater ? (
@@ -410,7 +430,7 @@ export default function MovieDetailPage() {
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-8">
             {/* Cast */}
-            <Card className="py-4 rounded-lg shadow bg-card">
+            <Card className="py-4 rounded-2xl shadow-lg bg-card/50 backdrop-blur-sm border-border/50 hover:shadow-xl transition-all">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Users className="w-5 h-5" />
@@ -447,7 +467,7 @@ export default function MovieDetailPage() {
             </Card>
 
             {/* Crew */}
-            <Card className="py-4 rounded-lg shadow bg-card">
+            <Card className="py-4 rounded-2xl shadow-lg bg-card/50 backdrop-blur-sm border-border/50 hover:shadow-xl transition-all">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Film className="w-5 h-5" />
@@ -528,7 +548,7 @@ export default function MovieDetailPage() {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Movie Stats */}
-            <Card className="py-4 rounded-lg shadow bg-card">
+            <Card className="py-4 rounded-2xl shadow-lg bg-card/50 backdrop-blur-sm border-border/50 hover:shadow-xl transition-all">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Award className="w-5 h-5" />
@@ -587,7 +607,7 @@ export default function MovieDetailPage() {
             </Card>
 
             {/* Countries & Languages */}
-            <Card className="py-4 rounded-lg shadow bg-card">
+            <Card className="py-4 rounded-2xl shadow-lg bg-card/50 backdrop-blur-sm border-border/50 hover:shadow-xl transition-all">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Globe className="w-5 h-5" />

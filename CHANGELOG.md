@@ -4,6 +4,33 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.3.0] - 2025-12-03
+
+### Added
+
+- **Slider Navigation**: Click on slider images now navigates to movie details
+- **Dynamic Version Display**: App version now uses a constant for easy updates
+- **Enhanced Slider**: Added "Ver Detalles" button with play icon
+
+### Improved
+
+- **Slider Content Position**: Repositioned movie info to center for better visibility
+- **MovieDetailPage Hero**: Added backdrop image with blur effect for immersive experience
+- **Movie Poster**: Increased size (250x375) with hover scale effect and border
+- **Action Buttons**: Redesigned with better colors (green for watched, blue for watch later)
+- **Info Cards**: Added backdrop blur and enhanced shadows for modern look
+- **Filter Buttons**: Fixed text truncation with proper min-width and whitespace handling
+- **Search Bar**: Enhanced floating search with animations and better styling
+- **User Avatar**: Increased size (12x12) with scale hover effect
+- **MovieFilters**: Added icons (Film, Eye, Clock) and badge counters
+- **Stats Component**: Redesigned with modern cards and themed icons
+
+### Fixed
+
+- **Slider Navigation Bug**: Fixed issue where clicking always navigated to first movie instead of current slide
+- **Filter Text Overflow**: Ensured filter dropdown text displays completely without truncation
+- **UserMenu Duplicate**: Removed duplicate Settings button from DialogTrigger
+
 ## [2.2.0] - 2025-12-03
 
 ### Added

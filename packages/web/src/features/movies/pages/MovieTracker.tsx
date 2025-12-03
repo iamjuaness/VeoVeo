@@ -18,7 +18,14 @@ import { useAuth } from "../../auth/hooks/useAuth";
 import { useMovies } from "../context/MoviesContext";
 import { getMovieDurationById } from "../services/imdb";
 import { ThemeContext } from "../../../core/providers/ThemeContext";
-import { Loader2, Search } from "lucide-react";
+import {
+  Loader2,
+  Search,
+  Filter,
+  Star,
+  ArrowUpDown,
+  LayoutGrid,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { movieGenres, type Genre } from "../../../shared/lib/genres";
 import { Button } from "../../../shared/components/ui/button";
@@ -479,38 +486,48 @@ export default function MovieTracker() {
   return (
     <div className="min-h-screen bg-background relative">
       {/* Navbar fijo */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b">
-        <div className="container mx-auto px-4 py-5">
-          <div className="flex items-center justify-between">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b shadow-sm transition-all duration-300 supports-[backdrop-filter]:bg-background/60">
+        <div className="container mx-auto px-4 h-[72px] flex items-center justify-between">
+          <div className="flex items-center justify-between w-full">
             {/* Logo/Nombre */}
-            <div className="flex items-center gap-2">
-              <div className="w-10 h-10">
-                <img src="pelicula-de-video.png" alt="logo" typeof="icon" />
+            <div
+              className="flex items-center gap-3 hover:opacity-80 transition-opacity cursor-pointer group"
+              onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            >
+              <div className="w-9 h-9 relative group-hover:scale-110 transition-transform duration-300">
+                <img
+                  src="pelicula-de-video.png"
+                  alt="VeoVeo Logo"
+                  className="object-contain w-full h-full drop-shadow-md"
+                />
               </div>
-              <h1 className="text-xl font-bold">VeoVeo</h1>
+              <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent hidden sm:block">
+                VeoVeo
+              </h1>
             </div>
 
             {/* Controles de navegación */}
-            <div className="flex items-center gap-2">
+            <div className="fixed right-20 z-50 flex items-center gap-2">
               {/* Lupa flotante (solo visible al hacer scroll) */}
               {showScrollSearch && (
                 <Button
-                  variant="outline"
-                  size="sm"
+                  variant="ghost"
+                  size="icon"
                   onClick={() => setShowFloatingSearch(!showFloatingSearch)}
-                  className="gap-2 bg-transparent fixed right-18 z-50"
+                  className="bg-background/50 hover:bg-background/80 backdrop-blur-sm border rounded-full w-10 h-10"
                   aria-label="Buscar películas"
                 >
-                  <Search className="w-4 h-4" />
+                  <Search className="w-5 h-5 text-muted-foreground" />
                 </Button>
               )}
 
               {!user ? (
                 <>
                   {/* Botones de desktop (lg y superior) */}
-                  <div className="hidden lg:flex gap-2">
+                  <div className="hidden lg:flex items-center gap-3">
                     {/* Botón de tema*/}
                     <Theme toggleTheme={toggleTheme} />
+                    <div className="h-6 w-px bg-border/50 mx-1" />
                     {/* Modal de Inicio de Sesión */}
                     <ModalLogin
                       open={showLoginModal}
@@ -542,7 +559,7 @@ export default function MovieTracker() {
                 </>
               ) : (
                 /* Avatar de usuario y menú lateral */
-                <div className="fixed right-4 z-50">
+                <div className="fixed right-4 z-50 flex items-center gap-2">
                   <UserMenu open={showUserMenu} setOpen={setShowUserMenu} />
                 </div>
               )}
@@ -553,8 +570,8 @@ export default function MovieTracker() {
 
       {/* Barra de búsqueda flotante */}
       {showFloatingSearch && (
-        <div className="fixed top-22 left-4 right-4 z-40 max-w-md mx-auto">
-          <div className="relative max-w-md mx-auto bg-background/95 rounded-sm flex items-center px-3 py-2 gap-2">
+        <div className="fixed top-20 left-4 right-4 z-40 max-w-2xl mx-auto animate-in slide-in-from-top-2 duration-300">
+          <div className="relative bg-background/95 backdrop-blur-xl rounded-2xl flex items-center px-4 py-3 gap-3 shadow-2xl border border-border/50">
             {/* Barra de búsqueda ocupando todo el espacio posible menos el botón cerrar */}
             <MovieSearchBar
               searchTerm={searchTerm}
@@ -566,12 +583,12 @@ export default function MovieTracker() {
             {/* Botón cerrar sin posicionamiento absoluto */}
             <Button
               variant="ghost"
-              size="sm"
+              size="icon"
               onClick={() => setShowFloatingSearch(false)}
               aria-label="Cerrar búsqueda"
-              className="p-1 shrink-0"
+              className="shrink-0 hover:bg-destructive/10 hover:text-destructive rounded-full h-10 w-10"
             >
-              ✕
+              <span className="text-lg">✕</span>
             </Button>
           </div>
         </div>
@@ -595,10 +612,6 @@ export default function MovieTracker() {
               {/* Estadísticas - Solo visible cuando el usuario está logueado */}
               {user && (
                 <>
-                  <h1 className="text-3xl font-bold text-center mb-6 leading-tight">
-                    🎬 Mi Colección de Películas
-                  </h1>
-
                   {/* Estadísticas */}
                   <Stats
                     total={totalResults}
@@ -633,68 +646,77 @@ export default function MovieTracker() {
 
         {/* Grid de películas */}
         <main className="container mx-auto px-4 py-8">
-          {/* Selector de género */}
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold">
-              {filterStatus === "all" && "Todas las Películas"}
-              {filterStatus === "watched" && "Películas Vistas"}
-              {filterStatus === "watchLater" && "Ver Después"}
-            </h2>
+          {/* Selector de género y filtros mejorados */}
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-8 sticky top-[72px] z-30 bg-background/80 backdrop-blur-md p-4 rounded-xl border shadow-sm transition-all duration-300">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-medium">Género:</span>
-              <Select
-                value={selectedGenres[filterStatus]}
-                onValueChange={handleGenreChange}
-              >
-                <SelectTrigger className="w-40">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {movieGenres.map((genre) => (
-                    <SelectItem key={genre} value={genre}>
-                      {genre}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <LayoutGrid className="w-5 h-5 text-primary" />
+              <h2 className="text-xl font-bold tracking-tight">
+                {filterStatus === "all" && "Explorar Catálogo"}
+                {filterStatus === "watched" && "Mi Historial"}
+                {filterStatus === "watchLater" && "Lista de Pendientes"}
+              </h2>
+            </div>
 
-              {/* NUEVO: Rating mínimo */}
-              <span className="text-sm font-medium ml-4">Rating:</span>
-              <Select
-                value={String(selectedRatings[filterStatus])}
-                onValueChange={handleRatingChange}
-              >
-                <SelectTrigger className="w-32">
-                  <SelectValue placeholder="All" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="All">All</SelectItem>
-                  {[5, 6, 7, 8, 9, 10].map((r) => (
-                    <SelectItem key={r} value={String(r)}>
-                      {r}+
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+              {/* Género */}
+              <div className="flex items-center gap-2 bg-muted/50 p-1 rounded-lg border border-border/50 hover:bg-muted/80 transition-colors min-w-[160px]">
+                <Filter className="w-4 h-4 text-muted-foreground ml-2 shrink-0" />
+                <Select
+                  value={selectedGenres[filterStatus]}
+                  onValueChange={handleGenreChange}
+                >
+                  <SelectTrigger className="w-full min-w-[120px] border-0 bg-transparent focus:ring-0 h-8 text-sm font-medium">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {movieGenres.map((genre) => (
+                      <SelectItem key={genre} value={genre}>
+                        {genre}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Rating */}
+              <div className="flex items-center gap-2 bg-muted/50 p-1 rounded-lg border border-border/50 hover:bg-muted/80 transition-colors min-w-[140px]">
+                <Star className="w-4 h-4 text-yellow-500 ml-2 shrink-0" />
+                <Select
+                  value={String(selectedRatings[filterStatus])}
+                  onValueChange={handleRatingChange}
+                >
+                  <SelectTrigger className="w-full min-w-[100px] border-0 bg-transparent focus:ring-0 h-8 text-sm font-medium whitespace-nowrap">
+                    <SelectValue placeholder="All" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="All">Cualquiera</SelectItem>
+                    {[5, 6, 7, 8, 9, 10].map((r) => (
+                      <SelectItem key={r} value={String(r)}>
+                        {r}+ Estrellas
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
               {filterStatus === "watched" && (
-                <>
-                  <span className="text-sm font-medium ml-4">Sort:</span>
+                <div className="flex items-center gap-2 bg-muted/50 p-1 rounded-lg border border-border/50 hover:bg-muted/80 transition-colors min-w-[160px]">
+                  <ArrowUpDown className="w-4 h-4 text-primary ml-2 shrink-0" />
                   <Select
                     value={watchedOrder}
                     onValueChange={(value) =>
                       setWatchedOrder(value as "asc" | "desc")
                     }
                   >
-                    <SelectTrigger className="w-40">
+                    <SelectTrigger className="w-full min-w-[120px] border-0 bg-transparent focus:ring-0 h-8 text-sm font-medium whitespace-nowrap">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="desc">Newest</SelectItem>
-                      <SelectItem value="asc">Oldest</SelectItem>
+                      <SelectItem value="desc">Más Recientes</SelectItem>
+                      <SelectItem value="asc">Más Antiguas</SelectItem>
                     </SelectContent>
                   </Select>
-                </>
+                </div>
               )}
             </div>
           </div>

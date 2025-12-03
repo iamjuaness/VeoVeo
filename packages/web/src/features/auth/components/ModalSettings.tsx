@@ -6,7 +6,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "../../../shared/components/ui/dialog";
-import { Avatar, AvatarImage, AvatarFallback } from "../../../shared/components/ui/avatar";
+import {
+  Avatar,
+  AvatarImage,
+  AvatarFallback,
+} from "../../../shared/components/ui/avatar";
 import { Label } from "../../../shared/components/ui/label";
 import {
   Settings,
@@ -18,7 +22,12 @@ import {
 import { useState } from "react";
 import { Button } from "../../../shared/components/ui/button";
 import { Input } from "../../../shared/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../shared/components/ui/tabs";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../../../shared/components/ui/tabs";
 import type { User } from "../../../interfaces/User";
 import { Switch } from "../../../shared/components/ui/switch";
 import { predefinedAvatars } from "../../../shared/components/common/PredefinedAvatars";
@@ -73,12 +82,6 @@ export function ModalSettings({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="ghost" className="w-full justify-start gap-3 h-12">
-          <Settings className="w-5 h-5" />
-          <span className="text-[16px]">Configuración</span>
-        </Button>
-      </DialogTrigger>
       <DialogContent className="sm:max-w-2xl h-[60vh] flex flex-col overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Configuración</DialogTitle>

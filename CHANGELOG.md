@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.4.0] - 2025-12-03
+
+### Improved
+
+- **ModalLogin**: Redesigned with gradient header, input icons (Mail, Lock), and better error handling
+- **ModalRegister**: Enhanced with gradient header, password strength indicator (5 levels), and improved avatar selection UI
+
 ## [2.3.0] - 2025-12-03
 
 ### Added

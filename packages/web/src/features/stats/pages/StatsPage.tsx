@@ -39,7 +39,6 @@ import {
   getDurationRatingTrend,
   getAvgRatingByMonth,
   getViewsByMonth,
-  getRatingVsDuration,
   getYearsRanking,
   getViewsByDayOfWeek,
   getRewatchDistribution,
@@ -577,23 +576,6 @@ export default function StatsPage() {
 
   const viewsByMonth = getViewsByMonth(moviesWatchedList);
   const avgRatingByMonth = getAvgRatingByMonth(moviesWatchedList);
-
-  const scatterData = getRatingVsDuration(moviesWatchedList);
-  const genreColors = [
-    "#a3e635",
-    "#f472b6",
-    "#facc15",
-    "#60a5fa",
-    "#f87171",
-    "#34d399",
-    "#c084fc",
-    "#fb7185",
-    "#fdba74",
-    "#fda4af",
-    "#38bdf8",
-    "#818cf8",
-    "#fbbf24",
-  ];
 
   const yearsRanking = getYearsRanking(moviesWatchedList).slice(0, 10);
   const byDOW = getViewsByDayOfWeek(moviesWatchedList);

@@ -185,7 +185,9 @@ export default function MovieTracker() {
       movie.rating &&
       movie.rating !== 0 &&
       movie.type &&
-      (movie.type === "movie" || movie.type === "video")
+      (movie.type === "movie" ||
+        movie.type === "video" ||
+        movie.type === "tvMovie")
   );
 
   const paginatedMovies = filteredMoviesToDisplay.slice(
@@ -504,6 +506,28 @@ export default function MovieTracker() {
               <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent hidden sm:block">
                 VeoVeo
               </h1>
+            </div>
+
+            {/* Navigation Links */}
+            <div className="hidden md:flex items-center gap-2 absolute left-1/2 -translate-x-1/2">
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => navigate("/home")}
+                className="gap-2"
+              >
+                <LayoutGrid className="w-4 h-4" />
+                Películas
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate("/series")}
+                className="gap-2"
+              >
+                <LayoutGrid className="w-4 h-4" />
+                Series
+              </Button>
             </div>
 
             {/* Controles de navegación */}

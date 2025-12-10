@@ -4,10 +4,10 @@ import PrivateRoute from "../../shared/components/common/PrivateRoute.tsx";
 import StatsPage from "../../features/stats/pages/StatsPage.tsx";
 import MovieTracker from "../../features/movies/pages/MovieTracker";
 import MovieDetailPage from "../../features/movies/pages/MovieDetailPage.tsx";
+import SeriesTracker from "../../features/series/pages/SeriesTracker";
+import SeriesDetailPage from "../../features/series/pages/SeriesDetailPage.tsx";
 
 export default function AppRouter() {
-
-
   return (
     <BrowserRouter>
       <Routes>
@@ -21,6 +21,8 @@ export default function AppRouter() {
           }
         />
         <Route path="/movie/:id" element={<MovieDetailPage />} />
+        <Route path="/series" element={<SeriesTracker />} />
+        <Route path="/series/:id" element={<SeriesDetailPage />} />
         <Route path="*" element={<Navigate to="/home" replace />} />
       </Routes>
     </BrowserRouter>

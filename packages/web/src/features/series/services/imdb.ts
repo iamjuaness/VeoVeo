@@ -1,28 +1,13 @@
-import type { Movie } from "../../../interfaces/Movie";
-import type { MovieDetail } from "../../../interfaces/MovieDetail";
-import { getMovieInWatchLater, getMovieWatchCount } from "./movie";
+import type { Series } from "../../../interfaces/Series";
+import type { SeriesDetail } from "../../../interfaces/SeriesDetail";
+import type { Episode } from "../../../interfaces/Series";
 import { API_BASE_URL } from "../../../shared/utils/urls";
 
-// const API_URL = "https://api.themoviedb.org/3";
 const API_URL = "https://api.imdbapi.dev/";
-const MOVIES_PER_PAGE = 24;
+const SERIES_PER_PAGE = 24;
 const token = localStorage.getItem("authToken");
 
-export async function getMoviesByGenres(genre: string) {
-  const res = await fetch(`${API_URL}?genres=${genre}`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
-  const result = await res.json();
-  return result;
-}
-
-export async function getMovieDetailById(
-  id: string,
-  token?: string
-): Promise<MovieDetail> {
+export async function getSeriesDetailById(id: string): Promise<SeriesDetail> {
   const response = await fetch(`${API_URL}titles/${id}`, {
     method: "GET",
     headers: {
@@ -31,17 +16,22 @@ export async function getMovieDetailById(
   });
   const data = await response.json();
 
-  let watchCount = 0;
-  let watchLater = false;
-
-  if (token) {
-    [watchCount, watchLater] = await Promise.all([
-      getMovieWatchCount(id).then((res) => res.count),
-      getMovieInWatchLater(id).then((res) => res.inWatchLater),
-    ]);
+  // Fetch seasons separately
+  let seasons = [];
+  try {
+    const seasonsResponse = await fetch(`${API_URL}titles/${id}/seasons`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    if (seasonsResponse.ok) {
+      const seasonsData = await seasonsResponse.json();
+      seasons = seasonsData.seasons || [];
+    }
+  } catch (err) {
+    console.error("Error fetching seasons:", err);
   }
-
-  console.log(watchCount, watchLater);
 
   return {
     id: data.id,
@@ -54,6 +44,7 @@ export async function getMovieDetailById(
       height: data.primaryImage?.height || 0,
     },
     startYear: data.startYear || 0,
+    endYear: data.endYear,
     runtimeSeconds: data.runtimeSeconds || 0,
     genres: data.genres ?? [],
     rating: {
@@ -105,16 +96,33 @@ export async function getMovieDetailById(
       code: lang.code,
       name: lang.name,
     })),
-    watchCount,
-    watchLater,
+    seasons: seasons,
+    watchLater: false,
   };
 }
 
-export async function getMoviesByIds(ids: string[]): Promise<Movie[]> {
-  if (!ids.length) return [];
+export async function getSeasonEpisodes(
+  seriesId: string,
+  season: string
+): Promise<Episode[]> {
+  const response = await fetch(
+    `${API_URL}titles/${seriesId}/episodes?season=${season}`,
+    {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }
+  );
+  const data = await response.json();
+  return data.episodes ?? [];
+}
+
+export async function getSeriesByIds(ids: string[]): Promise<Series[]> {
+  if (!ids || !Array.isArray(ids) || ids.length === 0) return [];
   if (!token) return [];
 
-  const res = await fetch(`${API_BASE_URL}api/imbd/movies/batch`, {
+  const res = await fetch(`${API_BASE_URL}api/user/series/batch`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -127,29 +135,31 @@ export async function getMoviesByIds(ids: string[]): Promise<Movie[]> {
   });
 
   if (!res.ok) {
-    console.error("Error al obtener batch de películas:", res.statusText);
+    console.error("Error al obtener batch de series:", res.statusText);
     return [];
   }
 
   const data = await res.json();
-  return (data.movies ?? []).map((item: any) => ({
+  if (!data || !data.series || !Array.isArray(data.series)) {
+    return [];
+  }
+
+  return data.series.map((item: any) => ({
     id: item.id,
     type: item.type,
     title: item.primaryTitle ?? item.originalTitle ?? "",
     year: item.startYear ?? 0,
+    endYear: item.endYear,
     genres: item.genres ?? [],
     rating: item.rating?.aggregateRating ?? 0,
     description: item.plot ?? "",
     poster: item.primaryImage?.url ?? "",
     backdrop: item.primaryImage?.url ?? "",
-    watchCount: 0,
     watchLater: false,
-    duration: item.runtimeSeconds ? item.runtimeSeconds : 0,
-    watchedAt: item.watchedAt ?? [],
   }));
 }
 
-export async function searchMovies(query: string): Promise<Movie[]> {
+export async function searchSeries(query: string): Promise<Series[]> {
   if (!query.trim()) return [];
 
   const url = `${API_URL}search/titles?query=${encodeURIComponent(
@@ -161,36 +171,39 @@ export async function searchMovies(query: string): Promise<Movie[]> {
   });
 
   if (!res.ok) {
-    console.error("Error en búsqueda de películas:", res.statusText);
+    console.error("Error en búsqueda de series:", res.statusText);
     return [];
   }
 
   const data = await res.json();
 
-  // Mapeamos resultados al tipo Movie
-  return (data.titles ?? []).map((item: any) => ({
-    id: item.id,
-    type: item.type,
-    title: item.primaryTitle ?? item.originalTitle ?? "",
-    year: item.startYear ?? 0,
-    genres: item.genres ?? [],
-    rating: item.rating?.aggregateRating ?? 0,
-    description: item.plot ?? "",
-    poster: item.primaryImage?.url ?? "",
-    backdrop: item.primaryImage?.url ?? "",
-    watchCount: 0,
-    watchLater: false,
-    duration: item.runtimeSeconds ? Math.floor(item.runtimeSeconds / 60) : 0,
-  }));
+  // Filter only TV series and mini series
+  return (data.titles ?? [])
+    .filter(
+      (item: any) => item.type === "tvSeries" || item.type === "tvMiniSeries"
+    )
+    .map((item: any) => ({
+      id: item.id,
+      type: item.type,
+      title: item.primaryTitle ?? item.originalTitle ?? "",
+      year: item.startYear ?? 0,
+      endYear: item.endYear,
+      genres: item.genres ?? [],
+      rating: item.rating?.aggregateRating ?? 0,
+      description: item.plot ?? "",
+      poster: item.primaryImage?.url ?? "",
+      backdrop: item.primaryImage?.url ?? "",
+      watchLater: false,
+    }));
 }
 
-export async function fetchMoviesFromEndpoint(nextPageToken?: string): Promise<{
-  movies: Movie[];
+export async function fetchSeriesFromEndpoint(nextPageToken?: string): Promise<{
+  series: Series[];
   totalPages: number;
   totalResults: number;
   nextPageToken?: string;
 }> {
-  const url = `${API_URL}titles?types=MOVIE&types=VIDEO&limit=${MOVIES_PER_PAGE}&sortBy=SORT_BY_POPULARITY&sortOrder=ASC&countryCodes=US${
+  const url = `${API_URL}titles?types=TV_SERIES&types=TV_MINI_SERIES&limit=${SERIES_PER_PAGE}&sortBy=SORT_BY_POPULARITY&sortOrder=ASC&countryCodes=US${
     nextPageToken ? `&pageToken=${nextPageToken}` : ""
   }`;
   const res = await fetch(url, {
@@ -201,56 +214,29 @@ export async function fetchMoviesFromEndpoint(nextPageToken?: string): Promise<{
   });
 
   if (!res.ok) {
-    throw new Error(`Error al obtener películas: ${res.statusText}`);
+    throw new Error(`Error al obtener series: ${res.statusText}`);
   }
 
   const data = await res.json();
 
-  const movies: Movie[] = (data.titles ?? []).map((item: any) => ({
+  const series: Series[] = (data.titles ?? []).map((item: any) => ({
     id: item.id,
     type: item.type,
     title: item.primaryTitle ?? item.originalTitle ?? "",
     year: item.startYear ?? 0,
+    endYear: item.endYear,
     genres: item.genres ?? [],
     rating: item.rating?.aggregateRating ?? 0,
     description: item.plot ?? "",
     poster: item.primaryImage?.url ?? "",
     backdrop: item.primaryImage?.url ?? "",
-    watchCount: 0,
     watchLater: false,
-    duration: item.runtimeSeconds ? item.runtimeSeconds : 0,
   }));
 
   return {
-    movies,
-    totalPages: Math.ceil((data.totalCount ?? 0) / MOVIES_PER_PAGE),
+    series,
+    totalPages: Math.ceil((data.totalCount ?? 0) / SERIES_PER_PAGE),
     totalResults: data.totalCount ?? 0,
     nextPageToken: data.nextPageToken,
-  };
-}
-
-export async function getMovieDurationById(id: string): Promise<any> {
-  const response = await fetch(`${API_URL}titles/${id}`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
-  const data = await response.json();
-  return {
-    duration: data.runtimeSeconds,
-  };
-}
-
-export async function getMovieGenresById(id: number): Promise<any> {
-  const response = await fetch(`${API_URL}titles/${id}`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
-  const data = await response.json();
-  return {
-    genres: data.genres,
   };
 }

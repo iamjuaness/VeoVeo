@@ -2,6 +2,7 @@ import "./App.css";
 import AppRouter from "./core/router/AppRouter";
 import { AuthProvider } from "./features/auth/context/AuthContext";
 import { MoviesProvider } from "./features/movies/context/MoviesContext";
+import { SeriesProvider } from "./features/series/context/SeriesContext";
 import { ThemeProvider } from "./core/providers/ThemeContext";
 
 function App() {
@@ -10,7 +11,9 @@ function App() {
       <ThemeProvider>
         <AuthProvider>
           <MoviesProvider>
-            <AppRouter />
+            <SeriesProvider>
+              <AppRouter />
+            </SeriesProvider>
           </MoviesProvider>
         </AuthProvider>
       </ThemeProvider>

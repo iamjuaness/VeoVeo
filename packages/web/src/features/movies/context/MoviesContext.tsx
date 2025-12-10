@@ -12,7 +12,7 @@ import type { Movie } from "../../../interfaces/Movie";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { io, Socket } from "socket.io-client";
 import type { DefaultEventsMap } from "@socket.io/component-emitter";
-import { prod_url } from "../../../shared/utils/urls";
+import { API_BASE_URL } from "../../../shared/utils/urls";
 import {
   fetchMoviesFromEndpoint,
   getMoviesByIds,
@@ -70,7 +70,7 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
   const socketRef = useRef<Socket<DefaultEventsMap, DefaultEventsMap> | null>(
     null
   );
-  const ENDPOINT = prod_url;
+  const ENDPOINT = API_BASE_URL;
   const [totalPages, setTotalPages] = useState(1);
   const [totalResults, setTotalResults] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);

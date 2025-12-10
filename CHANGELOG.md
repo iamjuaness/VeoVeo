@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.5.0] - 2025-12-10
+
+### Added
+
+- **Series Completion Logic**: Implemented strict "Completed" vs "In Progress" logic. Series are now marked as completed only when all episodes are watched or manually toggled.
+- **Automatic Completion**: Series are automatically marked as "Completed" when the last episode is watched.
+- **Series Statistics**: Added a new "Series Statistics" section to the Stats page, tracking total watched series, in-progress series, and total episodes watched.
+- **Lazy Loading**: Optimized series episode loading. Episodes are now fetched only when expanding a specific season, improving performance.
+- **Toggle Series Completion Endpoint**: New backend endpoint `POST /api/user/series/completed` to manually manage series completion status.
+- **Socket Real-time Sync**: Added real-time updates for series lists. Marking a series as watched updates all devices instantly.
+
+### Improved
+
+- **Mark All as Watched**: Now correctly marks the series as "Completed" (green badge) in addition to marking all episodes.
+- **Series Filtering**: Improved logic to prevent false positives in "Watched" lists. Only fully completed series appear in the "Watched" filter.
+
 ## [2.4.0] - 2025-12-03
 
 ### Improved

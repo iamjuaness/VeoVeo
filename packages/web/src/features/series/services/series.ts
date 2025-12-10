@@ -3,12 +3,37 @@ import { API_BASE_URL } from "../../../shared/utils/urls";
 const API_URL = API_BASE_URL + "api/user";
 const token = localStorage.getItem("authToken");
 
-export async function addOrIncrementWatched(data: {
-  movieId: string;
-  duration: number;
-  watchedAt: string[];
+export async function toggleSeriesWatchLaterApi(data: { seriesId: string }) {
+  const res = await fetch(`${API_URL}/series/watch-later`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(data),
+  });
+  const result = await res.json();
+  return result;
+}
+
+export async function getUserSeriesStatus() {
+  const res = await fetch(`${API_URL}/series/status`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  const result = await res.json();
+  return result;
+}
+
+export async function toggleEpisodeWatchedApi(data: {
+  seriesId: string;
+  seasonNumber: number;
+  episodeNumber: number;
 }) {
-  const res = await fetch(`${API_URL}/movies/watched`, {
+  const res = await fetch(`${API_URL}/series/episodes/watched`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -20,8 +45,11 @@ export async function addOrIncrementWatched(data: {
   return result;
 }
 
-export async function resetWatched(data: { movieId: string }) {
-  const res = await fetch(`${API_URL}/movies/reset`, {
+export async function markAllEpisodesWatchedApi(data: {
+  seriesId: string;
+  seasons: { seasonNumber: number; episodeCount: number }[];
+}) {
+  const res = await fetch(`${API_URL}/series/mark-all-watched`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -33,8 +61,11 @@ export async function resetWatched(data: { movieId: string }) {
   return result;
 }
 
-export async function toggleWatchLaterApi(data: { movieId: string }) {
-  const res = await fetch(`${API_URL}/movies/watch-later`, {
+export async function toggleSeriesCompletedApi(data: {
+  seriesId: string;
+  isCompleted: boolean;
+}) {
+  const res = await fetch(`${API_URL}/series/completed`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -46,32 +77,8 @@ export async function toggleWatchLaterApi(data: { movieId: string }) {
   return result;
 }
 
-export async function getUserMovieStatus() {
-  const res = await fetch(`${API_URL}/movies/status`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  const result = await res.json();
-  return result;
-}
-
-export async function getMovieWatchCount(movieId: string) {
-  const res = await fetch(`${API_URL}/count/${movieId}`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  const result = await res.json();
-  return result;
-}
-
-export async function getMovieInWatchLater(movieId: string) {
-  const res = await fetch(`${API_URL}/in-watch-later/${movieId}`, {
+export async function getSeriesProgressApi(seriesId: string) {
+  const res = await fetch(`${API_URL}/series/${seriesId}/progress`, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",

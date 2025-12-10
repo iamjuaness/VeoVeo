@@ -1,5 +1,5 @@
 import { useState, useEffect, useContext } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { Button } from "../../../shared/components/ui/button";
 import {
   Card,
@@ -45,7 +45,7 @@ import { ThemeContext } from "../../../core/providers/ThemeContext";
 
 export default function SeriesDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
   const { user, setUser, logout } = useAuth();
   const {
     seriesWatchLaterList,

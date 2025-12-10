@@ -132,3 +132,41 @@ export async function fetchSeasonEpisodes(req: Request, res: Response) {
     res.status(500).json({ error: "Error interno: " + String(err) });
   }
 }
+// Helper for internal use
+export async function getSeriesSeasonsInternal(id: string) {
+  try {
+    const seasonsUrl = `${API_URL}/titles/${encodeURIComponent(id)}/seasons`;
+    const seasonsRes = await fetch(seasonsUrl, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+    });
+
+    if (seasonsRes.ok) {
+      const seasonsData = await seasonsRes.json();
+      return seasonsData.seasons || [];
+    }
+  } catch (err) {
+    console.error("Error fetching internal seasons:", err);
+  }
+  return [];
+}
+// Helper for internal use
+export async function getSeasonEpisodesInternal(id: string, season: string) {
+  try {
+    const episodesUrl = `${API_URL}/titles/${encodeURIComponent(
+      id
+    )}/episodes?season=${season}`;
+    const episodesRes = await fetch(episodesUrl, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+    });
+
+    if (episodesRes.ok) {
+      const episodesData = await episodesRes.json();
+      return episodesData.episodes || [];
+    }
+  } catch (err) {
+    console.error("Error fetching internal season episodes:", err);
+  }
+  return [];
+}

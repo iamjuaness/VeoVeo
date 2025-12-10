@@ -55,6 +55,8 @@ interface MoviesContextType {
   setFilterStatus: React.Dispatch<
     React.SetStateAction<"all" | "watched" | "watchLater">
   >;
+  lastScrollPosition: number;
+  setLastScrollPosition: React.Dispatch<React.SetStateAction<number>>;
 }
 
 const MoviesContext = createContext<MoviesContextType | undefined>(undefined);
@@ -111,6 +113,7 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
     }
   );
   const [statsLoading, setStatsLoading] = useState(false);
+  const [lastScrollPosition, setLastScrollPosition] = useState(0);
 
   // Después de cargar las lists específicas:
   const syncMoviesFlags = (
@@ -410,6 +413,8 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
         loadMoviesWatchLater: loadMoviesWatchLater,
         filterStatus,
         setFilterStatus,
+        lastScrollPosition,
+        setLastScrollPosition,
       }}
     >
       {children}

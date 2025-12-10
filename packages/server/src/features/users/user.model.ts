@@ -47,6 +47,7 @@ const userSchema = new Schema<IUser>({
           seasonNumber: { type: Number, required: true },
           episodeNumber: { type: Number, required: true },
           watchedAt: { type: Date, required: true },
+          count: { type: Number, default: 1 },
         },
       ],
       isCompleted: { type: Boolean, default: false },

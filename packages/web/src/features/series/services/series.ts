@@ -32,6 +32,7 @@ export async function toggleEpisodeWatchedApi(data: {
   seriesId: string;
   seasonNumber: number;
   episodeNumber: number;
+  force?: boolean;
 }) {
   const res = await fetch(`${API_URL}/series/episodes/watched`, {
     method: "POST",
@@ -45,9 +46,28 @@ export async function toggleEpisodeWatchedApi(data: {
   return result;
 }
 
+export async function markSeasonWatchedApi(data: {
+  seriesId: string;
+  seasonNumber: number;
+  episodes?: { episodeNumber: number }[];
+  increment?: boolean;
+}) {
+  const res = await fetch(`${API_URL}/series/season/watched`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(data),
+  });
+  const result = await res.json();
+  return result;
+}
+
 export async function markAllEpisodesWatchedApi(data: {
   seriesId: string;
-  seasons: { seasonNumber: number; episodeCount: number }[];
+  seasons?: { seasonNumber: number; episodeCount: number }[];
+  increment?: boolean;
 }) {
   const res = await fetch(`${API_URL}/series/mark-all-watched`, {
     method: "POST",
@@ -84,6 +104,18 @@ export async function getSeriesProgressApi(seriesId: string) {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
+  });
+  const result = await res.json();
+  return result;
+}
+export async function resetSeriesWatchedApi(data: { seriesId: string }) {
+  const res = await fetch(`${API_URL}/series/reset`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(data),
   });
   const result = await res.json();
   return result;

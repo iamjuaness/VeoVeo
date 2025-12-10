@@ -1,6 +1,10 @@
 import { Request, Response } from "express";
 import User from "../users/user.model.js";
 import { io } from "../../app.js";
+import {
+  getSeriesSeasonsInternal,
+  getSeasonEpisodesInternal,
+} from "./imdb-series.controller.js";
 
 // POST /api/user/series/watch-later
 // Body: { seriesId: string }
@@ -38,10 +42,10 @@ export async function getUserSeriesStatus(req: Request, res: Response) {
 }
 
 // POST /api/user/series/episodes/watched
-// Body: { seriesId: string, seasonNumber: number, episodeNumber: number }
+// Body: { seriesId: string, seasonNumber: number, episodeNumber: number, force: boolean }
 export async function toggleEpisodeWatched(req: Request, res: Response) {
   const { id } = req;
-  const { seriesId, seasonNumber, episodeNumber } = req.body;
+  const { seriesId, seasonNumber, episodeNumber, force } = req.body; // force = true means ADD even if exists (increment)
 
   const user = await User.findById(id);
   if (!user) return res.status(404).json({ message: "User not found" });
@@ -49,24 +53,33 @@ export async function toggleEpisodeWatched(req: Request, res: Response) {
   // Find or create series entry
   let seriesEntry = user.seriesWatched.find((s) => s.seriesId === seriesId);
   if (!seriesEntry) {
+    // @ts-ignore
     seriesEntry = { seriesId, episodes: [] };
     user.seriesWatched.push(seriesEntry);
   }
 
   // Check if episode already watched
-  const episodeIndex = seriesEntry.episodes.findIndex(
+  const existingEpValue = seriesEntry.episodes.find(
     (e) => e.seasonNumber === seasonNumber && e.episodeNumber === episodeNumber
   );
 
-  if (episodeIndex >= 0) {
-    // Remove episode (unmark as watched)
-    seriesEntry.episodes.splice(episodeIndex, 1);
-
-    // Clean up: Remove series entry if no episodes left
-    if (seriesEntry.episodes.length === 0) {
-      user.seriesWatched = user.seriesWatched.filter(
-        (s) => s.seriesId !== seriesId
-      );
+  if (existingEpValue) {
+    if (force) {
+      // Increment count
+      // @ts-ignore
+      existingEpValue.count = (existingEpValue.count || 1) + 1;
+      existingEpValue.watchedAt = new Date();
+    } else {
+      // Default toggle behavior: If exists, remove it (unless count is high, but standard toggle usually means unwatch)
+      // For now, if user clicks standard check, we remove it.
+      // Or should we decrement? User asked "cuantas veces".
+      // Standard check usually means "I haven't seen it".
+      // But maybe we add logic: If count > 1, decrement?
+      // Let's stick to standard behavior: Toggle = Remove if exists, unless we add specific "Increment" UI.
+      // Actually, if simply toggling off, remove entirely.
+      // Rewatch logic will use 'force' or explicit increment.
+      const idx = seriesEntry.episodes.indexOf(existingEpValue);
+      seriesEntry.episodes.splice(idx, 1);
     }
   } else {
     // Add episode (mark as watched)
@@ -74,7 +87,16 @@ export async function toggleEpisodeWatched(req: Request, res: Response) {
       seasonNumber,
       episodeNumber,
       watchedAt: new Date(),
+      // @ts-ignore
+      count: 1,
     });
+  }
+
+  // Clean up if empty
+  if (seriesEntry.episodes.length === 0) {
+    user.seriesWatched = user.seriesWatched.filter(
+      (s) => s.seriesId !== seriesId
+    );
   }
 
   await user.save();
@@ -89,11 +111,11 @@ export async function toggleEpisodeWatched(req: Request, res: Response) {
   return res.json({ seriesWatched: user.seriesWatched });
 }
 
-// POST /api/user/series/mark-all-watched
-// Body: { seriesId: string, seasons: { seasonNumber: number, episodeCount: number }[] }
-export async function markAllEpisodesWatched(req: Request, res: Response) {
+// POST /api/user/series/season/watched
+// Body: { seriesId: string, seasonNumber: number, episodes?: { episodeNumber: number }[], increment?: boolean }
+export async function markSeasonWatched(req: Request, res: Response) {
   const { id } = req;
-  const { seriesId, seasons } = req.body;
+  const { seriesId, seasonNumber, episodes, increment } = req.body;
 
   const user = await User.findById(id);
   if (!user) return res.status(404).json({ message: "User not found" });
@@ -101,30 +123,204 @@ export async function markAllEpisodesWatched(req: Request, res: Response) {
   // Find or create series entry
   let seriesEntry = user.seriesWatched.find((s) => s.seriesId === seriesId);
   if (!seriesEntry) {
+    // @ts-ignore
     seriesEntry = { seriesId, episodes: [] };
     user.seriesWatched.push(seriesEntry);
   }
 
-  // Mark all episodes as watched
   const now = new Date();
-  seasons.forEach((season: { seasonNumber: number; episodeCount: number }) => {
-    for (let ep = 1; ep <= season.episodeCount; ep++) {
-      const exists = seriesEntry!.episodes.some(
-        (e) => e.seasonNumber === season.seasonNumber && e.episodeNumber === ep
+  let madeChanges = false;
+  let targetEpisodes: { episodeNumber: number }[] = [];
+
+  // 1. Determine Episode List (Client provided OR Server Fetch)
+  if (Array.isArray(episodes) && episodes.length > 0) {
+    targetEpisodes = episodes;
+  } else {
+    // Server-side fetch (Auth source)
+    try {
+      const fetchedEps = await getSeasonEpisodesInternal(
+        seriesId,
+        String(seasonNumber)
       );
-      if (!exists) {
-        seriesEntry!.episodes.push({
-          seasonNumber: season.seasonNumber,
-          episodeNumber: ep,
-          watchedAt: now,
-        });
-      }
+      targetEpisodes = fetchedEps.map((e: any) => ({
+        episodeNumber: Number(e.episodeNumber),
+      }));
+      // Filter valid
+      targetEpisodes = targetEpisodes.filter(
+        (e) => !isNaN(e.episodeNumber) && e.episodeNumber > 0
+      );
+    } catch (err) {
+      console.error(
+        `Failed to fetch internal episodes for season ${seasonNumber}`,
+        err
+      );
+      return res
+        .status(500)
+        .json({ message: "Error fetching season episodes" });
+    }
+  }
+
+  // 2. Process Episodes
+  targetEpisodes.forEach((epInput) => {
+    const epNum = epInput.episodeNumber;
+    const existingEp = seriesEntry!.episodes.find(
+      (e) => e.seasonNumber === seasonNumber && e.episodeNumber === epNum
+    );
+
+    if (!existingEp) {
+      // Mark as watched (New)
+      seriesEntry!.episodes.push({
+        seasonNumber,
+        episodeNumber: epNum,
+        watchedAt: now,
+        // @ts-ignore
+        count: 1,
+      });
+      madeChanges = true;
+    } else if (increment) {
+      // Rewatch Mode: Increment count
+      // @ts-ignore
+      existingEp.count = (existingEp.count || 1) + 1;
+      existingEp.watchedAt = now;
+      madeChanges = true;
     }
   });
 
-  seriesEntry.isCompleted = true;
+  if (madeChanges) {
+    user.markModified("seriesWatched");
+    await user.save();
+    io.to(String(id)).emit("series-season-marked", {
+      seriesId,
+      seriesWatched: user.seriesWatched,
+    });
+  }
 
-  await user.save();
+  return res.json({ seriesWatched: user.seriesWatched });
+}
+
+// POST /api/user/series/mark-all-watched
+// Body: { seriesId: string, increment?: boolean}
+export async function markAllEpisodesWatched(req: Request, res: Response) {
+  const { id } = req;
+  const { seriesId, increment } = req.body;
+
+  const user = await User.findById(id);
+  if (!user) return res.status(404).json({ message: "User not found" });
+
+  console.log(`MarkAllWatched: Starting Strict Deep Fetch for ${seriesId}...`);
+
+  // 1. Fetch Authoritative Seasons List
+  let targetSeasons: { seasonNumber: number; episodeCount: number }[] = [];
+  try {
+    const sourceSeasons = await getSeriesSeasonsInternal(seriesId);
+    // Map to basic number structure
+    const mappedSeasons = sourceSeasons
+      .map((s: any) => ({
+        seasonNumber: Number(s.season) || 0,
+      }))
+      .filter((s: { seasonNumber: number }) => s.seasonNumber > 0);
+
+    // 2. Fetch Episodes count for EACH season
+    // Sequential fetching to avoid rate limits
+    for (const season of mappedSeasons) {
+      try {
+        const eps = await getSeasonEpisodesInternal(
+          seriesId,
+          String(season.seasonNumber)
+        );
+
+        // Filter and Deduplicate: Use Set to ensure unique episode numbers
+        const uniqueEpisodes = new Set();
+
+        if (Array.isArray(eps)) {
+          eps.forEach((e: any) => {
+            const epNum = Number(e.episodeNumber);
+            // Accept only valid positive integers
+            if (!isNaN(epNum) && epNum > 0) {
+              uniqueEpisodes.add(epNum);
+            }
+          });
+        }
+
+        const validCount = uniqueEpisodes.size;
+        console.log(
+          `Season ${season.seasonNumber}: Fetched ${eps.length} raw -> ${validCount} valid unique episodes.`
+        );
+
+        targetSeasons.push({
+          seasonNumber: season.seasonNumber,
+          episodeCount: validCount,
+        });
+      } catch (e) {
+        console.error(
+          `Failed to fetch episodes for season ${season.seasonNumber}`,
+          e
+        );
+      }
+    }
+  } catch (err) {
+    console.error("Error fetching internal seasons source:", err);
+    return res
+      .status(500)
+      .json({ message: "Error fetching series data from source" });
+  }
+
+  // Find or create series entry
+  let seriesEntry = user.seriesWatched.find((s) => s.seriesId === seriesId);
+  if (!seriesEntry) {
+    // @ts-ignore
+    seriesEntry = { seriesId, episodes: [], isCompleted: true };
+    user.seriesWatched.push(seriesEntry);
+  } else {
+    // Ensure completed flag is set
+    (seriesEntry as any).isCompleted = true;
+  }
+
+  const now = new Date();
+
+  // 4. Merge Strategy (Atomic Episode List UPDATE)
+  if (Array.isArray(targetSeasons)) {
+    targetSeasons.forEach(
+      (season: { seasonNumber: number; episodeCount: number }) => {
+        if (season.episodeCount <= 0) return;
+
+        for (let ep = 1; ep <= season.episodeCount; ep++) {
+          const existingEp = seriesEntry!.episodes.find(
+            (e) =>
+              e.seasonNumber === season.seasonNumber && e.episodeNumber === ep
+          );
+
+          if (!existingEp) {
+            // Add new
+            seriesEntry!.episodes.push({
+              seasonNumber: season.seasonNumber,
+              episodeNumber: ep,
+              watchedAt: now,
+              // @ts-ignore
+              count: 1,
+            });
+          } else if (increment) {
+            // Increment (Rewatch)
+            // @ts-ignore
+            existingEp.count = (existingEp.count || 1) + 1;
+            existingEp.watchedAt = now;
+          }
+        }
+      }
+    );
+  }
+
+  console.log(
+    `MarkAllWatched: Atomic Merge Save. Total Episodes: ${seriesEntry.episodes.length}`
+  );
+
+  user.markModified("seriesWatched");
+  try {
+    await user.save();
+  } catch (error) {
+    console.error("Error saving user seriesWatched:", error);
+    return res.status(500).json({ message: "Error saving progress" });
+  }
 
   io.to(String(id)).emit("series-marked-watched", {
     seriesId,
@@ -195,6 +391,36 @@ export async function toggleSeriesCompleted(req: Request, res: Response) {
   io.to(String(id)).emit("series-completed-toggled", {
     seriesId,
     isCompleted,
+    seriesWatched: user.seriesWatched,
+  });
+
+  return res.json({ seriesWatched: user.seriesWatched });
+}
+// POST /api/user/series/reset
+// Body: { seriesId: string }
+export async function resetSeriesWatched(req: Request, res: Response) {
+  const { id } = req;
+  const { seriesId } = req.body;
+
+  const user = await User.findById(id);
+  if (!user) return res.status(404).json({ message: "User not found" });
+
+  // Remove series entry completely
+  user.seriesWatched = user.seriesWatched.filter(
+    (s) => s.seriesId !== seriesId
+  );
+
+  await user.save();
+
+  io.to(String(id)).emit("series-marked-watched", {
+    seriesId, // Send ID so client knows to remove it
+    seriesWatched: user.seriesWatched,
+  });
+
+  // Also emit completed toggled false just in case
+  io.to(String(id)).emit("series-completed-toggled", {
+    seriesId,
+    isCompleted: false,
     seriesWatched: user.seriesWatched,
   });
 

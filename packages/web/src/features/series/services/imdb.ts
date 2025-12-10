@@ -103,19 +103,28 @@ export async function getSeriesDetailById(id: string): Promise<SeriesDetail> {
 
 export async function getSeasonEpisodes(
   seriesId: string,
-  season: string
-): Promise<Episode[]> {
-  const response = await fetch(
-    `${API_URL}titles/${seriesId}/episodes?season=${season}`,
-    {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    }
-  );
+  season: string,
+  pageToken?: string
+): Promise<{
+  episodes: Episode[];
+  totalCount: number;
+  nextPageToken?: string;
+}> {
+  const url = `${API_URL}titles/${seriesId}/episodes?season=${season}${
+    pageToken ? `&pageToken=${pageToken}` : ""
+  }`;
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
   const data = await response.json();
-  return data.episodes ?? [];
+  return {
+    episodes: data.episodes ?? [],
+    totalCount: data.totalCount ?? 0,
+    nextPageToken: data.nextPageToken,
+  };
 }
 
 export async function getSeriesByIds(ids: string[]): Promise<Series[]> {

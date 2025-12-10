@@ -17,6 +17,8 @@ import {
   markAllEpisodesWatched,
   getSeriesProgress,
   toggleSeriesCompleted,
+  resetSeriesWatched,
+  markSeasonWatched,
 } from "../series/series.controller.js";
 import {
   fetchSeriesBatchRawController,
@@ -41,7 +43,9 @@ router.post("/series/watch-later", toggleSeriesWatchLater);
 router.get("/series/status", getUserSeriesStatus);
 router.post("/series/completed", toggleSeriesCompleted);
 router.post("/series/episodes/watched", toggleEpisodeWatched);
+router.post("/series/season/watched", markSeasonWatched);
 router.post("/series/mark-all-watched", markAllEpisodesWatched);
+router.post("/series/reset", resetSeriesWatched);
 router.get("/series/:id/progress", getSeriesProgress);
 
 // Series IMDB proxy routes

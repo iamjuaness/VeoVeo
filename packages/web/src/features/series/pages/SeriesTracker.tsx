@@ -46,6 +46,8 @@ export default function SeriesTracker() {
     searchLoading,
     filterStatus,
     setFilterStatus,
+    lastScrollPosition,
+    setLastScrollPosition,
   } = useSeries();
 
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -57,6 +59,24 @@ export default function SeriesTracker() {
   const [showScrollSearch, setShowScrollSearch] = useState(false);
   const [showFloatingSearch, setShowFloatingSearch] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
+  // Prevent Page Reset on Mount (Preserve Context State)
+  const isMountedRef = useRef(false);
+
+  // Restore Scroll Position on Mount
+  useEffect(() => {
+    if (lastScrollPosition > 0) {
+      setTimeout(() => {
+        window.scrollTo({ top: lastScrollPosition, behavior: "auto" });
+      }, 100);
+    }
+  }, []);
+
+  // Save Scroll Position on Unmount
+  useEffect(() => {
+    return () => {
+      setLastScrollPosition(window.scrollY);
+    };
+  }, []);
 
   // Featured series for slider (top rated)
   const featuredSeries = useMemo(() => {
@@ -147,7 +167,11 @@ export default function SeriesTracker() {
   }, []);
 
   useEffect(() => {
-    setCurrentPage(1);
+    if (isMountedRef.current) {
+      setCurrentPage(1);
+    } else {
+      isMountedRef.current = true;
+    }
   }, [filterStatus, searchTerm]);
 
   useEffect(() => {
@@ -399,7 +423,7 @@ export default function SeriesTracker() {
           {user && (
             <Stats
               total={totalResults}
-              watched={0}
+              watched={seriesWatchedList.length}
               watchLater={seriesWatchLaterList.length}
               loading={statsLoading}
             />

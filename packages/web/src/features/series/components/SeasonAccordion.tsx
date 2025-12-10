@@ -1,5 +1,12 @@
 import { useState, useEffect } from "react";
-import { ChevronDown, ChevronUp, Calendar, Clock, Star } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Calendar,
+  Clock,
+  Star,
+  Plus,
+} from "lucide-react";
 import { Button } from "../../../shared/components/ui/button";
 import { Card } from "../../../shared/components/ui/card";
 import { Badge } from "../../../shared/components/ui/badge";
@@ -10,6 +17,7 @@ import { getSeasonEpisodes } from "../services/imdb";
 import {
   toggleEpisodeWatchedApi,
   getSeriesProgressApi,
+  markSeasonWatchedApi,
 } from "../services/series";
 import { useAuth } from "../../auth/hooks/useAuth";
 
@@ -18,12 +26,14 @@ interface Props {
   season: Season;
   seasonNumber: number;
   onProgressChange?: () => void;
+  initialWatchedEpisodes?: WatchedEpisode[];
 }
 
 interface WatchedEpisode {
   seasonNumber: number;
   episodeNumber: number;
   watchedAt: Date;
+  count?: number;
 }
 
 export function SeasonAccordion({
@@ -31,48 +41,93 @@ export function SeasonAccordion({
   season,
   seasonNumber,
   onProgressChange,
+  initialWatchedEpisodes,
 }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [loading, setLoading] = useState(false);
-  const [watchedEpisodes, setWatchedEpisodes] = useState<WatchedEpisode[]>([]);
+  // Initialize with passed prop, fallback to empty
+  const [watchedEpisodes, setWatchedEpisodes] = useState<WatchedEpisode[]>(
+    initialWatchedEpisodes || []
+  );
   const { user } = useAuth();
+
+  /* State for pagination */
+  const [nextPageToken, setNextPageToken] = useState<string | undefined>(
+    undefined
+  );
+  // Initialize with metadata count, updated by API fetch
+  const [totalEpisodesCount, setTotalEpisodesCount] = useState<number>(
+    season.episodeCount || 0
+  );
 
   useEffect(() => {
     if (isOpen && episodes.length === 0) {
       setLoading(true);
       getSeasonEpisodes(seriesId, season.season)
-        .then((eps) => setEpisodes(eps))
+        .then((data) => {
+          // @ts-ignore - Handle potential old return type while transitioning or strict metadata return
+          if (data.episodes) {
+            // New Return Type
+            setEpisodes(data.episodes);
+            setTotalEpisodesCount(data.totalCount);
+            setNextPageToken(data.nextPageToken);
+          } else {
+            // Fallback (should not happen with updated service)
+            // @ts-ignore
+            setEpisodes(data);
+          }
+        })
         .catch((err) => console.error("Error loading episodes:", err))
         .finally(() => setLoading(false));
     }
   }, [isOpen, seriesId, season.season]);
 
-  useEffect(() => {
-    if (!user || !seriesId || !isOpen) return;
-
-    getSeriesProgressApi(seriesId)
+  const loadMoreEpisodes = () => {
+    if (!nextPageToken) return;
+    setLoading(true);
+    getSeasonEpisodes(seriesId, season.season, nextPageToken)
       .then((data) => {
-        setWatchedEpisodes(data.episodes || []);
+        setEpisodes((prev) => [...prev, ...data.episodes]);
+        setNextPageToken(data.nextPageToken);
+        // Don't overwrite totalCount on appends usually, safe to keep or update
       })
-      .catch((err) => console.error("Error loading progress:", err));
-  }, [user, seriesId, isOpen]);
+      .catch((err) => console.error("Error loading more episodes:", err))
+      .finally(() => setLoading(false));
+  };
 
-  const isEpisodeWatched = (episodeNumber: number) => {
-    return watchedEpisodes.some(
+  // Sync with prop updates if they change
+  useEffect(() => {
+    if (initialWatchedEpisodes) {
+      setWatchedEpisodes(initialWatchedEpisodes);
+    }
+  }, [initialWatchedEpisodes]);
+
+  const getWatchedEpisodeData = (episodeNumber: number) => {
+    return watchedEpisodes.find(
       (ep) =>
         ep.seasonNumber === seasonNumber && ep.episodeNumber === episodeNumber
     );
   };
 
-  const toggleEpisodeWatched = async (episodeNumber: number) => {
+  const toggleEpisodeWatched = async (episodeNumber: number, force = false) => {
     if (!user || !seriesId) return;
 
-    const isCurrentlyWatched = isEpisodeWatched(episodeNumber);
+    const existingEp = getWatchedEpisodeData(episodeNumber);
+    const isCurrentlyWatched = !!existingEp;
 
-    // Optimistic update - update UI immediately
-    if (isCurrentlyWatched) {
-      // Remove from watched
+    // Optimistic update
+    if (force) {
+      // Increment
+      setWatchedEpisodes((prev) =>
+        prev.map((ep) =>
+          ep.seasonNumber === seasonNumber && ep.episodeNumber === episodeNumber
+            ? { ...ep, count: (ep.count || 1) + 1, watchedAt: new Date() }
+            : ep
+        )
+      );
+    } else if (isCurrentlyWatched) {
+      // Remove
       setWatchedEpisodes((prev) =>
         prev.filter(
           (ep) =>
@@ -83,32 +138,93 @@ export function SeasonAccordion({
         )
       );
     } else {
-      // Add to watched
+      // Add
       setWatchedEpisodes((prev) => [
         ...prev,
         {
           seasonNumber,
           episodeNumber,
           watchedAt: new Date(),
+          count: 1,
         },
       ]);
     }
 
     try {
-      // Call API - trust optimistic update, don't overwrite state
       await toggleEpisodeWatchedApi({
         seriesId,
         seasonNumber,
         episodeNumber,
+        force,
       });
 
-      // Notify parent to check for completion
       if (onProgressChange) {
         onProgressChange();
       }
     } catch (err) {
       console.error("Error toggling episode:", err);
-      // Revert on error only - refetch from server
+      // Revert/Refetch
+      getSeriesProgressApi(seriesId)
+        .then((data) => setWatchedEpisodes(data.episodes || []))
+        .catch(() => {});
+    }
+  };
+
+  const markEntireSeasonWatched = async () => {
+    if (!user || !seriesId) return; // Removed episodes.length check (server filling support)
+
+    // Detect if this is a "Re-watch" (Incremental) action
+    const isRewatch = isSeasonFullyWatched;
+    const now = new Date();
+
+    // Optimistic Update
+    // If not loaded all, we only update what we have.
+    // Backend will handle the rest (DB Filling).
+    if (episodes.length > 0) {
+      setWatchedEpisodes((prev) => {
+        const next = [...prev];
+        episodes.forEach((ep) => {
+          const existingIndex = next.findIndex(
+            (w) =>
+              w.seasonNumber === seasonNumber &&
+              w.episodeNumber === ep.episodeNumber
+          );
+          if (existingIndex > -1) {
+            if (isRewatch) {
+              // Increment
+              next[existingIndex] = {
+                ...next[existingIndex],
+                count: (next[existingIndex].count || 1) + 1,
+                watchedAt: now,
+              };
+            }
+          } else {
+            // Add
+            next.push({
+              seasonNumber,
+              episodeNumber: ep.episodeNumber,
+              watchedAt: now,
+              count: 1,
+            });
+          }
+        });
+        return next;
+      });
+    }
+
+    try {
+      // Send EMPTY episodes list to trigger Server-Side Filling (Authoritative Fetch)
+      // Pass 'increment' flag for re-watch logic
+      await markSeasonWatchedApi({
+        seriesId,
+        seasonNumber,
+        episodes: [],
+        increment: isRewatch,
+      });
+
+      if (onProgressChange) onProgressChange();
+    } catch (err) {
+      console.error("Error marking season:", err);
       getSeriesProgressApi(seriesId)
         .then((data) => setWatchedEpisodes(data.episodes || []))
         .catch(() => {});
@@ -118,8 +234,15 @@ export function SeasonAccordion({
   const watchedCount = watchedEpisodes.filter(
     (ep) => ep.seasonNumber === seasonNumber
   ).length;
-  const totalCount = season.episodeCount || episodes.length;
+
+  // Use the API total count if available, otherwise fallback
+  const totalCount =
+    totalEpisodesCount > 0
+      ? totalEpisodesCount
+      : season.episodeCount || episodes.length || 0;
+
   const progress = totalCount > 0 ? (watchedCount / totalCount) * 100 : 0;
+  const isSeasonFullyWatched = totalCount > 0 && watchedCount >= totalCount;
 
   const formatDate = (date: { year: number; month: number; day: number }) => {
     if (!date) return "N/A";
@@ -141,7 +264,7 @@ export function SeasonAccordion({
         <div className="flex items-center gap-3">
           <span className="text-lg font-bold">Temporada {seasonNumber}</span>
           <Badge variant="secondary" className="text-xs">
-            {season.episodeCount} episodios
+            {totalCount} episodios
           </Badge>
           {user && watchedCount > 0 && (
             <Badge variant="default" className="text-xs bg-green-600">
@@ -158,19 +281,38 @@ export function SeasonAccordion({
 
       {isOpen && (
         <div className="border-t bg-muted/20">
-          {/* Progress Bar */}
           {user && totalCount > 0 && (
-            <div className="p-4 bg-muted/10">
+            <div className="p-4 bg-muted/10 space-y-3">
               <div className="flex items-center gap-3">
                 <Progress value={progress} className="flex-1" />
                 <span className="text-xs text-muted-foreground font-medium">
                   {Math.round(progress)}%
                 </span>
               </div>
+              {!isSeasonFullyWatched && episodes.length > 0 && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full text-xs h-8 border-primary/20 hover:bg-primary/10 text-primary"
+                  onClick={markEntireSeasonWatched}
+                >
+                  Marcar toda la temporada como vista
+                </Button>
+              )}
+              {isSeasonFullyWatched && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full text-xs h-8 border-primary/20 hover:bg-primary/10 text-primary mt-2"
+                  onClick={markEntireSeasonWatched}
+                >
+                  Ver toda la temporada de nuevo (+1)
+                </Button>
+              )}
             </div>
           )}
 
-          {loading ? (
+          {episodes.length === 0 && loading ? (
             <div className="p-8 text-center text-muted-foreground">
               Cargando episodios...
             </div>
@@ -181,25 +323,50 @@ export function SeasonAccordion({
           ) : (
             <div className="divide-y">
               {episodes.map((episode) => {
-                const watched = isEpisodeWatched(episode.episodeNumber);
+                const watchedData = getWatchedEpisodeData(
+                  episode.episodeNumber
+                );
+                const isWatched = !!watchedData;
+                const count = watchedData?.count || (isWatched ? 1 : 0);
+
                 return (
                   <Card
                     key={episode.id}
                     className={`border-0 rounded-none bg-transparent hover:bg-muted/30 transition-colors ${
-                      watched ? "opacity-70" : ""
+                      isWatched ? "opacity-90" : ""
                     }`}
                   >
                     <div className="p-4 flex gap-4">
-                      {/* Checkbox */}
                       {user && (
-                        <div className="flex items-start pt-1">
+                        <div className="flex flex-col items-center gap-2 pt-1">
                           <Checkbox
-                            checked={watched}
+                            checked={isWatched}
                             onCheckedChange={() =>
                               toggleEpisodeWatched(episode.episodeNumber)
                             }
                             className="mt-1"
                           />
+                          {isWatched && (
+                            <div className="flex flex-col items-center">
+                              <span className="text-[10px] text-muted-foreground font-mono">
+                                x{count}
+                              </span>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-5 w-5 rounded-full hover:bg-muted"
+                                onClick={() =>
+                                  toggleEpisodeWatched(
+                                    episode.episodeNumber,
+                                    true
+                                  )
+                                }
+                                title="Ver otra vez (+1)"
+                              >
+                                <Plus className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       )}
 
@@ -220,7 +387,9 @@ export function SeasonAccordion({
                           <div>
                             <h4
                               className={`font-semibold text-sm ${
-                                watched ? "line-through" : ""
+                                isWatched
+                                  ? "line-through text-muted-foreground"
+                                  : ""
                               }`}
                             >
                               {episode.episodeNumber}. {episode.title}
@@ -254,12 +423,12 @@ export function SeasonAccordion({
                               {formatRuntime(episode.runtimeSeconds)}
                             </span>
                           )}
-                          {watched && (
+                          {isWatched && (
                             <Badge
                               variant="default"
                               className="bg-green-600 text-xs"
                             >
-                              Visto
+                              Visto {count > 1 ? `(${count})` : ""}
                             </Badge>
                           )}
                         </div>
@@ -268,6 +437,20 @@ export function SeasonAccordion({
                   </Card>
                 );
               })}
+
+              {/* Load More Button */}
+              {nextPageToken && (
+                <div className="p-4 text-center">
+                  <Button
+                    variant="outline"
+                    onClick={loadMoreEpisodes}
+                    disabled={loading}
+                    className="w-full"
+                  >
+                    {loading ? "Cargando..." : "Cargar más episodios"}
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </div>

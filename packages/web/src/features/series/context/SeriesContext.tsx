@@ -55,6 +55,8 @@ interface SeriesContextType {
   >;
   seriesInProgressList: Series[];
   setSeriesInProgressList: React.Dispatch<React.SetStateAction<Series[]>>;
+  lastScrollPosition: number;
+  setLastScrollPosition: React.Dispatch<React.SetStateAction<number>>;
 }
 
 const SeriesContext = createContext<SeriesContextType | undefined>(undefined);
@@ -103,6 +105,7 @@ export function SeriesProvider({ children }: SeriesProviderProps) {
   );
   const [statsLoading, setStatsLoading] = useState(false);
   const [seriesWatchedList, setSeriesWatchedList] = useState<Series[]>([]);
+  const [lastScrollPosition, setLastScrollPosition] = useState(0);
 
   // Sync series flags with watch later list
   const syncSeriesFlags = (baseSeries: Series[], watchLater: Series[]) => {
@@ -234,26 +237,30 @@ export function SeriesProvider({ children }: SeriesProviderProps) {
     try {
       const status = await getUserSeriesStatus();
 
-      // Get all series IDs that have any activity
-      const allActiveSeriesIds =
-        status.seriesWatched?.map((s: any) => s.seriesId) || [];
+      const allEntries = status.seriesWatched || [];
+      const allIds = allEntries.map((s: any) => s.seriesId);
 
-      // Load series details for all active series
-      const allActiveSeries = await getSeriesByIds(allActiveSeriesIds);
+      // Load full series details
+      const allDetails = await getSeriesByIds(allIds);
 
-      // Distribute into lists
-      // Current Logic: Since we don't know total episodes count easily,
-      // we classify everything with activity as "In Progress" to avoid false "Watched" badges.
-      // TODO: Implement "Completed" check by comparing watched count with total episodes from detail
+      // Separate based on isCompleted status from backend
+      const watched = allDetails.filter((d) =>
+        allEntries.some(
+          (e: any) => e.seriesId === d.id && e.isCompleted === true
+        )
+      );
 
-      setSeriesInProgressList(allActiveSeries);
+      const inProgress = allDetails.filter((d) =>
+        allEntries.some(
+          (e: any) =>
+            e.seriesId === d.id && (!e.isCompleted || e.isCompleted === false)
+        )
+      );
 
-      // Temporarily set Watched list to empty to satisfy user request:
-      // "si he visto un solo capitulo marca la serie como vista" -> Now it won't.
-      // Only "In Progress" will show.
-      setSeriesWatchedList([]);
+      setSeriesWatchedList(watched);
+      setSeriesInProgressList(inProgress);
 
-      return allActiveSeries;
+      return watched;
     } catch (err) {
       console.error("Error cargando series vistas:", err);
       return [];
@@ -338,6 +345,8 @@ export function SeriesProvider({ children }: SeriesProviderProps) {
         setFilterStatus,
         seriesInProgressList,
         setSeriesInProgressList,
+        lastScrollPosition,
+        setLastScrollPosition,
       }}
     >
       {children}

@@ -5,6 +5,7 @@ import React, {
   useEffect,
   type ReactNode,
   useRef,
+  useMemo,
 } from "react";
 import { getUserMovieStatus } from "../services/movie";
 
@@ -114,6 +115,7 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
   );
   const [statsLoading, setStatsLoading] = useState(false);
   const [lastScrollPosition, setLastScrollPosition] = useState(0);
+  const isFetchingRef = useRef(false);
 
   // Después de cargar las lists específicas:
   const syncMoviesFlags = (
@@ -175,18 +177,6 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
     );
   }, [moviesWatchLaterList]);
 
-  useEffect(() => {
-    const syncedMovies = syncMoviesFlags(
-      movies,
-      moviesWatchedList,
-      moviesWatchLaterList
-    );
-    // Solo actualiza si realmente hay cambios
-    if (JSON.stringify(syncedMovies) !== JSON.stringify(movies)) {
-      setMovies(syncedMovies);
-    }
-  }, [movies, moviesWatchedList, moviesWatchLaterList]);
-
   const performSearch = async (query: string) => {
     if (!query.trim()) {
       setSearchResults([]);
@@ -230,19 +220,21 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
   };
 
   useEffect(() => {
-    if (filterStatus !== "all") return;
-    if (!hasMore) return; // Detener si no hay más páginas
+    if (filterStatus !== "all" || !hasMore || isFetchingRef.current) return;
 
+    isFetchingRef.current = true;
     setLoading(true);
 
     fetchMoviesFromEndpoint(nextPageToken)
       .then((movieData) => {
-        // Sin mezcla con estado de usuario
+        const synced = syncMoviesFlags(
+          movieData.movies,
+          moviesWatchedList,
+          moviesWatchLaterList
+        );
         setMovies((prev) => {
           const idsExistentes = new Set(prev.map((m) => m.id));
-          const nuevos = movieData.movies.filter(
-            (m) => !idsExistentes.has(m.id)
-          );
+          const nuevos = synced.filter((m) => !idsExistentes.has(m.id));
           return [...prev, ...nuevos];
         });
 
@@ -251,8 +243,16 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
         setTotalPages(movieData.totalPages);
         setTotalResults(movieData.totalResults);
       })
-      .catch((err) => console.error(err))
-      .finally(() => setLoading(false));
+      .catch((err) => {
+        console.error("Error fetching movies:", err);
+        if (err?.message?.includes("429")) {
+          setHasMore(false);
+        }
+      })
+      .finally(() => {
+        setLoading(false);
+        isFetchingRef.current = false;
+      });
   }, [currentPage]);
 
   const loadMoviesWatched = async (): Promise<Movie[]> => {
@@ -377,46 +377,68 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
     };
   }, [ENDPOINT, user]);
 
+  const contextValue = useMemo(
+    () => ({
+      movies,
+      setMovies,
+      currentPage,
+      setCurrentPage,
+      totalPages,
+      setTotalPages,
+      setTotalResults,
+      totalResults,
+      loading,
+      setLoading,
+      statsLoading,
+      setStatsLoading,
+      moviesByPage,
+      moviesPerPage,
+      moviesWatched,
+      nextPageToken,
+      setNextPageToken,
+      hasMore,
+      setHasMore,
+      moviesWatchedList,
+      moviesWatchLaterList,
+      setMoviesWatchedList,
+      setMoviesWatchLaterList,
+      searchTerm,
+      setSearchTerm,
+      searchResults,
+      searchLoading,
+      performSearch,
+      setSearchResults,
+      loadMoviesWatched,
+      loadMoviesWatchLater,
+      filterStatus,
+      setFilterStatus,
+      lastScrollPosition,
+      setLastScrollPosition,
+    }),
+    [
+      movies,
+      currentPage,
+      totalPages,
+      totalResults,
+      loading,
+      statsLoading,
+      moviesByPage,
+      moviesPerPage,
+      moviesWatched,
+      nextPageToken,
+      hasMore,
+      moviesWatchedList,
+      moviesWatchLaterList,
+      searchTerm,
+      searchResults,
+      searchLoading,
+      filterStatus,
+      lastScrollPosition,
+    ]
+  );
+
   return (
-    <MoviesContext.Provider
-      value={{
-        movies,
-        setMovies,
-        currentPage,
-        setCurrentPage,
-        totalPages,
-        setTotalPages,
-        setTotalResults,
-        totalResults,
-        loading,
-        setLoading,
-        statsLoading,
-        setStatsLoading,
-        moviesByPage,
-        moviesPerPage,
-        moviesWatched,
-        nextPageToken,
-        setNextPageToken,
-        hasMore,
-        setHasMore,
-        moviesWatchedList,
-        moviesWatchLaterList,
-        setMoviesWatchedList,
-        setMoviesWatchLaterList,
-        searchTerm,
-        setSearchTerm,
-        searchResults,
-        searchLoading,
-        performSearch,
-        setSearchResults,
-        loadMoviesWatched: loadMoviesWatched,
-        loadMoviesWatchLater: loadMoviesWatchLater,
-        filterStatus,
-        setFilterStatus,
-        lastScrollPosition,
-        setLastScrollPosition,
-      }}
-    >
+    <MoviesContext.Provider value={contextValue}>
       {children}
     </MoviesContext.Provider>
   );

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef, useContext } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Stats } from "../../stats/components/Stats";
 import { SeriesSearchBar } from "../components/SeriesSearchBar";
 import { SeriesFilters } from "../components/SeriesFilters";
@@ -14,13 +14,14 @@ import {
 import { getSeriesDetailById } from "../services/imdb";
 import { Theme } from "../../../shared/components/layout/Theme";
 import { Hamburger } from "../../../shared/components/layout/Hamburguer";
+import { useNavigate } from "react-router-dom";
+import { Button } from "../../../shared/components/ui/button";
+import { useFilteredSeries } from "../hooks/useFilteredSeries";
+import { useCallback, useContext } from "react";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { useSeries } from "../context/SeriesContext";
 import { ThemeContext } from "../../../core/providers/ThemeContext";
 import { Loader2, Search, LayoutGrid, Film, Tv } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { Button } from "../../../shared/components/ui/button";
-import type { Series } from "../../../interfaces/Series";
 
 export default function SeriesTracker() {
   const {
@@ -65,9 +66,15 @@ export default function SeriesTracker() {
   // Restore Scroll Position on Mount
   useEffect(() => {
     if (lastScrollPosition > 0) {
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         window.scrollTo({ top: lastScrollPosition, behavior: "auto" });
+      }, 150);
+      return () => clearTimeout(timer);
+    } else {
+      const timer = setTimeout(() => {
+        window.scrollTo(0, 0);
       }, 100);
+      return () => clearTimeout(timer);
     }
   }, []);
 
@@ -108,30 +115,14 @@ export default function SeriesTracker() {
     return () => clearInterval(interval);
   }, [featuredSeries.length]);
 
-  const displayedSeries = useMemo(() => {
-    let base: Series[] = [];
-
-    if (filterStatus === "watchLater") {
-      base = [...seriesWatchLaterList];
-    } else if (filterStatus === "watched") {
-      base = [...seriesWatchedList];
-    } else if (filterStatus === "inProgress") {
-      base = [...seriesInProgressList];
-    } else {
-      base = series.filter((s) =>
-        s.title.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    return base;
-  }, [
-    filterStatus,
+  const displayedSeries = useFilteredSeries({
     series,
-    searchTerm,
-    seriesWatchLaterList,
     seriesWatchedList,
+    seriesWatchLaterList,
     seriesInProgressList,
-  ]);
+    filterStatus,
+    searchTerm,
+  });
 
   const seriesToDisplay = searchTerm.trim() ? searchResults : displayedSeries;
   const filteredSeriesToDisplay = seriesToDisplay.filter(
@@ -157,9 +148,14 @@ export default function SeriesTracker() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    let lastValue = false;
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
-      setShowScrollSearch(currentScrollY > 700);
+      const newValue = currentScrollY > 700;
+      if (newValue !== lastValue) {
+        setShowScrollSearch(newValue);
+        lastValue = newValue;
+      }
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
@@ -176,10 +172,11 @@ export default function SeriesTracker() {
 
   useEffect(() => {
     const observer = new IntersectionObserver(
-      (entries) => {
+      (entries: IntersectionObserverEntry[]) => {
         const entry = entries[0];
+        // Aditional guard to prevent multiple increments while loading
         if (entry.isIntersecting && !loading && hasMore) {
-          setCurrentPage((prev) => prev + 1);
+          setCurrentPage((prev: number) => prev + 1);
         }
       },
       { rootMargin: "400px" }
@@ -194,86 +191,99 @@ export default function SeriesTracker() {
 
   const handleLogout = () => {
     logout();
-    setSeries(displayedSeries);
+    setSeries(series);
     setFilterStatus("all");
     setSearchTerm("");
   };
 
-  const toggleWatchLater = (id: string) => {
-    const seriesOriginal =
-      series.find((s) => s.id === id) || searchResults.find((s) => s.id === id);
+  const toggleWatchLater = useCallback(
+    (id: string) => {
+      const seriesOriginal =
+        series.find((s) => s.id === id) ||
+        searchResults.find((s) => s.id === id);
 
-    setSeries((series) =>
-      series.map((s) => (s.id === id ? { ...s, watchLater: !s.watchLater } : s))
-    );
+      setSeries((prevSeries) =>
+        prevSeries.map((s) =>
+          s.id === id ? { ...s, watchLater: !s.watchLater } : s
+        )
+      );
 
-    setSeriesWatchLaterList((prev) => {
-      const exists = prev.some((s) => s.id === id);
-      let updated;
-      if (exists) {
-        updated = prev.filter((s) => s.id !== id);
-      } else {
-        if (!seriesOriginal) return prev;
-        updated = [...prev, { ...seriesOriginal, watchLater: true }];
+      setSeriesWatchLaterList((prev) => {
+        const exists = prev.some((s) => s.id === id);
+        if (exists) {
+          const updated = prev.filter((s) => s.id !== id);
+          localStorage.setItem("seriesWatchLater", JSON.stringify(updated));
+          return updated;
+        } else {
+          if (!seriesOriginal) return prev;
+          const updated = [...prev, { ...seriesOriginal, watchLater: true }];
+          localStorage.setItem("seriesWatchLater", JSON.stringify(updated));
+          return updated;
+        }
+      });
+
+      setSearchResults((prev) =>
+        prev.map((s) => (s.id === id ? { ...s, watchLater: !s.watchLater } : s))
+      );
+
+      toggleSeriesWatchLaterApi({ seriesId: id });
+    },
+    [
+      series,
+      searchResults,
+      setSeries,
+      setSeriesWatchLaterList,
+      setSearchResults,
+    ]
+  );
+
+  const markAsWatched = useCallback(
+    async (id: string) => {
+      const seriesOriginal =
+        series.find((s) => s.id === id) ||
+        searchResults.find((s) => s.id === id);
+
+      if (!seriesOriginal) return;
+
+      if (seriesOriginal.watchLater) {
+        toggleWatchLater(id);
       }
-      localStorage.setItem("seriesWatchLater", JSON.stringify(updated));
-      return updated;
-    });
 
-    setSearchResults((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, watchLater: !s.watchLater } : s))
-    );
+      setSeriesWatchedList((prev) => {
+        const exists = prev.some((s) => s.id === id);
+        if (exists) return prev;
 
-    toggleSeriesWatchLaterApi({ seriesId: id.toString() });
-  };
+        const updated = [...prev, seriesOriginal];
+        localStorage.setItem("seriesWatched", JSON.stringify(updated));
+        return updated;
+      });
 
-  const markAsWatched = async (id: string) => {
-    const seriesOriginal =
-      series.find((s) => s.id === id) || searchResults.find((s) => s.id === id);
+      try {
+        const seriesDetail = await getSeriesDetailById(id);
+        const seasons =
+          seriesDetail.seasons?.map((season: any) => ({
+            seasonNumber: season.season,
+            episodeCount: season.episodeCount || 0,
+          })) || [];
 
-    if (!seriesOriginal) return;
+        await markAllEpisodesWatchedApi({ seriesId: id, seasons });
+      } catch (err) {
+        console.error("Error marking series as watched:", err);
+      }
+    },
+    [series, searchResults, toggleWatchLater, setSeriesWatchedList]
+  );
 
-    // Remove from watch later if it was there
-    if (seriesOriginal.watchLater) {
-      toggleWatchLater(id);
-    }
-
-    // Add to watched list
-    setSeriesWatchedList((prev) => {
-      const exists = prev.some((s) => s.id === id);
-      if (exists) return prev;
-
-      const updated = [...prev, seriesOriginal];
-      localStorage.setItem("seriesWatched", JSON.stringify(updated));
-      return updated;
-    });
-
-    // Get all seasons info to mark all episodes
-    try {
-      const seriesDetail = await getSeriesDetailById(id);
-      const seasons =
-        seriesDetail.seasons?.map((season: any) => ({
-          seasonNumber: season.season,
-          episodeCount: season.episodeCount || 0,
-        })) || [];
-
-      await markAllEpisodesWatchedApi({ seriesId: id, seasons });
-    } catch (err) {
-      console.error("Error marking series as watched:", err);
-    }
-  };
-
-  const resetWatched = async (id: string) => {
-    // Remove from watched list
-    setSeriesWatchedList((prev) => {
-      const updated = prev.filter((s) => s.id !== id);
-      localStorage.setItem("seriesWatched", JSON.stringify(updated));
-      return updated;
-    });
-
-    // TODO: Add backend call to clear all episodes
-    // For now, we'll need to implement this when we have the endpoint
-  };
+  const resetWatched = useCallback(
+    async (id: string) => {
+      setSeriesWatchedList((prev) => {
+        const updated = prev.filter((s) => s.id !== id);
+        localStorage.setItem("seriesWatched", JSON.stringify(updated));
+        return updated;
+      });
+    },
+    [setSeriesWatchedList]
+  );
 
   const stats = {
     total: totalResults,

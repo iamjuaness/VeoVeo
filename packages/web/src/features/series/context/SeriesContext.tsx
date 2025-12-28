@@ -5,6 +5,7 @@ import React, {
   useEffect,
   type ReactNode,
   useRef,
+  useMemo,
 } from "react";
 import { getUserSeriesStatus } from "../services/series";
 
@@ -89,7 +90,16 @@ export function SeriesProvider({ children }: SeriesProviderProps) {
     "all" | "watched" | "watchLater" | "inProgress"
   >("all");
   const [seriesInProgressList, setSeriesInProgressList] = useState<Series[]>(
-    []
+    () => {
+      const raw = localStorage.getItem("seriesInProgress");
+      if (!raw) return [];
+      try {
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
   );
   const [seriesWatchLaterList, setSeriesWatchLaterList] = useState<Series[]>(
     () => {
@@ -104,8 +114,18 @@ export function SeriesProvider({ children }: SeriesProviderProps) {
     }
   );
   const [statsLoading, setStatsLoading] = useState(false);
-  const [seriesWatchedList, setSeriesWatchedList] = useState<Series[]>([]);
+  const [seriesWatchedList, setSeriesWatchedList] = useState<Series[]>(() => {
+    const raw = localStorage.getItem("seriesWatched");
+    if (!raw) return [];
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  });
   const [lastScrollPosition, setLastScrollPosition] = useState(0);
+  const isFetchingRef = useRef(false);
 
   // Sync series flags with watch later list
   const syncSeriesFlags = (baseSeries: Series[], watchLater: Series[]) => {
@@ -123,25 +143,80 @@ export function SeriesProvider({ children }: SeriesProviderProps) {
     if (lastLoadedUserRef.current === user.id) return;
     lastLoadedUserRef.current = user.id;
 
-    const fetchSequential = async () => {
-      setStatsLoading(true);
-      if (!seriesWatchLaterList.length) {
-        const seriesWatchLater = await loadSeriesWatchLater();
-        setSeriesWatchLaterList(seriesWatchLater);
-        localStorage.setItem(
-          "seriesWatchLater",
-          JSON.stringify(seriesWatchLater)
-        );
+    const fetchData = async () => {
+      const needsWatchLater = seriesWatchLaterList.length === 0;
+      const needsWatched = seriesWatchedList.length === 0;
+      const needsInProgress = seriesInProgressList.length === 0;
+
+      if (needsWatchLater || needsWatched || needsInProgress) {
+        setStatsLoading(true);
+        try {
+          const status = await getUserSeriesStatus();
+
+          const laterIds = status.seriesWatchLater || [];
+          const watchedEntries = status.seriesWatched || [];
+          const watchedIds = watchedEntries
+            .filter((e: any) => e.isCompleted)
+            .map((e: any) => e.seriesId);
+          const inProgressIds = watchedEntries
+            .filter((e: any) => !e.isCompleted)
+            .map((e: any) => e.seriesId);
+
+          const allIds = Array.from(
+            new Set([...laterIds, ...watchedIds, ...inProgressIds])
+          );
+
+          if (allIds.length > 0) {
+            const allDetails = await getSeriesByIds(allIds);
+
+            if (needsWatchLater) {
+              const laterList = allDetails
+                .filter((s) => laterIds.includes(s.id))
+                .map((s) => ({ ...s, watchLater: true }));
+              setSeriesWatchLaterList(laterList);
+              localStorage.setItem(
+                "seriesWatchLater",
+                JSON.stringify(laterList)
+              );
+            }
+
+            if (needsWatched) {
+              const watchedList = allDetails.filter((s) =>
+                watchedIds.includes(s.id)
+              );
+              setSeriesWatchedList(watchedList);
+              localStorage.setItem(
+                "seriesWatched",
+                JSON.stringify(watchedList)
+              );
+            }
+
+            if (needsInProgress) {
+              const inProgressList = allDetails.filter((s) =>
+                inProgressIds.includes(s.id)
+              );
+              setSeriesInProgressList(inProgressList);
+              localStorage.setItem(
+                "seriesInProgress",
+                JSON.stringify(inProgressList)
+              );
+            }
+          }
+        } catch (err) {
+          console.error("Error sincronizando series:", err);
+        } finally {
+          setStatsLoading(false);
+        }
       }
-      if (!seriesWatchedList.length) {
-        const watched = await loadSeriesWatched();
-        setSeriesWatchedList(watched);
-      }
-      setStatsLoading(false);
     };
 
-    fetchSequential();
+    fetchData();
   }, [token, user]);
+
+  // Persist lists to localStorage
+  useEffect(() => {
+    localStorage.setItem("seriesWatched", JSON.stringify(seriesWatchedList));
+  }, [seriesWatchedList]);
 
   useEffect(() => {
     localStorage.setItem(
@@ -151,11 +226,11 @@ export function SeriesProvider({ children }: SeriesProviderProps) {
   }, [seriesWatchLaterList]);
 
   useEffect(() => {
-    const syncedSeries = syncSeriesFlags(series, seriesWatchLaterList);
-    if (JSON.stringify(syncedSeries) !== JSON.stringify(series)) {
-      setSeries(syncedSeries);
-    }
-  }, [series, seriesWatchLaterList]);
+    localStorage.setItem(
+      "seriesInProgress",
+      JSON.stringify(seriesInProgressList)
+    );
+  }, [seriesInProgressList]);
 
   const performSearch = async (query: string) => {
     if (!query.trim()) {
@@ -190,18 +265,17 @@ export function SeriesProvider({ children }: SeriesProviderProps) {
   };
 
   useEffect(() => {
-    if (filterStatus !== "all") return;
-    if (!hasMore) return;
+    if (filterStatus !== "all" || !hasMore || isFetchingRef.current) return;
 
+    isFetchingRef.current = true;
     setLoading(true);
 
     fetchSeriesFromEndpoint(nextPageToken)
       .then((seriesData) => {
+        const synced = syncSeriesFlags(seriesData.series, seriesWatchLaterList);
         setSeries((prev) => {
           const idsExistentes = new Set(prev.map((s) => s.id));
-          const nuevos = seriesData.series.filter(
-            (s) => !idsExistentes.has(s.id)
-          );
+          const nuevos = synced.filter((s) => !idsExistentes.has(s.id));
           return [...prev, ...nuevos];
         });
 
@@ -210,8 +284,16 @@ export function SeriesProvider({ children }: SeriesProviderProps) {
         setTotalPages(seriesData.totalPages);
         setTotalResults(seriesData.totalResults);
       })
-      .catch((err) => console.error(err))
-      .finally(() => setLoading(false));
+      .catch((err) => {
+        console.error("Error fetching series:", err);
+        if (err?.message?.includes("429")) {
+          setHasMore(false);
+        }
+      })
+      .finally(() => {
+        setLoading(false);
+        isFetchingRef.current = false;
+      });
   }, [currentPage]);
 
   const loadSeriesWatchLater = async (): Promise<Series[]> => {
@@ -309,46 +391,67 @@ export function SeriesProvider({ children }: SeriesProviderProps) {
     };
   }, [ENDPOINT, user]);
 
+  const contextValue = useMemo(
+    () => ({
+      series,
+      setSeries,
+      currentPage,
+      setCurrentPage,
+      totalPages,
+      setTotalPages,
+      setTotalResults,
+      totalResults,
+      loading,
+      setLoading,
+      statsLoading,
+      setStatsLoading,
+      seriesPerPage,
+      nextPageToken,
+      setNextPageToken,
+      hasMore,
+      setHasMore,
+      seriesWatchLaterList,
+      setSeriesWatchLaterList,
+      searchTerm,
+      setSearchTerm,
+      searchResults,
+      searchLoading,
+      performSearch,
+      setSearchResults,
+      loadSeriesWatchLater,
+      loadSeriesWatched,
+      seriesWatchedList,
+      setSeriesWatchedList,
+      filterStatus,
+      setFilterStatus,
+      seriesInProgressList,
+      setSeriesInProgressList,
+      lastScrollPosition,
+      setLastScrollPosition,
+    }),
+    [
+      series,
+      currentPage,
+      totalPages,
+      totalResults,
+      loading,
+      statsLoading,
+      seriesPerPage,
+      nextPageToken,
+      hasMore,
+      seriesWatchLaterList,
+      searchTerm,
+      searchResults,
+      searchLoading,
+      seriesWatchedList,
+      filterStatus,
+      seriesInProgressList,
+      lastScrollPosition,
+    ]
+  );
+
   return (
-    <SeriesContext.Provider
-      value={{
-        series,
-        setSeries,
-        currentPage,
-        setCurrentPage,
-        totalPages,
-        setTotalPages,
-        setTotalResults,
-        totalResults,
-        loading,
-        setLoading,
-        statsLoading,
-        setStatsLoading,
-        seriesPerPage,
-        nextPageToken,
-        setNextPageToken,
-        hasMore,
-        setHasMore,
-        seriesWatchLaterList,
-        setSeriesWatchLaterList,
-        searchTerm,
-        setSearchTerm,
-        searchResults,
-        searchLoading,
-        performSearch,
-        setSearchResults,
-        loadSeriesWatchLater: loadSeriesWatchLater,
-        loadSeriesWatched: loadSeriesWatched,
-        seriesWatchedList,
-        setSeriesWatchedList,
-        filterStatus,
-        setFilterStatus,
-        seriesInProgressList,
-        setSeriesInProgressList,
-        lastScrollPosition,
-        setLastScrollPosition,
-      }}
-    >
+    <SeriesContext.Provider value={contextValue}>
       {children}
     </SeriesContext.Provider>
   );

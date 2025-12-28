@@ -1,10 +1,10 @@
+import { memo } from "react";
 import { Card } from "../../../shared/components/ui/card";
 import { Badge } from "../../../shared/components/ui/badge";
 import { Eye, EyeOff, Clock, Star, Calendar, Tv } from "lucide-react";
 import type { Series } from "../../../interfaces/Series";
 import { Button } from "../../../shared/components/ui/button";
 import type { User } from "../../../interfaces/User";
-import GlareHover from "../../../shared/components/ui/glarehover";
 
 interface Props {
   series: Series;
@@ -17,7 +17,7 @@ interface Props {
   inProgress?: boolean;
 }
 
-export function SeriesCard({
+export const SeriesCard = memo(function SeriesCard({
   series,
   toggleWatchLater,
   markAsWatched,
@@ -55,27 +55,19 @@ export function SeriesCard({
   }
 
   return (
-    <Card className="group relative overflow-hidden hover:shadow-xl transition-all duration-300 ease-out w-full h-full flex flex-col border-border/50 bg-card/50 backdrop-blur-sm hover:border-primary/50">
+    <Card className="group relative overflow-hidden hover:shadow-xl transition-all duration-300 ease-out w-full h-full flex flex-col border-border/50 bg-card/50 backdrop-blur-sm hover:border-primary/50 will-change-transform">
       {/* Image container with aspect ratio 2:3 */}
       <div className="relative w-full aspect-2/3 overflow-hidden rounded-t-lg">
-        <GlareHover
-          glareColor="#ffffff"
-          glareOpacity={0.2}
-          glareAngle={-20}
-          glareSize={200}
-          transitionDuration={500}
-        >
-          <img
-            src={
-              series.poster && series.poster.trim() !== ""
-                ? series.poster
-                : "/placeholder.svg"
-            }
-            alt={series.title}
-            className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105"
-            loading="lazy"
-          />
-        </GlareHover>
+        <img
+          src={
+            series.poster && series.poster.trim() !== ""
+              ? series.poster
+              : "/placeholder.svg"
+          }
+          alt={series.title}
+          className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105"
+          loading="lazy"
+        />
 
         {/* Gradient overlay */}
         <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -191,4 +183,4 @@ export function SeriesCard({
       </div>
     </Card>
   );
-}
+});

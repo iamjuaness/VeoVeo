@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef, useContext } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Stats } from "../../stats/components/Stats";
 import { MovieSearchBar } from "../components/MovieSearchBar";
 import { MovieFilters } from "../components/MovieFilters";
@@ -14,6 +14,11 @@ import {
 import { Theme } from "../../../shared/components/layout/Theme";
 import { Hamburger } from "../../../shared/components/layout/Hamburguer";
 import { Slider } from "../../../features/movies/components/Slider";
+import { useNavigate } from "react-router-dom";
+import { movieGenres, type Genre } from "../../../shared/lib/genres";
+import { Button } from "../../../shared/components/ui/button";
+import { useFilteredMovies } from "../hooks/useFilteredMovies";
+import { useCallback, useContext } from "react";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { useMovies } from "../context/MoviesContext";
 import { getMovieDurationById } from "../services/imdb";
@@ -26,9 +31,6 @@ import {
   ArrowUpDown,
   LayoutGrid,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { movieGenres, type Genre } from "../../../shared/lib/genres";
-import { Button } from "../../../shared/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -97,7 +99,6 @@ export default function MovieTracker() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [showScrollSearch, setShowScrollSearch] = useState(false);
   const [showFloatingSearch, setShowFloatingSearch] = useState(false);
-  const [scrollY, setScrollY] = useState(0);
   const [orderedWatchedMovies, setOrderedWatchedMovies] = useState<Movie[]>([]);
 
   // Handler para Select (shadcn/ui Select envía string)
@@ -109,59 +110,17 @@ export default function MovieTracker() {
     }));
   };
 
-  // Filtrar películas basado en búsqueda y estado
-  const displayedMovies = useMemo(() => {
-    let base: Movie[] = [];
-
-    if (filterStatus === "watched") {
-      base = [...moviesWatchedList].sort((a, b) => {
-        const aArr = Array.isArray(a.watchedAt) ? a.watchedAt : [];
-        const bArr = Array.isArray(b.watchedAt) ? b.watchedAt : [];
-        const aLast = aArr[aArr.length - 1];
-        const bLast = bArr[bArr.length - 1];
-        const aDate = aLast ? new Date(aLast).getTime() : 0;
-        const bDate = bLast ? new Date(bLast).getTime() : 0;
-        return watchedOrder === "asc" ? aDate - bDate : bDate - aDate;
-      });
-    } else if (filterStatus === "watchLater") {
-      base = [...moviesWatchLaterList];
-    } else {
-      base = movies.filter(
-        (movie) =>
-          movie.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          movie.genres.some((genre) =>
-            genre.toLowerCase().includes(searchTerm.toLowerCase())
-          )
-      );
-    }
-
-    // Obtener el género para filtrar según estado actual
-    const currentGenre = selectedGenres[filterStatus];
-
-    if (currentGenre && currentGenre !== "All") {
-      base = base.filter((movie) => {
-        // En el primer código movie.genre es string
-        // En el segundo movie.genres es array, así que para unificar:
-        if (Array.isArray(movie.genres)) {
-          return movie.genres.includes(currentGenre);
-        }
-        if (typeof movie.genres === "string") {
-          return movie.genres === currentGenre;
-        }
-        return false; // si no tiene géneros definidos
-      });
-    }
-
-    // NUEVO: filtro por rating mínimo
-    const currentRating = selectedRatings[filterStatus];
-    if (currentRating !== "All") {
-      base = base.filter(
-        (movie) => (movie.rating ?? 0) >= Number(currentRating)
-      );
-    }
-
-    return base;
-  }, [filterStatus, movies, searchTerm, selectedGenres, selectedRatings]);
+  // Use the new custom hook for filtered movies
+  const displayedMovies = useFilteredMovies({
+    movies,
+    moviesWatchedList,
+    moviesWatchLaterList,
+    filterStatus,
+    searchTerm,
+    selectedGenres,
+    selectedRatings,
+    watchedOrder,
+  });
 
   const featuredMovies = [...movies]
     .sort((a, b) => b.rating - a.rating)
@@ -201,14 +160,14 @@ export default function MovieTracker() {
   useEffect(() => {
     // Incluye aquí rating, géneros (si quieres pre-filtrar antes de ordenar)
     const obj = {} as Record<string, Movie>;
-    moviesWatchedList.forEach((m) => {
+    moviesWatchedList.forEach((m: Movie) => {
       obj[m.id] = m;
     });
     let sorted = Object.values(obj);
 
     // Filtros antes de ordenar (opcional)
     if (selectedGenres.watched && selectedGenres.watched !== "All") {
-      sorted = sorted.filter((movie) =>
+      sorted = sorted.filter((movie: Movie) =>
         Array.isArray(movie.genres)
           ? movie.genres.includes(selectedGenres.watched)
           : movie.genres === selectedGenres.watched
@@ -253,14 +212,42 @@ export default function MovieTracker() {
     currentPage * moviesPerPage
   );
 
+  const { lastScrollPosition, setLastScrollPosition } = useMovies();
+
+  // Restore Scroll Position on Mount
+  useEffect(() => {
+    if (lastScrollPosition > 0) {
+      const timer = setTimeout(() => {
+        window.scrollTo({ top: lastScrollPosition, behavior: "auto" });
+      }, 150);
+      return () => clearTimeout(timer);
+    } else {
+      // Delay also helps with route transitions
+      const timer = setTimeout(() => {
+        window.scrollTo(0, 0);
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, []); // Only on mount
+
+  // Save Scroll Position on Unmount
+  useEffect(() => {
+    return () => {
+      setLastScrollPosition(window.scrollY);
+    };
+  }, [setLastScrollPosition]);
+
   // Detectar scroll
   useEffect(() => {
+    let lastValue = false;
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
-      setScrollY(currentScrollY);
-      // Mostrar lupa cuando haya scrolleado más de 1000px
-      setShowScrollSearch(currentScrollY > 700);
-      console.log("Scroll en Y:", scrollY);
+      const newValue = currentScrollY > 700;
+
+      if (newValue !== lastValue) {
+        setShowScrollSearch(newValue);
+        lastValue = newValue;
+      }
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
@@ -273,10 +260,11 @@ export default function MovieTracker() {
 
   useEffect(() => {
     const observer = new IntersectionObserver(
-      (entries) => {
+      (entries: IntersectionObserverEntry[]) => {
         const entry = entries[0];
+        // Aditional guard to prevent multiple increments while loading
         if (entry.isIntersecting && !loading && hasMore) {
-          setCurrentPage((prev) => prev + 1);
+          setCurrentPage((prev: number) => prev + 1);
         }
       },
       { rootMargin: "400px" }
@@ -333,150 +321,167 @@ export default function MovieTracker() {
   };
 
   // Incrementar contador de veces vista
-  const incrementWatchCount = async (id: string) => {
-    const movieOriginal =
-      movies.find((m) => m.id === id) || searchResults.find((m) => m.id === id);
+  const incrementWatchCount = useCallback(
+    async (id: string) => {
+      const movieOriginal =
+        movies.find((m) => m.id === id) ||
+        searchResults.find((m) => m.id === id);
 
-    // Sube el contador en la lista principal
-    setMovies((movies) =>
-      movies.map((movie) =>
-        movie.id === id
-          ? {
+      setMovies((prevMovies) =>
+        prevMovies.map((movie) =>
+          movie.id === id
+            ? {
+                ...movie,
+                watchCount: (movie.watchCount ?? 0) + 1,
+                watchLater: false,
+              }
+            : movie
+        )
+      );
+
+      setSearchResults((prev) =>
+        prev.map((movie) =>
+          movie.id === id
+            ? {
+                ...movie,
+                watchCount: (movie.watchCount || 0) + 1,
+                watchLater: false,
+              }
+            : movie
+        )
+      );
+
+      setMoviesWatchLaterList((prev) => {
+        const filtered = prev.filter((movie) => movie.id !== id);
+        localStorage.setItem("moviesWatchLater", JSON.stringify(filtered));
+        return filtered;
+      });
+
+      const durationData = await getMovieDurationById(id.toString());
+      const duration = durationData.duration;
+      const userOffset = new Date().getTimezoneOffset();
+      const watchedAtNew = new Date(
+        new Date().getTime() - userOffset * 60 * 1000
+      ).toISOString();
+
+      setMoviesWatchedList((prev) => {
+        let found = false;
+        const updated = prev.map((movie) => {
+          if (movie.id === id) {
+            found = true;
+            return {
               ...movie,
+              ...(movieOriginal || {}),
               watchCount: (movie.watchCount ?? 0) + 1,
               watchLater: false,
-            }
-          : movie
-      )
-    );
-
-    // Sube el contador en los resultados de búsqueda
-    setSearchResults((prev) =>
-      prev.map((movie) =>
-        movie.id === id
-          ? {
-              ...movie,
-              watchCount: (movie.watchCount || 0) + 1,
-              watchLater: false,
-            }
-          : movie
-      )
-    );
-
-    // Quita de por ver
-    setMoviesWatchLaterList((prev) => {
-      const filtered = prev.filter((movie) => movie.id !== id);
-      localStorage.setItem("moviesWatchLater", JSON.stringify(filtered));
-      return filtered;
-    });
-
-    // Información para la visualización
-    const duration = await getMovieDurationById(id.toString()).then(
-      (res) => res.duration
-    );
-    const userOffset = new Date().getTimezoneOffset();
-    const watchedAtNew = new Date(
-      new Date().getTime() - userOffset * 60 * 1000
-    ).toISOString();
-
-    setMoviesWatchedList((prev) => {
-      let found = false;
-      const updated = prev.map((movie) => {
-        if (movie.id === id) {
-          found = true;
-          return {
-            ...movie,
-            ...(movieOriginal || {}),
-            watchCount: (movie.watchCount ?? 0) + 1,
+              duration,
+              watchedAt: Array.isArray(movie.watchedAt)
+                ? [...movie.watchedAt, watchedAtNew]
+                : [watchedAtNew],
+            };
+          }
+          return movie;
+        });
+        if (!found && movieOriginal) {
+          updated.push({
+            ...movieOriginal,
+            watchCount: 1,
             watchLater: false,
             duration,
-            watchedAt: Array.isArray(movie.watchedAt)
-              ? [...movie.watchedAt, watchedAtNew]
-              : [watchedAtNew],
-          };
+            watchedAt: [watchedAtNew],
+          });
         }
-        return movie;
+        localStorage.setItem("moviesWatched", JSON.stringify(updated));
+        return updated;
       });
-      if (!found && movieOriginal) {
-        updated.push({
-          ...movieOriginal,
-          watchCount: 1,
-          watchLater: false,
-          duration,
-          watchedAt: [watchedAtNew],
-        });
-      }
-      localStorage.setItem("moviesWatched", JSON.stringify(updated));
-      return updated;
-    });
 
-    if (movieOriginal?.watchLater) {
-      await toggleWatchLaterApi({ movieId: id.toString() });
-    }
-    await addOrIncrementWatched({
-      movieId: id.toString(),
-      duration,
-      watchedAt: [watchedAtNew],
-    });
-  };
+      if (movieOriginal?.watchLater) {
+        await toggleWatchLaterApi({ movieId: id.toString() });
+      }
+      await addOrIncrementWatched({
+        movieId: id.toString(),
+        duration,
+        watchedAt: [watchedAtNew],
+      });
+    },
+    [
+      movies,
+      searchResults,
+      setMovies,
+      setMoviesWatchLaterList,
+      setMoviesWatchedList,
+    ]
+  );
 
   // Resetear contador de veces vista
-  const resetWatchCount = (id: string) => {
-    setMovies((movies) =>
-      movies.map((movie) =>
-        movie.id === id ? { ...movie, watchCount: 0 } : movie
-      )
-    );
+  const resetWatchCount = useCallback(
+    (id: string) => {
+      setMovies((prevMovies) =>
+        prevMovies.map((movie) =>
+          movie.id === id ? { ...movie, watchCount: 0 } : movie
+        )
+      );
 
-    setMoviesWatchedList((prev) => {
-      const updated = prev.filter((movie) => movie.id !== id);
-      localStorage.setItem("moviesWatched", JSON.stringify(updated)); // Guarda la lista actualizada
-      return updated;
-    });
+      setMoviesWatchedList((prev) => {
+        const updated = prev.filter((movie) => movie.id !== id);
+        localStorage.setItem("moviesWatched", JSON.stringify(updated));
+        return updated;
+      });
 
-    setSearchResults((prev) =>
-      prev.map((movie) =>
-        movie.id === id ? { ...movie, watchCount: 0 } : movie
-      )
-    );
+      setSearchResults((prev) =>
+        prev.map((movie) =>
+          movie.id === id ? { ...movie, watchCount: 0 } : movie
+        )
+      );
 
-    // Llamada al backend para resetear
-    resetWatched({ movieId: id.toString() });
-  };
+      resetWatched({ movieId: id.toString() });
+    },
+    [setMovies, setMoviesWatchedList, setSearchResults]
+  );
 
   // Toggle watchLater status
-  const toggleWatchLater = (id: string) => {
-    const movieOriginal =
-      movies.find((m) => m.id === id) || searchResults.find((m) => m.id === id);
+  const toggleWatchLater = useCallback(
+    (id: string) => {
+      const movieOriginal =
+        movies.find((m) => m.id === id) ||
+        searchResults.find((m) => m.id === id);
 
-    setMovies((movies) =>
-      movies.map((movie) =>
-        movie.id === id ? { ...movie, watchLater: !movie.watchLater } : movie
-      )
-    );
+      setMovies((prevMovies) =>
+        prevMovies.map((movie) =>
+          movie.id === id ? { ...movie, watchLater: !movie.watchLater } : movie
+        )
+      );
 
-    setMoviesWatchLaterList((prev) => {
-      const exists = prev.some((m) => m.id === id);
-      let updated;
-      if (exists) {
-        updated = prev.filter((movie) => movie.id !== id);
-      } else {
-        if (!movieOriginal) return prev;
-        updated = [...prev, { ...movieOriginal, watchLater: true }];
-      }
-      localStorage.setItem("moviesWatchLater", JSON.stringify(updated)); // Guarda aquí
-      return updated;
-    });
+      setMoviesWatchLaterList((prev) => {
+        const exists = prev.some((m) => m.id === id);
+        if (exists) {
+          const updated = prev.filter((movie) => movie.id !== id);
+          localStorage.setItem("moviesWatchLater", JSON.stringify(updated));
+          return updated;
+        } else {
+          if (!movieOriginal) return prev;
+          const updated = [...prev, { ...movieOriginal, watchLater: true }];
+          localStorage.setItem("moviesWatchLater", JSON.stringify(updated));
+          return updated;
+        }
+      });
 
-    setSearchResults((prev) =>
-      prev.map((movie) =>
-        movie.id === id ? { ...movie, watchLater: !movie.watchLater } : movie
-      )
-    );
+      setSearchResults((prev) =>
+        prev.map((movie) =>
+          movie.id === id ? { ...movie, watchLater: !movie.watchLater } : movie
+        )
+      );
 
-    // Actualizar backend
-    toggleWatchLaterApi({ movieId: id.toString() });
-  };
+      toggleWatchLaterApi({ movieId: id.toString() });
+    },
+    [
+      movies,
+      searchResults,
+      setMovies,
+      setMoviesWatchLaterList,
+      setSearchResults,
+    ]
+  );
 
   // Estadísticas
   const stats = {
@@ -488,7 +493,7 @@ export default function MovieTracker() {
   return (
     <div className="min-h-screen bg-background relative">
       {/* Navbar fijo */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b shadow-sm transition-all duration-300 supports-[backdrop-filter]:bg-background/60">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b shadow-sm transition-all duration-300 supports-backdrop-filter:bg-background/60">
         <div className="container mx-auto px-4 h-[72px] flex items-center justify-between">
           <div className="flex items-center justify-between w-full">
             {/* Logo/Nombre */}
@@ -503,7 +508,7 @@ export default function MovieTracker() {
                   className="object-contain w-full h-full drop-shadow-md"
                 />
               </div>
-              <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent hidden sm:block">
+              <h1 className="text-2xl font-bold tracking-tight bg-linear-to-r from-primary to-primary/70 bg-clip-text text-transparent hidden sm:block">
                 VeoVeo
               </h1>
             </div>
@@ -821,7 +826,7 @@ export default function MovieTracker() {
               </div>
             )
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 justify-items-center min-h-screen py-8">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 justify-items-center min-h-screen py-8">
               {paginatedMovies.map((movie) => (
                 <div
                   key={movie.id}

@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.6.0] - 2025-12-28
+
+### Added
+
+- **Scroll Independence**: Independent scroll position restoration for Movies and Series sections.
+- **Series Feature Parity**: Full `localStorage` persistence and optimized server syncing for Series (Watched, In Progress, Watch Later).
+
+### Improved
+
+- **Scroll Performance**: Removed `GlareHover` and unthrottled scroll listeners to eliminate UI lag.
+- **Hardware Acceleration**: Added `will-change-transform` to card components for smoother animations.
+- **Bundle Optimization**: Optimized Vite build with manual chunk splitting for heavy dependencies (Recharts, jsPDF).
+- **Infinite Scroll Stability**: Implementation of fetch guards to prevent redundant API calls and 429 errors.
+
+### Fixed
+
+- **Memory Overhead**: Reduced DOM complexity and CPU usage by removing expensive mouse-tracking effects.
+- **Sync Logic**: Combined disjointed server requests into single status-based synchronization.
+
 ## [2.5.0] - 2025-12-10
 
 ### Added

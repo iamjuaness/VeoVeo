@@ -369,8 +369,8 @@ export default function SeriesDetailPage() {
             alt={series.primaryTitle}
             className="w-full h-full object-cover blur-sm scale-110"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-black via-black/80 to-black/40" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
+          <div className="absolute inset-0 bg-linear-to-r from-black via-black/80 to-black/40" />
+          <div className="absolute inset-0 bg-linear-to-t from-black via-black/50 to-transparent" />
         </div>
 
         {/* Back Button */}
@@ -392,7 +392,7 @@ export default function SeriesDetailPage() {
           <div className="container mx-auto">
             <div className="flex flex-col md:flex-row gap-8 items-end">
               {/* Poster */}
-              <div className="flex-shrink-0 mx-auto md:mx-0 hidden md:block group">
+              <div className="shrink-0 mx-auto md:mx-0 hidden md:block group">
                 <div className="relative">
                   <img
                     src={series.primaryImage.url || "/placeholder.svg"}
@@ -401,7 +401,7 @@ export default function SeriesDetailPage() {
                     height={375}
                     className="rounded-2xl shadow-2xl object-cover border-4 border-white/10 group-hover:scale-105 transition-transform duration-300"
                   />
-                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="absolute inset-0 rounded-2xl bg-linear-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
               </div>
 

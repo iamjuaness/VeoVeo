@@ -1,10 +1,10 @@
+import { memo } from "react";
 import { Card } from "../../../shared/components/ui/card";
 import { Badge } from "../../../shared/components/ui/badge";
 import { Eye, EyeOff, Clock, Star, Calendar } from "lucide-react";
 import type { Movie } from "../../../interfaces/Movie";
 import { Button } from "../../../shared/components/ui/button";
 import type { User } from "../../../interfaces/User";
-import GlareHover from "../../../shared/components/ui/glarehover";
 
 interface Props {
   movie: Movie;
@@ -15,7 +15,7 @@ interface Props {
   openLoginModal: () => void;
 }
 
-export function MovieCard({
+export const MovieCard = memo(function MovieCard({
   movie,
   incrementWatchCount,
   resetWatchCount,
@@ -47,27 +47,19 @@ export function MovieCard({
   }
 
   return (
-    <Card className="group relative overflow-hidden hover:shadow-xl transition-all duration-300 ease-out w-full h-full flex flex-col border-border/50 bg-card/50 backdrop-blur-sm hover:border-primary/50">
+    <Card className="group relative overflow-hidden hover:shadow-xl transition-all duration-300 ease-out w-full h-full flex flex-col border-border/50 bg-card/50 backdrop-blur-sm hover:border-primary/50 will-change-transform">
       {/* 🔹 Contenedor de imagen con aspect ratio 2:3 */}
       <div className="relative w-full aspect-2/3 overflow-hidden rounded-t-lg">
-        <GlareHover
-          glareColor="#ffffff"
-          glareOpacity={0.2}
-          glareAngle={-20}
-          glareSize={200}
-          transitionDuration={500}
-        >
-          <img
-            src={
-              movie.poster && movie.poster.trim() !== ""
-                ? movie.poster
-                : "/placeholder.svg"
-            }
-            alt={movie.title}
-            className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105"
-            loading="lazy"
-          />
-        </GlareHover>
+        <img
+          src={
+            movie.poster && movie.poster.trim() !== ""
+              ? movie.poster
+              : "/placeholder.svg"
+          }
+          alt={movie.title}
+          className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105"
+          loading="lazy"
+        />
 
         {/* Overlay gradiente para mejor legibilidad de badges */}
         <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -174,4 +166,4 @@ export function MovieCard({
       </div>
     </Card>
   );
-}
+});

@@ -151,11 +151,15 @@ export async function getSeriesSeasonsInternal(id: string) {
   return [];
 }
 // Helper for internal use
-export async function getSeasonEpisodesInternal(id: string, season: string) {
+export async function getSeasonEpisodesInternal(
+  id: string,
+  season: string,
+  pageToken?: string
+): Promise<any[]> {
   try {
     const episodesUrl = `${API_URL}/titles/${encodeURIComponent(
       id
-    )}/episodes?season=${season}`;
+    )}/episodes?season=${season}${pageToken ? `&pageToken=${pageToken}` : ""}`;
     const episodesRes = await fetch(episodesUrl, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
@@ -163,7 +167,18 @@ export async function getSeasonEpisodesInternal(id: string, season: string) {
 
     if (episodesRes.ok) {
       const episodesData = await episodesRes.json();
-      return episodesData.episodes || [];
+      const currentEpisodes = episodesData.episodes || [];
+
+      if (episodesData.nextPageToken) {
+        const nextEpisodes = await getSeasonEpisodesInternal(
+          id,
+          season,
+          episodesData.nextPageToken
+        );
+        return [...currentEpisodes, ...nextEpisodes];
+      }
+
+      return currentEpisodes;
     }
   } catch (err) {
     console.error("Error fetching internal season episodes:", err);

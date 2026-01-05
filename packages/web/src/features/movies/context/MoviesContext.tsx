@@ -6,6 +6,7 @@ import React, {
   type ReactNode,
   useRef,
   useMemo,
+  useCallback,
 } from "react";
 import { getUserMovieStatus } from "../services/movie";
 
@@ -58,6 +59,7 @@ interface MoviesContextType {
   >;
   lastScrollPosition: number;
   setLastScrollPosition: React.Dispatch<React.SetStateAction<number>>;
+  reportManualUpdate: () => void;
 }
 
 const MoviesContext = createContext<MoviesContextType | undefined>(undefined);
@@ -114,8 +116,13 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
     }
   );
   const [statsLoading, setStatsLoading] = useState(false);
-  const [lastScrollPosition, setLastScrollPosition] = useState(0);
   const isFetchingRef = useRef(false);
+  const [lastScrollPosition, setLastScrollPosition] = useState(0);
+  const lastManualUpdateRef = useRef<number>(0);
+
+  const reportManualUpdate = useCallback(() => {
+    lastManualUpdateRef.current = Date.now();
+  }, []);
 
   // Después de cargar las lists específicas:
   const syncMoviesFlags = (
@@ -141,7 +148,14 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
 
   useEffect(() => {
     if (!user || !token) return;
-    if (lastLoadedUserRef.current === user.id) return;
+    if (lastLoadedUserRef.current && lastLoadedUserRef.current !== user.id) {
+      console.log("User changed, clearing local movies state");
+      setMoviesWatchedList([]);
+      setMoviesWatchLaterList([]);
+      localStorage.removeItem("moviesWatched");
+      localStorage.removeItem("moviesWatchLater");
+    }
+
     lastLoadedUserRef.current = user.id;
 
     const fetchSequential = async () => {
@@ -255,10 +269,27 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
       });
   }, [currentPage]);
 
-  const loadMoviesWatched = async (): Promise<Movie[]> => {
+  const loadMoviesWatched = async (force = false): Promise<Movie[]> => {
+    if (!force && Date.now() - lastManualUpdateRef.current < 10000) {
+      console.log("Ignoring loadMoviesWatched due to recent manual update");
+      return moviesWatchedList;
+    }
     try {
       const status = await getUserMovieStatus();
+      if (!status || (!status.moviesWatched && !status.watchLater)) {
+        console.warn("Invalid status received, skipping movie refresh");
+        return moviesWatchedList;
+      }
+
       const ids = status.moviesWatched.map((m: any) => m.movieId);
+
+      if (ids.length === 0 && moviesWatchedList.length > 5) {
+        console.warn(
+          "Server returned 0 watched movies but local had many. Protecting."
+        );
+        return moviesWatchedList;
+      }
+
       const movies = await getMoviesByIds(ids);
 
       const withCount = movies.map((movie) => {
@@ -274,12 +305,21 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
       });
 
       setMoviesWatchedList(withCount);
-      return withCount; // <--- Agrega este return
+      return withCount;
     } catch (err) {
       console.error("Error cargando películas vistas:", err);
-      return []; // <--- En caso de error, retorna array vacío
+      return moviesWatchedList; // <--- En caso de error, retorna actual
     }
   };
+
+  const refreshMoviesStatus = useCallback(() => {
+    loadMoviesWatched();
+  }, [loadMoviesWatched, moviesWatchedList]);
+
+  const refreshRef = useRef(refreshMoviesStatus);
+  useEffect(() => {
+    refreshRef.current = refreshMoviesStatus;
+  }, [refreshMoviesStatus]);
 
   const loadMoviesWatchLater = async (): Promise<Movie[]> => {
     try {
@@ -310,63 +350,9 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
       socketRef.current?.emit("join", String(user.id));
     });
 
-    socketRef.current.on("movies-watched", () => {
-      getUserMovieStatus()
-        .then((data) => {
-          setMovies((prev) =>
-            prev.map((movie) => ({
-              ...movie,
-              watchCount:
-                data.moviesWatched.find(
-                  (m: any) => String(m.movieId) === String(movie.id)
-                )?.count || 0,
-              watchLater: data.watchLater.includes(String(movie.id)),
-            }))
-          );
-        })
-        .catch((err) => {
-          console.error("Error cargando estado de películas:", err);
-        });
-    });
-
-    socketRef.current.on("movies-reset", () => {
-      getUserMovieStatus()
-        .then((data) => {
-          setMovies((prev) =>
-            prev.map((movie) => ({
-              ...movie,
-              watchCount:
-                data.moviesWatched.find(
-                  (m: any) => String(m.movieId) === String(movie.id)
-                )?.count || 0,
-              watchLater: data.watchLater.includes(String(movie.id)),
-            }))
-          );
-        })
-        .catch((err) => {
-          console.error("Error cargando estado de películas:", err);
-        });
-    });
-
-    socketRef.current.on("watch-later-toggled", () => {
-      // Actualiza estado local con payload.watchLater
-      getUserMovieStatus()
-        .then((data) => {
-          setMovies((prev) =>
-            prev.map((movie) => ({
-              ...movie,
-              watchCount:
-                data.moviesWatched.find(
-                  (m: any) => String(m.movieId) === String(movie.id)
-                )?.count || 0,
-              watchLater: data.watchLater.includes(String(movie.id)),
-            }))
-          );
-        })
-        .catch((err) => {
-          console.error("Error cargando estado de películas:", err);
-        });
-    });
+    socketRef.current.on("movies-watched", () => refreshRef.current());
+    socketRef.current.on("movies-reset", () => refreshRef.current());
+    socketRef.current.on("watch-later-toggled", () => refreshRef.current());
 
     socketRef.current.on("connect_error", (err) => {
       console.error("Error de conexión en socket:", err);
@@ -414,6 +400,7 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
       setFilterStatus,
       lastScrollPosition,
       setLastScrollPosition,
+      reportManualUpdate,
     }),
     [
       movies,
@@ -434,6 +421,8 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
       searchLoading,
       filterStatus,
       lastScrollPosition,
+      setLastScrollPosition,
+      reportManualUpdate,
     ]
   );
 

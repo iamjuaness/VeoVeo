@@ -5,6 +5,7 @@ import "dotenv/config";
 import authRouter from "./features/auth/auth.routes.js";
 import userRouter from "./features/users/user.routes.js";
 import imbdRouter from "./features/movies/imdb.routes.js";
+import socialRouter from "./features/social/social.routes.js";
 import http from "http";
 import { Server } from "socket.io";
 
@@ -20,6 +21,7 @@ app.use(helmet());
 app.use("/api/auth", authRouter);
 app.use("/api/user", userRouter);
 app.use("/api/imbd", imbdRouter);
+app.use("/api/social", socialRouter);
 
 io.on("connection", (socket) => {
   socket.on("join", (userId) => {

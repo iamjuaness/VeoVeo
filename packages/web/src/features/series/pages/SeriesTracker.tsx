@@ -10,6 +10,7 @@ import { UserMenu } from "../../auth/components/UserMenu";
 import {
   toggleSeriesWatchLaterApi,
   markAllEpisodesWatchedApi,
+  resetSeriesWatchedApi,
 } from "../services/series";
 import { getSeriesDetailById } from "../services/imdb";
 import { Theme } from "../../../shared/components/layout/Theme";
@@ -22,13 +23,13 @@ import { useAuth } from "../../auth/hooks/useAuth";
 import { useSeries } from "../context/SeriesContext";
 import { ThemeContext } from "../../../core/providers/ThemeContext";
 import { Loader2, Search, LayoutGrid, Film, Tv } from "lucide-react";
+import { VirtuosoGrid } from "react-virtuoso";
+import { NotificationCenter } from "../../social/components/NotificationCenter";
 
 export default function SeriesTracker() {
   const {
     series,
     setSeries,
-    seriesPerPage,
-    currentPage,
     setCurrentPage,
     totalResults,
     loading,
@@ -49,6 +50,7 @@ export default function SeriesTracker() {
     setFilterStatus,
     lastScrollPosition,
     setLastScrollPosition,
+    reportManualUpdate,
   } = useSeries();
 
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -62,6 +64,7 @@ export default function SeriesTracker() {
   const [currentSlide, setCurrentSlide] = useState(0);
   // Prevent Page Reset on Mount (Preserve Context State)
   const isMountedRef = useRef(false);
+  const navigate = useNavigate();
 
   // Restore Scroll Position on Mount
   useEffect(() => {
@@ -139,13 +142,13 @@ export default function SeriesTracker() {
       (s.type === "tvSeries" || s.type === "tvMiniSeries")
   );
 
-  const paginatedSeries = filteredSeriesToDisplay.slice(
-    0,
-    currentPage * seriesPerPage
-  );
-
-  const observerRef = useRef<HTMLDivElement | null>(null);
-  const navigate = useNavigate();
+  useEffect(() => {
+    if (isMountedRef.current) {
+      setCurrentPage(1);
+    } else {
+      isMountedRef.current = true;
+    }
+  }, [filterStatus, searchTerm]);
 
   useEffect(() => {
     let lastValue = false;
@@ -162,33 +165,6 @@ export default function SeriesTracker() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  useEffect(() => {
-    if (isMountedRef.current) {
-      setCurrentPage(1);
-    } else {
-      isMountedRef.current = true;
-    }
-  }, [filterStatus, searchTerm]);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries: IntersectionObserverEntry[]) => {
-        const entry = entries[0];
-        // Aditional guard to prevent multiple increments while loading
-        if (entry.isIntersecting && !loading && hasMore) {
-          setCurrentPage((prev: number) => prev + 1);
-        }
-      },
-      { rootMargin: "400px" }
-    );
-
-    if (observerRef.current) observer.observe(observerRef.current);
-
-    return () => {
-      if (observerRef.current) observer.unobserve(observerRef.current);
-    };
-  }, [loading, hasMore, setCurrentPage, filterStatus]);
-
   const handleLogout = () => {
     logout();
     setSeries(series);
@@ -198,89 +174,94 @@ export default function SeriesTracker() {
 
   const toggleWatchLater = useCallback(
     (id: string) => {
-      const seriesOriginal =
-        series.find((s) => s.id === id) ||
-        searchResults.find((s) => s.id === id);
+      reportManualUpdate();
+      setSeries((prevSeries) => {
+        const seriesOriginal =
+          prevSeries.find((s) => s.id === id) ||
+          searchResults.find((s) => s.id === id);
 
-      setSeries((prevSeries) =>
-        prevSeries.map((s) =>
+        const nextSeries = prevSeries.map((s) =>
           s.id === id ? { ...s, watchLater: !s.watchLater } : s
-        )
-      );
+        );
 
-      setSeriesWatchLaterList((prev) => {
-        const exists = prev.some((s) => s.id === id);
-        if (exists) {
-          const updated = prev.filter((s) => s.id !== id);
-          localStorage.setItem("seriesWatchLater", JSON.stringify(updated));
-          return updated;
-        } else {
-          if (!seriesOriginal) return prev;
-          const updated = [...prev, { ...seriesOriginal, watchLater: true }];
-          localStorage.setItem("seriesWatchLater", JSON.stringify(updated));
-          return updated;
-        }
+        setSeriesWatchLaterList((prev) => {
+          const exists = prev.some((s) => s.id === id);
+          if (exists) {
+            const updated = prev.filter((s) => s.id !== id);
+            localStorage.setItem("seriesWatchLater", JSON.stringify(updated));
+            return updated;
+          } else {
+            if (!seriesOriginal) return prev;
+            const updated = [...prev, { ...seriesOriginal, watchLater: true }];
+            localStorage.setItem("seriesWatchLater", JSON.stringify(updated));
+            return updated;
+          }
+        });
+
+        toggleSeriesWatchLaterApi({ seriesId: id });
+        return nextSeries;
       });
 
       setSearchResults((prev) =>
         prev.map((s) => (s.id === id ? { ...s, watchLater: !s.watchLater } : s))
       );
-
-      toggleSeriesWatchLaterApi({ seriesId: id });
     },
-    [
-      series,
-      searchResults,
-      setSeries,
-      setSeriesWatchLaterList,
-      setSearchResults,
-    ]
+    [searchResults, setSeries, setSeriesWatchLaterList, setSearchResults]
   );
 
   const markAsWatched = useCallback(
     async (id: string) => {
-      const seriesOriginal =
-        series.find((s) => s.id === id) ||
-        searchResults.find((s) => s.id === id);
+      reportManualUpdate();
+      setSeries((prevSeries) => {
+        const seriesOriginal =
+          prevSeries.find((s) => s.id === id) ||
+          searchResults.find((s) => s.id === id);
 
-      if (!seriesOriginal) return;
+        if (!seriesOriginal) return prevSeries;
 
-      if (seriesOriginal.watchLater) {
-        toggleWatchLater(id);
-      }
+        if (seriesOriginal.watchLater) {
+          toggleWatchLater(id);
+        }
 
-      setSeriesWatchedList((prev) => {
-        const exists = prev.some((s) => s.id === id);
-        if (exists) return prev;
+        setSeriesWatchedList((prev) => {
+          const exists = prev.some((s) => s.id === id);
+          if (exists) return prev;
 
-        const updated = [...prev, seriesOriginal];
-        localStorage.setItem("seriesWatched", JSON.stringify(updated));
-        return updated;
+          const updated = [...prev, seriesOriginal];
+          localStorage.setItem("seriesWatched", JSON.stringify(updated));
+          return updated;
+        });
+
+        (async () => {
+          try {
+            const seriesDetail = await getSeriesDetailById(id);
+            const seasons =
+              seriesDetail.seasons?.map((season: any) => ({
+                seasonNumber: season.season,
+                episodeCount: season.episodeCount || 0,
+              })) || [];
+
+            await markAllEpisodesWatchedApi({ seriesId: id, seasons });
+          } catch (err) {
+            console.error("Error marking series as watched:", err);
+          }
+        })();
+
+        return prevSeries; // No local state change for 'series' array needed here as it doesn't have a 'watched' flag directly like movies
       });
-
-      try {
-        const seriesDetail = await getSeriesDetailById(id);
-        const seasons =
-          seriesDetail.seasons?.map((season: any) => ({
-            seasonNumber: season.season,
-            episodeCount: season.episodeCount || 0,
-          })) || [];
-
-        await markAllEpisodesWatchedApi({ seriesId: id, seasons });
-      } catch (err) {
-        console.error("Error marking series as watched:", err);
-      }
     },
-    [series, searchResults, toggleWatchLater, setSeriesWatchedList]
+    [searchResults, toggleWatchLater, setSeriesWatchedList, setSeries]
   );
 
   const resetWatched = useCallback(
     async (id: string) => {
+      reportManualUpdate();
       setSeriesWatchedList((prev) => {
         const updated = prev.filter((s) => s.id !== id);
         localStorage.setItem("seriesWatched", JSON.stringify(updated));
         return updated;
       });
+      await resetSeriesWatchedApi({ seriesId: id });
     },
     [setSeriesWatchedList]
   );
@@ -382,6 +363,7 @@ export default function SeriesTracker() {
                 </>
               ) : (
                 <div className="fixed right-4 z-50 flex items-center gap-2">
+                  <NotificationCenter />
                   <UserMenu open={showUserMenu} setOpen={setShowUserMenu} />
                 </div>
               )}
@@ -472,8 +454,7 @@ export default function SeriesTracker() {
           </div>
 
           {/* Grid */}
-
-          {paginatedSeries.length === 0 ? (
+          {filteredSeriesToDisplay.length === 0 ? (
             loading || searchLoading ? (
               <div className="flex justify-center py-12">
                 <Loader2 className="w-10 h-10 animate-spin text-gray-400" />
@@ -492,40 +473,57 @@ export default function SeriesTracker() {
               </div>
             )
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-              {paginatedSeries.map((s) => (
-                <div
-                  key={s.id}
-                  className="cursor-pointer"
-                  tabIndex={0}
-                  onClick={() => navigate(`/series/${s.id}`)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ")
-                      navigate(`/series/${s.id}`);
-                  }}
-                  role="button"
-                  aria-label={`Ver detalles de ${s.title}`}
-                >
-                  <SeriesCard
-                    series={s}
-                    toggleWatchLater={toggleWatchLater}
-                    markAsWatched={markAsWatched}
-                    resetWatched={resetWatched}
-                    watched={seriesWatchedList.some((ws) => ws.id === s.id)}
-                    inProgress={seriesInProgressList.some(
-                      (ip) => ip.id === s.id
-                    )}
-                    user={user}
-                    openLoginModal={() => setShowLoginModal(true)}
-                  />
-                </div>
-              ))}
-              {loading && hasMore && !searchTerm && (
-                <div className="col-span-full flex justify-center py-6 text-gray-400">
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                </div>
-              )}
-              <div ref={observerRef} className="h-10 col-span-full"></div>
+            <div className="min-h-screen">
+              <VirtuosoGrid
+                useWindowScroll
+                data={filteredSeriesToDisplay}
+                totalCount={filteredSeriesToDisplay.length}
+                overscan={1600}
+                endReached={() => {
+                  if (!loading && hasMore) {
+                    setCurrentPage((prev) => prev + 1);
+                  }
+                }}
+                listClassName="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4"
+                itemContent={(_index, s) => (
+                  <div
+                    key={s.id}
+                    className="cursor-pointer h-full w-full flex justify-center"
+                    tabIndex={0}
+                    onClick={() => navigate(`/series/${s.id}`)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ")
+                        navigate(`/series/${s.id}`);
+                    }}
+                    role="button"
+                    aria-label={`Ver detalles de ${s.title}`}
+                  >
+                    <SeriesCard
+                      series={s}
+                      toggleWatchLater={toggleWatchLater}
+                      markAsWatched={markAsWatched}
+                      resetWatched={resetWatched}
+                      watched={seriesWatchedList.some((ws) => ws.id === s.id)}
+                      inProgress={seriesInProgressList.some(
+                        (ip) => ip.id === s.id
+                      )}
+                      user={user}
+                      openLoginModal={() => setShowLoginModal(true)}
+                    />
+                  </div>
+                )}
+                components={{
+                  Footer: () => (
+                    <>
+                      {loading && hasMore && !searchTerm && (
+                        <div className="flex justify-center py-6 text-gray-400">
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                        </div>
+                      )}
+                    </>
+                  ),
+                }}
+              />
             </div>
           )}
         </main>

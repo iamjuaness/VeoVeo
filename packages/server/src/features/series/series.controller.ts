@@ -99,6 +99,9 @@ export async function toggleEpisodeWatched(req: Request, res: Response) {
     );
   }
 
+  // Check completion after toggle
+  await checkSeriesCompletion(seriesId, seriesEntry);
+
   await user.save();
 
   io.to(String(id)).emit("episode-watched-toggled", {
@@ -109,6 +112,32 @@ export async function toggleEpisodeWatched(req: Request, res: Response) {
   });
 
   return res.json({ seriesWatched: user.seriesWatched });
+}
+
+/**
+ * Helper to check if a series is fully watched
+ */
+async function checkSeriesCompletion(seriesId: string, seriesEntry: any) {
+  try {
+    const seasons = await getSeriesSeasonsInternal(seriesId);
+    let totalEpisodesCount = 0;
+
+    for (const season of seasons) {
+      const eps = await getSeasonEpisodesInternal(seriesId, season.season);
+      totalEpisodesCount += eps.length;
+    }
+
+    if (
+      seriesEntry.episodes.length >= totalEpisodesCount &&
+      totalEpisodesCount > 0
+    ) {
+      seriesEntry.isCompleted = true;
+    } else {
+      seriesEntry.isCompleted = false;
+    }
+  } catch (err) {
+    console.error("Error checking series completion:", err);
+  }
 }
 
 // POST /api/user/series/season/watched
@@ -187,6 +216,9 @@ export async function markSeasonWatched(req: Request, res: Response) {
   });
 
   if (madeChanges) {
+    // Check completion after season mark
+    await checkSeriesCompletion(seriesId, seriesEntry);
+
     user.markModified("seriesWatched");
     await user.save();
     io.to(String(id)).emit("series-season-marked", {

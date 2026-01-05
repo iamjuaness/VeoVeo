@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.7.0] - 2026-01-05
+
+### Added
+
+- **Notification Center**: Real-time notification system for friend requests and media recommendations.
+- **Improved UX**: New bell icon in the header with unread count badge and pulse animation.
+- **Social Integration**: Integrated Notification Center into Movies, Series, and Social pages.
+- **Technical UI Refactor**: Implemented `forwardRef` across core UI components (Button, Popover, Avatar, Badge) for better Radix UI compatibility.
+
+### Improved
+
+- **Popover Performance**: Optimized Popover rendering with solid backgrounds and high-priority z-index layering.
+- **Infinite Scroll**: Updated `overscan` values to 1600 in Movie and Series trackers for smoother infinite scrolling.
+
+### Backend
+
+- **Notification Persistence**: Added `isRead` flag to friend requests and recommendations in the database.
+- **Notification Controllers**: New API endpoints to mark notifications as read.
+
 ## [2.6.0] - 2025-12-28
 
 ### Added

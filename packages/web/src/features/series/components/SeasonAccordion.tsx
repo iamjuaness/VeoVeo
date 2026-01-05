@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   ChevronDown,
   ChevronUp,
@@ -20,6 +20,7 @@ import {
   markSeasonWatchedApi,
 } from "../services/series";
 import { useAuth } from "../../auth/hooks/useAuth";
+import { useSeries } from "../context/SeriesContext";
 
 interface Props {
   seriesId: string;
@@ -51,6 +52,8 @@ export function SeasonAccordion({
     initialWatchedEpisodes || []
   );
   const { user } = useAuth();
+  const { reportManualUpdate } = useSeries();
+  const lastUpdateRef = useRef<number>(0);
 
   /* State for pagination */
   const [nextPageToken, setNextPageToken] = useState<string | undefined>(
@@ -98,7 +101,9 @@ export function SeasonAccordion({
 
   // Sync with prop updates if they change
   useEffect(() => {
-    if (initialWatchedEpisodes) {
+    // Only update from props if we haven't made a local update in the last 2 seconds
+    const now = Date.now();
+    if (initialWatchedEpisodes && now - lastUpdateRef.current > 2000) {
       setWatchedEpisodes(initialWatchedEpisodes);
     }
   }, [initialWatchedEpisodes]);
@@ -112,6 +117,8 @@ export function SeasonAccordion({
 
   const toggleEpisodeWatched = async (episodeNumber: number, force = false) => {
     if (!user || !seriesId) return;
+    reportManualUpdate();
+    lastUpdateRef.current = Date.now();
 
     const existingEp = getWatchedEpisodeData(episodeNumber);
     const isCurrentlyWatched = !!existingEp;
@@ -165,13 +172,15 @@ export function SeasonAccordion({
       console.error("Error toggling episode:", err);
       // Revert/Refetch
       getSeriesProgressApi(seriesId)
-        .then((data) => setWatchedEpisodes(data.episodes || []))
+        .then((data: any) => setWatchedEpisodes(data.episodes || []))
         .catch(() => {});
     }
   };
 
   const markEntireSeasonWatched = async () => {
     if (!user || !seriesId) return; // Removed episodes.length check (server filling support)
+    reportManualUpdate();
+    lastUpdateRef.current = Date.now();
 
     // Detect if this is a "Re-watch" (Incremental) action
     const isRewatch = isSeasonFullyWatched;
@@ -226,7 +235,7 @@ export function SeasonAccordion({
     } catch (err) {
       console.error("Error marking season:", err);
       getSeriesProgressApi(seriesId)
-        .then((data) => setWatchedEpisodes(data.episodes || []))
+        .then((data: any) => setWatchedEpisodes(data.episodes || []))
         .catch(() => {});
     }
   };

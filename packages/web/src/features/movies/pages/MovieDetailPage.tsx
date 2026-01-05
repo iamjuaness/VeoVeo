@@ -42,6 +42,8 @@ import {
   resetWatched,
   toggleWatchLaterApi,
 } from "../../../features/movies/services/movie";
+import { RecommendModal } from "../../social/components/RecommendModal";
+import { useSocial } from "../../social/context/SocialContext";
 
 export default function MovieDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -59,6 +61,9 @@ export default function MovieDetailPage() {
   const movieFromContext = movies.find((m) => m.id === id);
   const watchCount = movieFromContext?.watchCount ?? 0;
   const watchLater = movieFromContext?.watchLater ?? false;
+
+  const [isRecommendModalOpen, setIsRecommendModalOpen] = useState(false);
+  const { friends } = useSocial();
 
   useEffect(() => {
     async function fetchMovie() {
@@ -382,8 +387,7 @@ export default function MovieDetailPage() {
                       ? `Vista (${watchCount})`
                       : "Marcar Vista"}
                   </Button>
-
-                  {watchCount && watchCount > 0 && watchLater !== true && (
+                  {watchCount > 0 && watchLater !== true && (
                     <Button
                       variant="outline"
                       size="lg"
@@ -417,6 +421,19 @@ export default function MovieDetailPage() {
                       </>
                     )}
                   </Button>
+
+                  {user && (
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      onClick={() => setIsRecommendModalOpen(true)}
+                      disabled={friends.length === 0}
+                      className="gap-2 bg-primary/10 border-primary/20 text-primary hover:bg-primary hover:text-white transition-all shadow-xl font-bold"
+                    >
+                      <Star className="w-5 h-5" />
+                      Recomendar
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
@@ -641,6 +658,15 @@ export default function MovieDetailPage() {
           </div>
         </div>
       </div>
+
+      <RecommendModal
+        open={isRecommendModalOpen}
+        onOpenChange={setIsRecommendModalOpen}
+        mediaId={movie.id}
+        mediaType="movie"
+        mediaTitle={movie.primaryTitle}
+        mediaPoster={movie.primaryImage?.url || ""}
+      />
     </div>
   );
 }

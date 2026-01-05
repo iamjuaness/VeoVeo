@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Stats } from "../../stats/components/Stats";
 import { MovieSearchBar } from "../components/MovieSearchBar";
 import { MovieFilters } from "../components/MovieFilters";
@@ -38,14 +38,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../../shared/components/ui/select";
+import { VirtuosoGrid } from "react-virtuoso";
 import type { Movie } from "../../../interfaces/Movie";
+import { NotificationCenter } from "../../social/components/NotificationCenter";
 
 export default function MovieTracker() {
   const {
     movies,
     setMovies,
-    moviesPerPage,
-    currentPage,
     setCurrentPage,
     totalResults,
     loading,
@@ -63,6 +63,7 @@ export default function MovieTracker() {
     searchLoading,
     filterStatus,
     setFilterStatus,
+    reportManualUpdate,
   } = useMovies();
   const [selectedGenres, setSelectedGenres] = useState<{
     all: Genre;
@@ -97,9 +98,12 @@ export default function MovieTracker() {
   const { isDarkMode, toggleTheme } = useContext(ThemeContext);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
-  const [showScrollSearch, setShowScrollSearch] = useState(false);
+  const navigate = useNavigate();
+
+  useMovies();
+  const [showScrollSearch] = useState(false);
   const [showFloatingSearch, setShowFloatingSearch] = useState(false);
-  const [orderedWatchedMovies, setOrderedWatchedMovies] = useState<Movie[]>([]);
+  const [orderedWatchedMovies] = useState<Movie[]>([]);
 
   // Handler para Select (shadcn/ui Select envía string)
   const handleRatingChange = (value: string) => {
@@ -149,133 +153,9 @@ export default function MovieTracker() {
         movie.type === "tvMovie")
   );
 
-  const paginatedMovies = filteredMoviesToDisplay.slice(
-    0,
-    currentPage * moviesPerPage
-  );
-
-  const observerRef = useRef<HTMLDivElement | null>(null);
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    // Incluye aquí rating, géneros (si quieres pre-filtrar antes de ordenar)
-    const obj = {} as Record<string, Movie>;
-    moviesWatchedList.forEach((m: Movie) => {
-      obj[m.id] = m;
-    });
-    let sorted = Object.values(obj);
-
-    // Filtros antes de ordenar (opcional)
-    if (selectedGenres.watched && selectedGenres.watched !== "All") {
-      sorted = sorted.filter((movie: Movie) =>
-        Array.isArray(movie.genres)
-          ? movie.genres.includes(selectedGenres.watched)
-          : movie.genres === selectedGenres.watched
-      );
-    }
-    const rating = selectedRatings.watched;
-    if (rating !== "All") {
-      sorted = sorted.filter((movie) => (movie.rating ?? 0) >= Number(rating));
-    }
-
-    // Ordena globalmente por la última fecha vista
-    sorted.sort((a, b) => {
-      const aArr = Array.isArray(a.watchedAt) ? a.watchedAt : [];
-      const bArr = Array.isArray(b.watchedAt) ? b.watchedAt : [];
-      const aLast = aArr[aArr.length - 1];
-      const bLast = bArr[bArr.length - 1];
-      const aDate = aLast ? new Date(aLast).getTime() : 0;
-      const bDate = bLast ? new Date(bLast).getTime() : 0;
-      return watchedOrder === "asc" ? aDate - bDate : bDate - aDate;
-    });
-
-    setOrderedWatchedMovies(sorted);
-  }, [
-    moviesWatchedList,
-    watchedOrder,
-    selectedGenres.watched,
-    selectedRatings.watched,
-  ]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [
-    filterStatus,
-    watchedOrder,
-    selectedGenres.watched,
-    selectedRatings.watched,
-    searchTerm,
-  ]);
-
-  const paginatedWatchedMovies = orderedWatchedMovies.slice(
-    0,
-    currentPage * moviesPerPage
-  );
-
-  const { lastScrollPosition, setLastScrollPosition } = useMovies();
-
-  // Restore Scroll Position on Mount
-  useEffect(() => {
-    if (lastScrollPosition > 0) {
-      const timer = setTimeout(() => {
-        window.scrollTo({ top: lastScrollPosition, behavior: "auto" });
-      }, 150);
-      return () => clearTimeout(timer);
-    } else {
-      // Delay also helps with route transitions
-      const timer = setTimeout(() => {
-        window.scrollTo(0, 0);
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, []); // Only on mount
-
-  // Save Scroll Position on Unmount
-  useEffect(() => {
-    return () => {
-      setLastScrollPosition(window.scrollY);
-    };
-  }, [setLastScrollPosition]);
-
-  // Detectar scroll
-  useEffect(() => {
-    let lastValue = false;
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-      const newValue = currentScrollY > 700;
-
-      if (newValue !== lastValue) {
-        setShowScrollSearch(newValue);
-        lastValue = newValue;
-      }
-    };
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
   useEffect(() => {
     setCurrentPage(1);
   }, [filterStatus, watchedOrder, selectedGenres, selectedRatings, searchTerm]);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries: IntersectionObserverEntry[]) => {
-        const entry = entries[0];
-        // Aditional guard to prevent multiple increments while loading
-        if (entry.isIntersecting && !loading && hasMore) {
-          setCurrentPage((prev: number) => prev + 1);
-        }
-      },
-      { rootMargin: "400px" }
-    );
-
-    if (observerRef.current) observer.observe(observerRef.current);
-
-    return () => {
-      if (observerRef.current) observer.unobserve(observerRef.current);
-    };
-  }, [loading, hasMore, setCurrentPage, filterStatus]);
 
   // Auto-play del slider
   useEffect(() => {
@@ -323,12 +203,12 @@ export default function MovieTracker() {
   // Incrementar contador de veces vista
   const incrementWatchCount = useCallback(
     async (id: string) => {
-      const movieOriginal =
-        movies.find((m) => m.id === id) ||
-        searchResults.find((m) => m.id === id);
+      reportManualUpdate();
+      setMovies((prevMovies) => {
+        const movieOriginal = prevMovies.find((m) => m.id === id);
 
-      setMovies((prevMovies) =>
-        prevMovies.map((movie) =>
+        // Update list
+        const nextMovies = prevMovies.map((movie) =>
           movie.id === id
             ? {
                 ...movie,
@@ -336,8 +216,60 @@ export default function MovieTracker() {
                 watchLater: false,
               }
             : movie
-        )
-      );
+        );
+
+        // Separate async side effects
+        (async () => {
+          const durationData = await getMovieDurationById(id.toString());
+          const duration = durationData.duration;
+          const userOffset = new Date().getTimezoneOffset();
+          const watchedAtNew = new Date(
+            new Date().getTime() - userOffset * 60 * 1000
+          ).toISOString();
+
+          setMoviesWatchedList((prev) => {
+            let found = false;
+            const updated = prev.map((movie) => {
+              if (movie.id === id) {
+                found = true;
+                return {
+                  ...movie,
+                  ...(movieOriginal || {}),
+                  watchCount: (movie.watchCount ?? 0) + 1,
+                  watchLater: false,
+                  duration,
+                  watchedAt: Array.isArray(movie.watchedAt)
+                    ? [...movie.watchedAt, watchedAtNew]
+                    : [watchedAtNew],
+                };
+              }
+              return movie;
+            });
+            if (!found && movieOriginal) {
+              updated.push({
+                ...movieOriginal,
+                watchCount: 1,
+                watchLater: false,
+                duration,
+                watchedAt: [watchedAtNew],
+              });
+            }
+            localStorage.setItem("moviesWatched", JSON.stringify(updated));
+            return updated;
+          });
+
+          if (movieOriginal?.watchLater) {
+            await toggleWatchLaterApi({ movieId: id.toString() });
+          }
+          await addOrIncrementWatched({
+            movieId: id.toString(),
+            duration,
+            watchedAt: [watchedAtNew],
+          });
+        })();
+
+        return nextMovies;
+      });
 
       setSearchResults((prev) =>
         prev.map((movie) =>
@@ -356,66 +288,14 @@ export default function MovieTracker() {
         localStorage.setItem("moviesWatchLater", JSON.stringify(filtered));
         return filtered;
       });
-
-      const durationData = await getMovieDurationById(id.toString());
-      const duration = durationData.duration;
-      const userOffset = new Date().getTimezoneOffset();
-      const watchedAtNew = new Date(
-        new Date().getTime() - userOffset * 60 * 1000
-      ).toISOString();
-
-      setMoviesWatchedList((prev) => {
-        let found = false;
-        const updated = prev.map((movie) => {
-          if (movie.id === id) {
-            found = true;
-            return {
-              ...movie,
-              ...(movieOriginal || {}),
-              watchCount: (movie.watchCount ?? 0) + 1,
-              watchLater: false,
-              duration,
-              watchedAt: Array.isArray(movie.watchedAt)
-                ? [...movie.watchedAt, watchedAtNew]
-                : [watchedAtNew],
-            };
-          }
-          return movie;
-        });
-        if (!found && movieOriginal) {
-          updated.push({
-            ...movieOriginal,
-            watchCount: 1,
-            watchLater: false,
-            duration,
-            watchedAt: [watchedAtNew],
-          });
-        }
-        localStorage.setItem("moviesWatched", JSON.stringify(updated));
-        return updated;
-      });
-
-      if (movieOriginal?.watchLater) {
-        await toggleWatchLaterApi({ movieId: id.toString() });
-      }
-      await addOrIncrementWatched({
-        movieId: id.toString(),
-        duration,
-        watchedAt: [watchedAtNew],
-      });
     },
-    [
-      movies,
-      searchResults,
-      setMovies,
-      setMoviesWatchLaterList,
-      setMoviesWatchedList,
-    ]
+    [setMovies, setMoviesWatchLaterList, setMoviesWatchedList, setSearchResults]
   );
 
   // Resetear contador de veces vista
   const resetWatchCount = useCallback(
     (id: string) => {
+      reportManualUpdate();
       setMovies((prevMovies) =>
         prevMovies.map((movie) =>
           movie.id === id ? { ...movie, watchCount: 0 } : movie
@@ -442,28 +322,31 @@ export default function MovieTracker() {
   // Toggle watchLater status
   const toggleWatchLater = useCallback(
     (id: string) => {
-      const movieOriginal =
-        movies.find((m) => m.id === id) ||
-        searchResults.find((m) => m.id === id);
+      reportManualUpdate();
+      setMovies((prevMovies) => {
+        const movieOriginal = prevMovies.find((m) => m.id === id);
 
-      setMovies((prevMovies) =>
-        prevMovies.map((movie) =>
+        const nextMovies = prevMovies.map((movie) =>
           movie.id === id ? { ...movie, watchLater: !movie.watchLater } : movie
-        )
-      );
+        );
 
-      setMoviesWatchLaterList((prev) => {
-        const exists = prev.some((m) => m.id === id);
-        if (exists) {
-          const updated = prev.filter((movie) => movie.id !== id);
-          localStorage.setItem("moviesWatchLater", JSON.stringify(updated));
-          return updated;
-        } else {
-          if (!movieOriginal) return prev;
-          const updated = [...prev, { ...movieOriginal, watchLater: true }];
-          localStorage.setItem("moviesWatchLater", JSON.stringify(updated));
-          return updated;
-        }
+        setMoviesWatchLaterList((prev) => {
+          const exists = prev.some((m) => m.id === id);
+          if (exists) {
+            const updated = prev.filter((movie) => movie.id !== id);
+            localStorage.setItem("moviesWatchLater", JSON.stringify(updated));
+            return updated;
+          } else {
+            if (!movieOriginal) return prev;
+            const updated = [...prev, { ...movieOriginal, watchLater: true }];
+            localStorage.setItem("moviesWatchLater", JSON.stringify(updated));
+            return updated;
+          }
+        });
+
+        toggleWatchLaterApi({ movieId: id.toString() });
+
+        return nextMovies;
       });
 
       setSearchResults((prev) =>
@@ -471,16 +354,8 @@ export default function MovieTracker() {
           movie.id === id ? { ...movie, watchLater: !movie.watchLater } : movie
         )
       );
-
-      toggleWatchLaterApi({ movieId: id.toString() });
     },
-    [
-      movies,
-      searchResults,
-      setMovies,
-      setMoviesWatchLaterList,
-      setSearchResults,
-    ]
+    [setMovies, setMoviesWatchLaterList, setSearchResults]
   );
 
   // Estadísticas
@@ -589,6 +464,7 @@ export default function MovieTracker() {
               ) : (
                 /* Avatar de usuario y menú lateral */
                 <div className="fixed right-4 z-50 flex items-center gap-2">
+                  <NotificationCenter />
                   <UserMenu open={showUserMenu} setOpen={setShowUserMenu} />
                 </div>
               )}
@@ -749,9 +625,8 @@ export default function MovieTracker() {
               )}
             </div>
           </div>
-          {/* Grid para 'watched' con lista ordenada global */}
           {filterStatus === "watched" ? (
-            paginatedWatchedMovies.length === 0 ? (
+            orderedWatchedMovies.length === 0 ? (
               loading || searchLoading ? (
                 <div className="flex justify-center py-12">
                   <Loader2 className="w-10 h-10 animate-spin text-gray-400" />
@@ -770,44 +645,58 @@ export default function MovieTracker() {
                 </div>
               )
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 justify-items-center min-h-screen py-8">
-                {paginatedWatchedMovies.map((movie) => (
-                  <div
-                    key={movie.id}
-                    className="cursor-pointer h-full"
-                    tabIndex={0}
-                    onClick={() => navigate(`/movie/${movie.id}`)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ")
-                        navigate(`/movie/${movie.id}`);
-                    }}
-                    role="button"
-                    aria-label={`Ver detalles de ${movie.title}`}
-                  >
-                    <MovieCard
-                      movie={movie}
-                      incrementWatchCount={incrementWatchCount}
-                      resetWatchCount={resetWatchCount}
-                      toggleWatchLater={toggleWatchLater}
-                      user={user}
-                      openLoginModal={() => setShowLoginModal(true)}
-                    />
-                  </div>
-                ))}
-                {/* Loader pequeño y no invasivo */}
-                {loading && hasMore && !searchTerm && (
-                  <div className="col-span-full flex justify-center py-6 text-gray-400">
-                    <span className="animate-pulse text-lg">
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                    </span>
-                  </div>
-                )}
-                {/* Elemento sentinel para IntersectionObserver */}
-                <div ref={observerRef} className="h-10 col-span-full"></div>
+              <div className="min-h-screen">
+                <VirtuosoGrid
+                  useWindowScroll
+                  data={orderedWatchedMovies}
+                  totalCount={orderedWatchedMovies.length}
+                  overscan={1600}
+                  endReached={() => {
+                    if (!loading && hasMore) {
+                      setCurrentPage((prev) => prev + 1);
+                    }
+                  }}
+                  listClassName="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 justify-items-center py-8"
+                  itemContent={(_index, movie) => (
+                    <div
+                      key={movie.id}
+                      className="cursor-pointer h-full w-full flex justify-center"
+                      tabIndex={0}
+                      onClick={() => navigate(`/movie/${movie.id}`)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ")
+                          navigate(`/movie/${movie.id}`);
+                      }}
+                      role="button"
+                      aria-label={`Ver detalles de ${movie.title}`}
+                    >
+                      <MovieCard
+                        movie={movie}
+                        incrementWatchCount={incrementWatchCount}
+                        resetWatchCount={resetWatchCount}
+                        toggleWatchLater={toggleWatchLater}
+                        user={user}
+                        openLoginModal={() => setShowLoginModal(true)}
+                      />
+                    </div>
+                  )}
+                  components={{
+                    Footer: () => (
+                      <>
+                        {loading && hasMore && !searchTerm && (
+                          <div className="flex justify-center py-6 text-gray-400">
+                            <span className="animate-pulse text-lg">
+                              <Loader2 className="w-5 h-5 animate-spin" />
+                            </span>
+                          </div>
+                        )}
+                      </>
+                    ),
+                  }}
+                />
               </div>
             )
-          ) : // Otros tabs: usa tu lógica/slice habitual (ejemplo con paginatedMovies)
-          paginatedMovies.length === 0 ? (
+          ) : filteredMoviesToDisplay.length === 0 ? (
             loading || searchLoading ? (
               <div className="flex justify-center py-12">
                 <Loader2 className="w-10 h-10 animate-spin text-gray-400" />
@@ -826,39 +715,55 @@ export default function MovieTracker() {
               </div>
             )
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 justify-items-center min-h-screen py-8">
-              {paginatedMovies.map((movie) => (
-                <div
-                  key={movie.id}
-                  className="cursor-pointer h-full"
-                  tabIndex={0}
-                  onClick={() => navigate(`/movie/${movie.id}`)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ")
-                      navigate(`/movie/${movie.id}`);
-                  }}
-                  role="button"
-                  aria-label={`Ver detalles de ${movie.title}`}
-                >
-                  <MovieCard
-                    movie={movie}
-                    incrementWatchCount={incrementWatchCount}
-                    resetWatchCount={resetWatchCount}
-                    toggleWatchLater={toggleWatchLater}
-                    user={user}
-                    openLoginModal={() => setShowLoginModal(true)}
-                  />
-                </div>
-              ))}
-              {/* Loader pequeño y no invasivo */}
-              {loading && hasMore && !searchTerm && (
-                <div className="col-span-full flex justify-center py-6 text-gray-400">
-                  <span className="animate-pulse text-lg">
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                  </span>
-                </div>
-              )}
-              <div ref={observerRef} className="h-10 col-span-full"></div>
+            <div className="min-h-screen">
+              <VirtuosoGrid
+                useWindowScroll
+                data={filteredMoviesToDisplay}
+                totalCount={filteredMoviesToDisplay.length}
+                overscan={1600}
+                endReached={() => {
+                  if (!loading && hasMore) {
+                    setCurrentPage((prev) => prev + 1);
+                  }
+                }}
+                listClassName="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 justify-items-center py-8"
+                itemContent={(_index, movie) => (
+                  <div
+                    key={movie.id}
+                    className="cursor-pointer h-full w-full flex justify-center"
+                    tabIndex={0}
+                    onClick={() => navigate(`/movie/${movie.id}`)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ")
+                        navigate(`/movie/${movie.id}`);
+                    }}
+                    role="button"
+                    aria-label={`Ver detalles de ${movie.title}`}
+                  >
+                    <MovieCard
+                      movie={movie}
+                      incrementWatchCount={incrementWatchCount}
+                      resetWatchCount={resetWatchCount}
+                      toggleWatchLater={toggleWatchLater}
+                      user={user}
+                      openLoginModal={() => setShowLoginModal(true)}
+                    />
+                  </div>
+                )}
+                components={{
+                  Footer: () => (
+                    <>
+                      {loading && hasMore && !searchTerm && (
+                        <div className="flex justify-center py-6 text-gray-400">
+                          <span className="animate-pulse text-lg">
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                          </span>
+                        </div>
+                      )}
+                    </>
+                  ),
+                }}
+              />
             </div>
           )}
         </main>

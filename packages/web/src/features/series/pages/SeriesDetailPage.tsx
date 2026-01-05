@@ -43,6 +43,8 @@ import { ModalRegister } from "../../auth/components/ModalRegister";
 import { Hamburger } from "../../../shared/components/layout/Hamburguer";
 import { UserMenu } from "../../auth/components/UserMenu";
 import { ThemeContext } from "../../../core/providers/ThemeContext";
+import { RecommendModal } from "../../social/components/RecommendModal";
+import { useSocial } from "../../social/context/SocialContext";
 
 interface WatchedEpisode {
   seasonNumber: number;
@@ -60,8 +62,10 @@ export default function SeriesDetailPage() {
     setSeriesWatchLaterList,
     seriesWatchedList,
     setSeriesWatchedList,
+    seriesInProgressList,
     setSeriesInProgressList,
     loadSeriesWatched,
+    reportManualUpdate,
   } = useSeries();
   const { isDarkMode, toggleTheme } = useContext(ThemeContext);
 
@@ -71,11 +75,13 @@ export default function SeriesDetailPage() {
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [isRecommendModalOpen, setIsRecommendModalOpen] = useState(false);
+  const { friends } = useSocial();
 
   const [watchedEpisodes, setWatchedEpisodes] = useState<WatchedEpisode[]>([]);
 
-  const isWatched = seriesWatchedList.some((s) => s.id === id);
-  const watchLater = seriesWatchLaterList.some((s) => s.id === id);
+  const isWatched = seriesWatchedList.some((s: Series) => s.id === id);
+  const watchLater = seriesWatchLaterList.some((s: Series) => s.id === id);
 
   useEffect(() => {
     if (!id || !user) return;
@@ -104,15 +110,18 @@ export default function SeriesDetailPage() {
 
   // Listen for socket updates to refresh progress locally without full reload
   useEffect(() => {
-    if (seriesWatchedList.some((s) => s.id === id)) {
+    const isInWatched = seriesWatchedList.some((s: Series) => s.id === id);
+    const isInProgress = seriesInProgressList.some((s: Series) => s.id === id);
+    if (isInWatched || isInProgress) {
       getSeriesProgressApi(id!).then((p) => {
         if (p && p.episodes) setWatchedEpisodes(p.episodes);
       });
     }
-  }, [seriesWatchedList, id]);
+  }, [seriesWatchedList, seriesInProgressList, id]);
 
   const toggleWatchLater = async () => {
     if (!user || !series) return;
+    reportManualUpdate();
     const newWatchLaterState = !watchLater;
 
     setSeriesWatchLaterList((prev) => {
@@ -142,6 +151,7 @@ export default function SeriesDetailPage() {
 
   const markAsWatched = async () => {
     if (!user || !series) return;
+    reportManualUpdate();
 
     // Check if we should UNWATCH or REWATCH.
     // If isWatched=true AND we have episodes loaded (implies completed/progress), we consider it a REWATCH action if initiated.
@@ -160,14 +170,26 @@ export default function SeriesDetailPage() {
     // isWatched && watchedEpisodes.length > 0 ? "Ver serie de nuevo (+1)" : "Quitar de Vistas"
 
     // So if watchedEpisodes.length > 0, we skip the unwatch block.
-    if (isWatched && watchedEpisodes.length === 0) {
+    // Logic:
+    // If not watched -> Mark Watched
+    // If watched AND (not completed OR user wants to unwatch) -> Unwatch
+    // If watched AND (completed) -> Rewatch (increment)
+
+    // Check for "Unwatch" action (only if it's currently watched AND not being rewatched)
+    // We'll use the same logic as the UI button: if it's watched but not rewatch-ready (e.g. 0 episodes or user specifically wants to unwatch)
+    // Actually, let's just make "Quitar" more accessible.
+    // If we have a rewatch button, we use it. If not, toggle should unwatch.
+
+    const canRewatch = isWatched && watchedEpisodes.length > 0;
+
+    if (isWatched && !canRewatch) {
       setSeriesWatchedList((prev) => prev.filter((s) => s.id !== id));
       try {
         await resetSeriesWatchedApi({ seriesId: id! });
         loadSeriesWatched();
-        // setWatchedEpisodes([]);
+        setWatchedEpisodes([]);
       } catch (err) {
-        console.error("Error reseting series:", err);
+        console.error("Error resetting series:", err);
       }
       return;
     }
@@ -272,7 +294,7 @@ export default function SeriesDetailPage() {
 
       await markAllEpisodesWatchedApi({
         seriesId: id!,
-        increment: false, // Default new watch
+        increment: canRewatch, // Increment if we are rewatching
       });
       await loadSeriesWatched();
       handleProgressChange();
@@ -501,6 +523,19 @@ export default function SeriesDetailPage() {
                       </>
                     )}
                   </Button>
+
+                  {user && (
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      onClick={() => setIsRecommendModalOpen(true)}
+                      disabled={friends.length === 0}
+                      className="gap-2 bg-primary/10 border-primary/20 text-primary hover:bg-primary hover:text-white transition-all shadow-xl font-bold"
+                    >
+                      <Star className="w-5 h-5" />
+                      Recomendar
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
@@ -680,6 +715,15 @@ export default function SeriesDetailPage() {
           </div>
         </div>
       </div>
+
+      <RecommendModal
+        open={isRecommendModalOpen}
+        onOpenChange={setIsRecommendModalOpen}
+        mediaId={series.id}
+        mediaType="series"
+        mediaTitle={series.primaryTitle}
+        mediaPoster={series.primaryImage?.url || ""}
+      />
     </div>
   );
 }

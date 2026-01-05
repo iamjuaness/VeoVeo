@@ -16,6 +16,7 @@ import {
   BarChart3,
   Settings,
   User as UserIcon,
+  Users,
   ChevronRight,
 } from "lucide-react";
 import { Switch } from "../../../shared/components/ui/switch";
@@ -26,7 +27,7 @@ import { useContext, useState } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { ThemeContext } from "../../../core/providers/ThemeContext";
 
-const APP_VERSION = "2.6.0"; // Update this when releasing new versions
+const APP_VERSION = "2.7.0"; // Update this when releasing new versions
 
 interface UserMenuProps {
   open: boolean;
@@ -35,7 +36,9 @@ interface UserMenuProps {
 
 export function UserMenu({ open, setOpen }: UserMenuProps) {
   const { user, setUser, logout } = useAuth();
-  const userAvatarObj = predefinedAvatars.find((a) => a.id === user!.avatar)!;
+  const userAvatarObj =
+    predefinedAvatars.find((a) => a.id === user?.avatar) ||
+    predefinedAvatars[0];
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const { isDarkMode, toggleTheme } = useContext(ThemeContext);
 
@@ -45,6 +48,13 @@ export function UserMenu({ open, setOpen }: UserMenuProps) {
   const goToStats = () => {
     if (user) {
       window.location.href = "/stats";
+    }
+    setOpen(false);
+  };
+
+  const goToSocial = () => {
+    if (user) {
+      window.location.href = "/social";
     }
     setOpen(false);
   };
@@ -117,6 +127,20 @@ export function UserMenu({ open, setOpen }: UserMenuProps) {
                   <BarChart3 className="w-5 h-5" />
                 </div>
                 <span className="font-medium">Estadísticas</span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
+            </Button>
+
+            <Button
+              variant="ghost"
+              className="w-full justify-between h-12 px-4 rounded-xl hover:bg-primary/5 group transition-all"
+              onClick={goToSocial}
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-green-500/10 text-green-600 rounded-lg group-hover:bg-green-500/20 transition-colors">
+                  <Users className="w-5 h-5" />
+                </div>
+                <span className="font-medium">Social</span>
               </div>
               <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
             </Button>

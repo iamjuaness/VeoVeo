@@ -9,6 +9,10 @@ import {
 import {
   getMovieInWatchLater,
   getMovieWatchCount,
+  searchUsers,
+  getUserProfile,
+  updateUserProfile,
+  updateUserSettings,
 } from "../users/user.controller.js";
 import {
   toggleSeriesWatchLater,
@@ -29,6 +33,11 @@ import {
 const router = Router();
 
 router.use(authMiddleware);
+
+router.get("/search", searchUsers);
+router.get("/profile", getUserProfile);
+router.patch("/profile", updateUserProfile);
+router.patch("/settings", updateUserSettings);
 
 // Movie routes
 router.post("/movies/watched", addOrIncrementWatched);

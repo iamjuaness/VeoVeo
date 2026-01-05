@@ -77,3 +77,118 @@ export async function getMovieInWatchLater(req: Request, res: Response) {
     res.status(500).json({ message: "Server error" });
   }
 }
+
+export async function searchUsers(req: Request, res: Response) {
+  try {
+    const { q } = req.query;
+    if (!q || typeof q !== "string") {
+      return res.status(400).json({ message: "Search query is required" });
+    }
+
+    const users = await UserModel.find(
+      {
+        $or: [
+          { name: { $regex: q, $options: "i" } },
+          { email: { $regex: q, $options: "i" } },
+        ],
+        _id: { $ne: req.id }, // Exclude current user
+      },
+      { name: 1, email: 1, selectedAvatar: 1 }
+    ).limit(10);
+
+    res.json(users);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+}
+
+export async function getUserProfile(req: Request, res: Response) {
+  try {
+    const { id } = req;
+    if (!id) return res.status(401).json({ message: "Unauthorized" });
+
+    const user = await UserModel.findById(id).select("-password").lean();
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    res.json({
+      ...user,
+      id: String(user._id),
+      avatar: user.selectedAvatar,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+}
+
+export async function updateUserProfile(req: Request, res: Response) {
+  try {
+    const { id } = req;
+    const { name, email, bio, selectedAvatar } = req.body;
+
+    if (!id) return res.status(401).json({ message: "Unauthorized" });
+
+    const update: any = {};
+    if (name) update.name = name;
+    if (email) update.email = email;
+    if (bio !== undefined) update.bio = bio;
+    if (selectedAvatar) update.selectedAvatar = selectedAvatar;
+
+    const user = await UserModel.findByIdAndUpdate(
+      id,
+      { $set: update },
+      { new: true }
+    )
+      .select("-password")
+      .lean();
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    res.json({
+      ...user,
+      id: String(user._id),
+      avatar: user.selectedAvatar,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+}
+
+export async function updateUserSettings(req: Request, res: Response) {
+  try {
+    const { id } = req;
+    const {
+      notificationPreferences,
+      privacyPreferences,
+      appearancePreferences,
+    } = req.body;
+
+    if (!id) return res.status(401).json({ message: "Unauthorized" });
+
+    const update: any = {};
+    if (notificationPreferences)
+      update.notificationPreferences = notificationPreferences;
+    if (privacyPreferences) update.privacyPreferences = privacyPreferences;
+    if (appearancePreferences)
+      update.appearancePreferences = appearancePreferences;
+
+    const user = await UserModel.findByIdAndUpdate(
+      id,
+      { $set: update },
+      { new: true }
+    )
+      .select("-password")
+      .lean();
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    res.json({
+      ...user,
+      id: String(user._id),
+      avatar: user.selectedAvatar,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+}

@@ -20,6 +20,9 @@ const SeriesTracker = lazy(
 const SeriesDetailPage = lazy(
   () => import("../../features/series/pages/SeriesDetailPage.tsx")
 );
+const SocialPage = lazy(
+  () => import("../../features/social/pages/SocialPage.tsx")
+);
 
 const PageLoader = () => (
   <div className="flex h-screen w-screen items-center justify-center bg-background">
@@ -44,6 +47,14 @@ export default function AppRouter() {
           <Route path="/movie/:id" element={<MovieDetailPage />} />
           <Route path="/series" element={<SeriesTracker />} />
           <Route path="/series/:id" element={<SeriesDetailPage />} />
+          <Route
+            path="/social"
+            element={
+              <PrivateRoute>
+                <SocialPage />
+              </PrivateRoute>
+            }
+          />
           <Route path="*" element={<Navigate to="/home" replace />} />
         </Routes>
       </Suspense>

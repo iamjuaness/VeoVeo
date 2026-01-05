@@ -6,6 +6,7 @@ import React, {
   type ReactNode,
   useRef,
   useMemo,
+  useCallback,
 } from "react";
 import { getUserSeriesStatus } from "../services/series";
 
@@ -58,6 +59,7 @@ interface SeriesContextType {
   setSeriesInProgressList: React.Dispatch<React.SetStateAction<Series[]>>;
   lastScrollPosition: number;
   setLastScrollPosition: React.Dispatch<React.SetStateAction<number>>;
+  reportManualUpdate: () => void;
 }
 
 const SeriesContext = createContext<SeriesContextType | undefined>(undefined);
@@ -124,8 +126,9 @@ export function SeriesProvider({ children }: SeriesProviderProps) {
       return [];
     }
   });
-  const [lastScrollPosition, setLastScrollPosition] = useState(0);
   const isFetchingRef = useRef(false);
+  const [lastScrollPosition, setLastScrollPosition] = useState(0);
+  const lastManualUpdateRef = useRef<number>(0);
 
   // Sync series flags with watch later list
   const syncSeriesFlags = (baseSeries: Series[], watchLater: Series[]) => {
@@ -140,7 +143,16 @@ export function SeriesProvider({ children }: SeriesProviderProps) {
 
   useEffect(() => {
     if (!user || !token) return;
-    if (lastLoadedUserRef.current === user.id) return;
+    if (lastLoadedUserRef.current && lastLoadedUserRef.current !== user.id) {
+      console.log("User changed, clearing local series state");
+      setSeriesWatchedList([]);
+      setSeriesInProgressList([]);
+      setSeriesWatchLaterList([]);
+      localStorage.removeItem("seriesWatched");
+      localStorage.removeItem("seriesInProgress");
+      localStorage.removeItem("seriesWatchLater");
+    }
+
     lastLoadedUserRef.current = user.id;
 
     const fetchData = async () => {
@@ -296,6 +308,10 @@ export function SeriesProvider({ children }: SeriesProviderProps) {
       });
   }, [currentPage]);
 
+  const reportManualUpdate = useCallback(() => {
+    lastManualUpdateRef.current = Date.now();
+  }, []);
+
   const loadSeriesWatchLater = async (): Promise<Series[]> => {
     try {
       const status = await getUserSeriesStatus();
@@ -315,12 +331,29 @@ export function SeriesProvider({ children }: SeriesProviderProps) {
     }
   };
 
-  const loadSeriesWatched = async (): Promise<Series[]> => {
+  const loadSeriesWatched = async (force = false): Promise<Series[]> => {
+    if (!force && Date.now() - lastManualUpdateRef.current < 10000) {
+      console.log("Ignoring loadSeriesWatched due to recent manual update");
+      return seriesWatchedList;
+    }
     try {
       const status = await getUserSeriesStatus();
+      if (!status || (!status.seriesWatched && !status.seriesWatchLater)) {
+        console.warn(
+          "Invalid status received, skipping refresh to protect localStorage"
+        );
+        return seriesWatchedList;
+      }
 
       const allEntries = status.seriesWatched || [];
       const allIds = allEntries.map((s: any) => s.seriesId);
+
+      if (allIds.length === 0 && seriesWatchedList.length > 0) {
+        console.warn(
+          "Server returned 0 watched series but local had many. Protecting against wipeout."
+        );
+        return seriesWatchedList;
+      }
 
       // Load full series details
       const allDetails = await getSeriesByIds(allIds);
@@ -345,9 +378,18 @@ export function SeriesProvider({ children }: SeriesProviderProps) {
       return watched;
     } catch (err) {
       console.error("Error cargando series vistas:", err);
-      return [];
+      return seriesWatchedList; // Return current instead of empty to prevent wipeout
     }
   };
+
+  const refreshSeriesStatus = useCallback(() => {
+    loadSeriesWatched();
+  }, [loadSeriesWatched]);
+
+  const refreshRef = useRef(refreshSeriesStatus);
+  useEffect(() => {
+    refreshRef.current = refreshSeriesStatus;
+  }, [refreshSeriesStatus]);
 
   useEffect(() => {
     if (!user) return;
@@ -359,6 +401,7 @@ export function SeriesProvider({ children }: SeriesProviderProps) {
     });
 
     socketRef.current.on("series-watch-later-toggled", () => {
+      // For watch later, we still fetch status to sync flags
       getUserSeriesStatus()
         .then((data) => {
           setSeries((prev) =>
@@ -374,13 +417,11 @@ export function SeriesProvider({ children }: SeriesProviderProps) {
         });
     });
 
-    const refreshSeriesStatus = () => {
-      loadSeriesWatched();
-    };
-
-    socketRef.current.on("series-marked-watched", refreshSeriesStatus);
-    socketRef.current.on("series-completed-toggled", refreshSeriesStatus);
-    socketRef.current.on("episode-watched-toggled", refreshSeriesStatus);
+    socketRef.current.on("series-marked-watched", () => refreshRef.current());
+    socketRef.current.on("series-completed-toggled", () =>
+      refreshRef.current()
+    );
+    socketRef.current.on("episode-watched-toggled", () => refreshRef.current());
 
     socketRef.current.on("connect_error", (err) => {
       console.error("Error de conexión en socket:", err);
@@ -428,6 +469,7 @@ export function SeriesProvider({ children }: SeriesProviderProps) {
       setSeriesInProgressList,
       lastScrollPosition,
       setLastScrollPosition,
+      reportManualUpdate,
     }),
     [
       series,
@@ -447,6 +489,8 @@ export function SeriesProvider({ children }: SeriesProviderProps) {
       filterStatus,
       seriesInProgressList,
       lastScrollPosition,
+      setLastScrollPosition,
+      reportManualUpdate,
     ]
   );
 

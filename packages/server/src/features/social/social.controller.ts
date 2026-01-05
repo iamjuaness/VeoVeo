@@ -1,9 +1,9 @@
 import { Request, Response } from "express";
-import UserModel from "../users/user.model";
-import MessageModel from "./message.model";
+import UserModel from "../users/user.model.js";
+import MessageModel from "./message.model.js";
 import { FriendRequest } from "@veoveo/shared";
 import mongoose from "mongoose";
-import { io } from "../../app";
+import { io } from "../../app.js";
 
 export const searchUsers = async (req: Request, res: Response) => {
   try {

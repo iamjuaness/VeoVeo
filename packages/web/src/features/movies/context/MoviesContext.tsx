@@ -17,7 +17,6 @@ import type { DefaultEventsMap } from "@socket.io/component-emitter";
 import { API_BASE_URL } from "../../../shared/utils/urls";
 import {
   fetchMoviesFromEndpoint,
-  getMoviesByIds,
   searchMovies,
 } from "../../../features/movies/services/imdb";
 
@@ -60,6 +59,7 @@ interface MoviesContextType {
   lastScrollPosition: number;
   setLastScrollPosition: React.Dispatch<React.SetStateAction<number>>;
   reportManualUpdate: () => void;
+  movieStats: { watchedCount: number; watchLaterCount: number };
 }
 
 const MoviesContext = createContext<MoviesContextType | undefined>(undefined);
@@ -93,32 +93,16 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
   const [filterStatus, setFilterStatus] = useState<
     "all" | "watched" | "watchLater"
   >("all");
-  const [moviesWatchedList, setMoviesWatchedList] = useState<Movie[]>(() => {
-    const raw = localStorage.getItem("moviesWatched");
-    if (!raw) return [];
-    try {
-      const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
-  });
-  const [moviesWatchLaterList, setMoviesWatchLaterList] = useState<Movie[]>(
-    () => {
-      const raw = localStorage.getItem("moviesWatchLater");
-      if (!raw) return [];
-      try {
-        const parsed = JSON.parse(raw);
-        return Array.isArray(parsed) ? parsed : [];
-      } catch {
-        return [];
-      }
-    }
-  );
+  const [moviesWatchedList, setMoviesWatchedList] = useState<Movie[]>([]);
+  const [moviesWatchLaterList, setMoviesWatchLaterList] = useState<Movie[]>([]);
   const [statsLoading, setStatsLoading] = useState(false);
   const isFetchingRef = useRef(false);
   const [lastScrollPosition, setLastScrollPosition] = useState(0);
   const lastManualUpdateRef = useRef<number>(0);
+  const [movieStats, setMovieStats] = useState({
+    watchedCount: 0,
+    watchLaterCount: 0,
+  });
 
   const reportManualUpdate = useCallback(() => {
     lastManualUpdateRef.current = Date.now();
@@ -152,43 +136,69 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
       console.log("User changed, clearing local movies state");
       setMoviesWatchedList([]);
       setMoviesWatchLaterList([]);
-      localStorage.removeItem("moviesWatched");
-      localStorage.removeItem("moviesWatchLater");
     }
 
     lastLoadedUserRef.current = user.id;
 
-    const fetchSequential = async () => {
+    const fetchInfo = async () => {
       setStatsLoading(true);
-      // Primero películas vistas
-      if (!moviesWatchedList.length) {
-        const moviesWatched = await loadMoviesWatched();
-        setMoviesWatchedList(moviesWatched);
-        localStorage.setItem("moviesWatched", JSON.stringify(moviesWatched));
+      try {
+        // Single optimized call
+        const status = await getUserMovieStatus();
+        if (status) {
+          // Process Watched
+          const watchedWithCount = (status.moviesWatched || []).map(
+            (movie: any) => ({
+              ...movie,
+              id: movie.id || movie.movieId,
+              watchCount: movie.count ?? 0,
+              duration: movie.duration,
+              watchedAt: movie.watchedAt || [],
+            })
+          );
+          setMoviesWatchedList(watchedWithCount);
+
+          // Process Watch Later
+          const watchLaterWithFlag = (status.watchLater || []).map(
+            (movie: any) => ({
+              ...movie,
+              id: movie.id || movie.movieId,
+              watchLater: true,
+            })
+          );
+          setMoviesWatchLaterList(watchLaterWithFlag);
+
+          // Update Stats
+          if (status.stats) {
+            setMovieStats(status.stats);
+          } else {
+            // Fallback calculation
+            setMovieStats({
+              watchedCount: watchedWithCount.length,
+              watchLaterCount: watchLaterWithFlag.length,
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Error loading movie status:", error);
+      } finally {
+        setStatsLoading(false);
       }
-      // Luego películas por ver
-      if (!moviesWatchLaterList.length) {
-        const moviesWatchLater = await loadMoviesWatchLater();
-        setMoviesWatchLaterList(moviesWatchLater);
-        localStorage.setItem(
-          "moviesWatchLater",
-          JSON.stringify(moviesWatchLater)
-        );
-      }
-      setStatsLoading(false);
     };
 
-    fetchSequential();
+    fetchInfo();
   }, [token, user]);
 
+  // Refs to track latest state for use in closures (avoiding stale state in effects)
+  const moviesWatchedListRef = useRef(moviesWatchedList);
+  const moviesWatchLaterListRef = useRef(moviesWatchLaterList);
+
   useEffect(() => {
-    localStorage.setItem("moviesWatched", JSON.stringify(moviesWatchedList));
+    moviesWatchedListRef.current = moviesWatchedList;
   }, [moviesWatchedList]);
+
   useEffect(() => {
-    localStorage.setItem(
-      "moviesWatchLater",
-      JSON.stringify(moviesWatchLaterList)
-    );
+    moviesWatchLaterListRef.current = moviesWatchLaterList;
   }, [moviesWatchLaterList]);
 
   const performSearch = async (query: string) => {
@@ -233,6 +243,13 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
     }
   };
 
+  // Sync movies with user lists when they change
+  useEffect(() => {
+    setMovies((prevMovies) =>
+      syncMoviesFlags(prevMovies, moviesWatchedList, moviesWatchLaterList)
+    );
+  }, [moviesWatchedList, moviesWatchLaterList]);
+
   useEffect(() => {
     if (filterStatus !== "all" || !hasMore || isFetchingRef.current) return;
 
@@ -243,8 +260,8 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
       .then((movieData) => {
         const synced = syncMoviesFlags(
           movieData.movies,
-          moviesWatchedList,
-          moviesWatchLaterList
+          moviesWatchedListRef.current,
+          moviesWatchLaterListRef.current
         );
         setMovies((prev) => {
           const idsExistentes = new Set(prev.map((m) => m.id));
@@ -281,34 +298,21 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
         return moviesWatchedList;
       }
 
-      const ids = status.moviesWatched.map((m: any) => m.movieId);
-
-      if (ids.length === 0 && moviesWatchedList.length > 5) {
-        console.warn(
-          "Server returned 0 watched movies but local had many. Protecting."
-        );
-        return moviesWatchedList;
-      }
-
-      const movies = await getMoviesByIds(ids);
-
-      const withCount = movies.map((movie) => {
-        const watched = status.moviesWatched.find(
-          (mw: any) => mw.movieId === movie.id
-        );
-        return {
-          ...movie,
-          watchCount: watched?.count ?? 0,
-          duration: watched?.duration ?? movie.duration,
-          watchedAt: watched?.watchedAt ?? [],
-        };
-      });
+      // El backend ya devuelve los objetos enriquecidos (o parciales básicos)
+      // Mapeamos para asegurar compatibilidad con la interfaz Movie del frontend
+      const withCount = status.moviesWatched.map((movie: any) => ({
+        ...movie,
+        id: movie.id || movie.movieId, // Asegurar ID
+        watchCount: movie.count ?? 0,
+        duration: movie.duration,
+        watchedAt: movie.watchedAt || [],
+      }));
 
       setMoviesWatchedList(withCount);
       return withCount;
     } catch (err) {
       console.error("Error cargando películas vistas:", err);
-      return moviesWatchedList; // <--- En caso de error, retorna actual
+      return moviesWatchedList;
     }
   };
 
@@ -324,20 +328,19 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
   const loadMoviesWatchLater = async (): Promise<Movie[]> => {
     try {
       const status = await getUserMovieStatus();
-      const ids = status.watchLater;
-      const movies = await getMoviesByIds(ids);
 
-      // marcamos watchLater en true
-      const withFlag = movies.map((movie) => ({
+      // El backend devuelve objetos completos en watchLater
+      const withFlag = status.watchLater.map((movie: any) => ({
         ...movie,
+        id: movie.id || movie.movieId, // Asegurar ID
         watchLater: true,
       }));
 
       setMoviesWatchLaterList(withFlag);
-      return withFlag; // <--- retorna el array
+      return withFlag;
     } catch (err) {
       console.error("Error cargando películas por ver:", err);
-      return []; // <--- retorna un array vacío en caso de error
+      return [];
     }
   };
 
@@ -401,6 +404,7 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
       lastScrollPosition,
       setLastScrollPosition,
       reportManualUpdate,
+      movieStats,
     }),
     [
       movies,

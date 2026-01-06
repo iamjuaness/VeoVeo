@@ -66,7 +66,6 @@ export const SeriesCard = memo(function SeriesCard({
           }
           alt={series.title}
           className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105"
-          loading="lazy"
         />
 
         {/* Gradient overlay */}

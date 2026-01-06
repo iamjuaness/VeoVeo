@@ -58,7 +58,6 @@ export const MovieCard = memo(function MovieCard({
           }
           alt={movie.title}
           className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105"
-          loading="lazy"
         />
 
         {/* Overlay gradiente para mejor legibilidad de badges */}

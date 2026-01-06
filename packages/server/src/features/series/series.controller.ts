@@ -1,10 +1,13 @@
 import { Request, Response } from "express";
+import mongoose from "mongoose";
 import User from "../users/user.model.js";
+import MediaCacheModel from "../media/media.model.js";
 import { io } from "../../app.js";
 import {
   getSeriesSeasonsInternal,
   getSeasonEpisodesInternal,
 } from "./imdb-series.controller.js";
+import { ensureMediaInCache, enrichMediaList } from "../media/media.service.js";
 
 // POST /api/user/series/watch-later
 // Body: { seriesId: string }
@@ -14,6 +17,11 @@ export async function toggleSeriesWatchLater(req: Request, res: Response) {
 
   const user = await User.findById(id);
   if (!user) return res.status(404).json({ message: "User not found" });
+
+  // Cache series metadata when adding to watch later
+  if (!user.seriesWatchLater.includes(seriesId)) {
+    await ensureMediaInCache(seriesId);
+  }
 
   if (user.seriesWatchLater.includes(seriesId)) {
     user.seriesWatchLater = user.seriesWatchLater.filter(
@@ -33,12 +41,126 @@ export async function toggleSeriesWatchLater(req: Request, res: Response) {
 // GET /api/user/series/status
 export async function getUserSeriesStatus(req: Request, res: Response) {
   const { id } = req;
-  const user = await User.findById(id);
-  if (!user) return res.status(404).json({ message: "User not found" });
-  res.json({
-    seriesWatchLater: user.seriesWatchLater,
-    seriesWatched: user.seriesWatched || [],
-  });
+
+  const start = Date.now();
+  const [result] = await User.aggregate([
+    { $match: { _id: new mongoose.Types.ObjectId(id) } },
+    {
+      $project: {
+        seriesWatched: 1,
+        seriesWatchLater: 1,
+      },
+    },
+    // 1. Enrich Watch Later (Strings)
+    {
+      $lookup: {
+        from: MediaCacheModel.collection.name,
+        localField: "seriesWatchLater",
+        foreignField: "id",
+        as: "watchLaterDetails",
+      },
+    },
+    // 2. Unwind seriesWatched (Objects)
+    {
+      $unwind: {
+        path: "$seriesWatched",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+    // 3. Lookup metadata for seriesWatched
+    {
+      $lookup: {
+        from: MediaCacheModel.collection.name,
+        localField: "seriesWatched.seriesId",
+        foreignField: "id",
+        as: "watchedDetails",
+      },
+    },
+    // 4. Merge
+    {
+      $addFields: {
+        seriesMeta: { $arrayElemAt: ["$watchedDetails", 0] },
+      },
+    },
+    // 5. Group back
+    {
+      $group: {
+        _id: "$_id",
+        watchLaterDetails: { $first: "$watchLaterDetails" },
+        seriesWatched: {
+          $push: {
+            $cond: [
+              { $ifNull: ["$seriesWatched.seriesId", false] },
+              {
+                id: "$seriesWatched.seriesId",
+                seriesId: "$seriesWatched.seriesId",
+                isCompleted: { $ifNull: ["$seriesWatched.isCompleted", false] },
+                episodes: "$seriesWatched.episodes",
+
+                // Full Metadata
+                type: { $ifNull: ["$seriesMeta.type", "tvSeries"] },
+                title: { $ifNull: ["$seriesMeta.title", "Unknown Series"] },
+                year: "$seriesMeta.year",
+                endYear: "$seriesMeta.endYear",
+                genres: { $ifNull: ["$seriesMeta.genres", []] },
+                rating: "$seriesMeta.rating",
+                description: { $ifNull: ["$seriesMeta.description", ""] },
+                poster: { $ifNull: ["$seriesMeta.poster", ""] },
+                backdrop: { $ifNull: ["$seriesMeta.backdrop", ""] },
+                lastUpdated: "$seriesMeta.lastUpdated",
+              },
+              "$$REMOVE",
+            ],
+          },
+        },
+      },
+    },
+    {
+      $project: {
+        seriesWatched: 1,
+        seriesWatchLater: {
+          $map: {
+            input: "$watchLaterDetails",
+            as: "wl",
+            in: {
+              id: "$$wl.id",
+              seriesId: "$$wl.id",
+              watchLater: true,
+
+              // Full Metadata
+              type: { $ifNull: ["$$wl.type", "tvSeries"] },
+              title: "$$wl.title",
+              year: "$$wl.year",
+              endYear: "$$wl.endYear",
+              genres: { $ifNull: ["$$wl.genres", []] },
+              rating: "$$wl.rating",
+              description: { $ifNull: ["$$wl.description", ""] },
+              poster: "$$wl.poster",
+              backdrop: { $ifNull: ["$$wl.backdrop", ""] },
+              lastUpdated: "$$wl.lastUpdated",
+            },
+          },
+        },
+      },
+    },
+  ]);
+
+  if (!result) return res.status(404).json({ message: "User not found" });
+
+  const response = {
+    seriesWatched: result.seriesWatched || [],
+    seriesWatchLater: result.seriesWatchLater || [],
+    stats: {
+      watchedCount:
+        result.seriesWatched?.filter((s: any) => s.isCompleted).length || 0,
+      inProgressCount:
+        result.seriesWatched?.filter((s: any) => !s.isCompleted).length || 0,
+      watchLaterCount: result.seriesWatchLater?.length || 0,
+    },
+  };
+
+  // console.log(`Aggregated Series Status in ${Date.now() - start}ms`);
+  res.json(response);
 }
 
 // POST /api/user/series/episodes/watched
@@ -49,6 +171,9 @@ export async function toggleEpisodeWatched(req: Request, res: Response) {
 
   const user = await User.findById(id);
   if (!user) return res.status(404).json({ message: "User not found" });
+
+  // Cache series metadata
+  await ensureMediaInCache(seriesId);
 
   // Find or create series entry
   let seriesEntry = user.seriesWatched.find((s) => s.seriesId === seriesId);
@@ -149,6 +274,9 @@ export async function markSeasonWatched(req: Request, res: Response) {
   const user = await User.findById(id);
   if (!user) return res.status(404).json({ message: "User not found" });
 
+  // Cache series metadata
+  await ensureMediaInCache(seriesId);
+
   // Find or create series entry
   let seriesEntry = user.seriesWatched.find((s) => s.seriesId === seriesId);
   if (!seriesEntry) {
@@ -238,6 +366,9 @@ export async function markAllEpisodesWatched(req: Request, res: Response) {
 
   const user = await User.findById(id);
   if (!user) return res.status(404).json({ message: "User not found" });
+
+  // Cache series metadata
+  await ensureMediaInCache(seriesId);
 
   console.log(`MarkAllWatched: Starting Strict Deep Fetch for ${seriesId}...`);
 
@@ -396,6 +527,11 @@ export async function toggleSeriesCompleted(req: Request, res: Response) {
 
   const user = await User.findById(id);
   if (!user) return res.status(404).json({ message: "User not found" });
+
+  // Cache series metadata
+  if (isCompleted) {
+    await ensureMediaInCache(seriesId);
+  }
 
   let seriesEntry = user.seriesWatched.find((s) => s.seriesId === seriesId);
 

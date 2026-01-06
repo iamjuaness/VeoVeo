@@ -39,7 +39,6 @@ import {
   SelectValue,
 } from "../../../shared/components/ui/select";
 import { VirtuosoGrid } from "react-virtuoso";
-import type { Movie } from "../../../interfaces/Movie";
 import { NotificationCenter } from "../../social/components/NotificationCenter";
 
 export default function MovieTracker() {
@@ -103,7 +102,6 @@ export default function MovieTracker() {
   useMovies();
   const [showScrollSearch] = useState(false);
   const [showFloatingSearch, setShowFloatingSearch] = useState(false);
-  const [orderedWatchedMovies] = useState<Movie[]>([]);
 
   // Handler para Select (shadcn/ui Select envía string)
   const handleRatingChange = (value: string) => {
@@ -142,8 +140,10 @@ export default function MovieTracker() {
       movie.year &&
       movie.year !== 0 &&
       movie.poster &&
+      typeof movie.poster === "string" &&
       movie.poster.trim() !== "" &&
       movie.title &&
+      typeof movie.title === "string" &&
       movie.title.trim() !== "" &&
       movie.rating &&
       movie.rating !== 0 &&
@@ -625,78 +625,7 @@ export default function MovieTracker() {
               )}
             </div>
           </div>
-          {filterStatus === "watched" ? (
-            orderedWatchedMovies.length === 0 ? (
-              loading || searchLoading ? (
-                <div className="flex justify-center py-12">
-                  <Loader2 className="w-10 h-10 animate-spin text-gray-400" />
-                </div>
-              ) : (
-                <div className="text-center py-12">
-                  <div className="text-6xl mb-4">🔍</div>
-                  <h3 className="text-xl font-semibold mb-2">
-                    No se encontraron películas
-                  </h3>
-                  <p className="text-muted">
-                    {searchTerm
-                      ? `No hay resultados para "${searchTerm}"`
-                      : "No hay películas en esta categoría"}
-                  </p>
-                </div>
-              )
-            ) : (
-              <div className="min-h-screen">
-                <VirtuosoGrid
-                  useWindowScroll
-                  data={orderedWatchedMovies}
-                  totalCount={orderedWatchedMovies.length}
-                  overscan={1600}
-                  endReached={() => {
-                    if (!loading && hasMore) {
-                      setCurrentPage((prev) => prev + 1);
-                    }
-                  }}
-                  listClassName="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 justify-items-center py-8"
-                  itemContent={(_index, movie) => (
-                    <div
-                      key={movie.id}
-                      className="cursor-pointer h-full w-full flex justify-center"
-                      tabIndex={0}
-                      onClick={() => navigate(`/movie/${movie.id}`)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ")
-                          navigate(`/movie/${movie.id}`);
-                      }}
-                      role="button"
-                      aria-label={`Ver detalles de ${movie.title}`}
-                    >
-                      <MovieCard
-                        movie={movie}
-                        incrementWatchCount={incrementWatchCount}
-                        resetWatchCount={resetWatchCount}
-                        toggleWatchLater={toggleWatchLater}
-                        user={user}
-                        openLoginModal={() => setShowLoginModal(true)}
-                      />
-                    </div>
-                  )}
-                  components={{
-                    Footer: () => (
-                      <>
-                        {loading && hasMore && !searchTerm && (
-                          <div className="flex justify-center py-6 text-gray-400">
-                            <span className="animate-pulse text-lg">
-                              <Loader2 className="w-5 h-5 animate-spin" />
-                            </span>
-                          </div>
-                        )}
-                      </>
-                    ),
-                  }}
-                />
-              </div>
-            )
-          ) : filteredMoviesToDisplay.length === 0 ? (
+          {filteredMoviesToDisplay.length === 0 ? (
             loading || searchLoading ? (
               <div className="flex justify-center py-12">
                 <Loader2 className="w-10 h-10 animate-spin text-gray-400" />
@@ -720,7 +649,7 @@ export default function MovieTracker() {
                 useWindowScroll
                 data={filteredMoviesToDisplay}
                 totalCount={filteredMoviesToDisplay.length}
-                overscan={1600}
+                overscan={3600}
                 endReached={() => {
                   if (!loading && hasMore) {
                     setCurrentPage((prev) => prev + 1);

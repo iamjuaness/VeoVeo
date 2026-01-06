@@ -133,8 +133,10 @@ export default function SeriesTracker() {
       s.year &&
       s.year !== 0 &&
       s.poster &&
+      typeof s.poster === "string" &&
       s.poster.trim() !== "" &&
       s.title &&
+      typeof s.title === "string" &&
       s.title.trim() !== "" &&
       s.rating &&
       s.rating !== 0 &&
@@ -478,7 +480,7 @@ export default function SeriesTracker() {
                 useWindowScroll
                 data={filteredSeriesToDisplay}
                 totalCount={filteredSeriesToDisplay.length}
-                overscan={1600}
+                overscan={3600}
                 endReached={() => {
                   if (!loading && hasMore) {
                     setCurrentPage((prev) => prev + 1);

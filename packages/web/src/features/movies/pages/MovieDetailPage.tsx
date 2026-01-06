@@ -47,14 +47,13 @@ import { useSocial } from "../../social/context/SocialContext";
 
 export default function MovieDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const [movie, setMovie] = useState<MovieDetail | null>(null);
-  const [loading, setLoading] = useState(true);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const { user, setUser, logout, token } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const { isDarkMode, toggleTheme } = useContext(ThemeContext);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+
   const { movies, setMovies, setMoviesWatchedList, setMoviesWatchLaterList } =
     useMovies();
 
@@ -62,13 +61,52 @@ export default function MovieDetailPage() {
   const watchCount = movieFromContext?.watchCount ?? 0;
   const watchLater = movieFromContext?.watchLater ?? false;
 
+  const [movie, setMovie] = useState<MovieDetail | null>(() => {
+    if (!movieFromContext) return null;
+    return {
+      id: movieFromContext.id,
+      type: movieFromContext.type || "movie",
+      primaryTitle: movieFromContext.title,
+      originalTitle: movieFromContext.title,
+      primaryImage: {
+        url: movieFromContext.poster || movieFromContext.backdrop || "",
+        width: 0,
+        height: 0,
+      },
+      startYear: movieFromContext.year,
+      runtimeSeconds: movieFromContext.duration,
+      genres: Array.isArray(movieFromContext.genres)
+        ? movieFromContext.genres
+        : [movieFromContext.genres],
+      rating: {
+        aggregateRating: movieFromContext.rating,
+        voteCount: 0,
+      },
+      plot: movieFromContext.description,
+      directors: [],
+      writers: [],
+      stars: [],
+      originCountries: [],
+      spokenLanguages: [],
+      watchCount: movieFromContext.watchCount,
+      watchLater: movieFromContext.watchLater,
+    } as MovieDetail;
+  });
+  const [loading, setLoading] = useState(!movie);
+
   const [isRecommendModalOpen, setIsRecommendModalOpen] = useState(false);
   const { friends } = useSocial();
 
   useEffect(() => {
     async function fetchMovie() {
       if (!id || !token) return;
-      setLoading(true);
+
+      // Si no tenemos datos en el contexto, mostramos loading.
+      // Si ya tenemos datos (movieFromContext), mantenemos la vista optimista mientras carga el detalle completo.
+      if (!movieFromContext) {
+        setLoading(true);
+      }
+
       try {
         const data = await getMovieDetailById(id, token);
         setMovie(data);
@@ -79,7 +117,7 @@ export default function MovieDetailPage() {
       }
     }
     if (id) fetchMovie();
-  }, [id, token]); // sólo cambia si cambia id o token
+  }, [id, token, movieFromContext]); // Dependencias actualizadas
 
   const incrementWatchCount = async (id: string) => {
     const movieOriginal = movies.find((m) => m.id === id);
@@ -287,8 +325,8 @@ export default function MovieDetailPage() {
             alt={movie.primaryTitle}
             className="w-full h-full object-cover blur-sm scale-110"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-black via-black/80 to-black/40" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
+          <div className="absolute inset-0 bg-linear-to-r from-black via-black/80 to-black/40" />
+          <div className="absolute inset-0 bg-linear-to-t from-black via-black/50 to-transparent" />
         </div>
 
         {/* Botón Volver */}
@@ -309,7 +347,7 @@ export default function MovieDetailPage() {
           <div className="container mx-auto">
             <div className="flex flex-col md:flex-row gap-8 items-end">
               {/* Poster */}
-              <div className="flex-shrink-0 mx-auto md:mx-0 hidden md:block group">
+              <div className="shrink-0 mx-auto md:mx-0 hidden md:block group">
                 <div className="relative">
                   <img
                     src={movie.primaryImage.url || "/placeholder.svg"}
@@ -318,7 +356,7 @@ export default function MovieDetailPage() {
                     height={375}
                     className="rounded-2xl shadow-2xl object-cover border-4 border-white/10 group-hover:scale-105 transition-transform duration-300"
                   />
-                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="absolute inset-0 rounded-2xl bg-linear-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
               </div>
 

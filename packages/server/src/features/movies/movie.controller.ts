@@ -1,21 +1,24 @@
-// POST /api/user/movies/watched
-// Body: { movieId: string }
 import { Request, Response } from "express";
+import mongoose from "mongoose";
 import User from "../users/user.model.js";
+import MediaCacheModel from "../media/media.model.js";
 import { io } from "../../app.js";
+import { ensureMediaInCache, enrichMediaList } from "../media/media.service.js";
 
 export async function addOrIncrementWatched(req: Request, res: Response) {
   const { id } = req;
   const { movieId, duration, watchedAt } = req.body;
 
-
   const user = await User.findById(id);
   if (!user) return res.status(404).json({ message: "User not found" });
+
+  // Cache movie metadata on-demand
+  await ensureMediaInCache(movieId);
 
   const found = user.moviesWatched.find((item) => item.movieId === movieId);
 
   if (found) {
-    found.count += watchedAt?.length ?? 1;  // suma las vistas nuevas
+    found.count += watchedAt?.length ?? 1; // suma las vistas nuevas
     if (watchedAt && watchedAt.length > 0) {
       // Evita fechas duplicadas (si lo deseas)
       const set = new Set([...(found.watchedAt || []), ...watchedAt]);
@@ -28,23 +31,25 @@ export async function addOrIncrementWatched(req: Request, res: Response) {
       movieId,
       count: watchedAt?.length ?? 1,
       duration,
-      watchedAt: watchedAt || []
+      watchedAt: watchedAt || [],
     });
   }
   await user.save();
-  console.log("Película guardada en Mongo:", user.moviesWatched[user.moviesWatched.length - 1]);
+  console.log(
+    "Película guardada en Mongo:",
+    user.moviesWatched[user.moviesWatched.length - 1]
+  );
   io.to(String(id)).emit("movies-watched", {
     type: "add",
     data: {
       movieId,
-      count: found ? found.count : (watchedAt?.length ?? 1),
+      count: found ? found.count : watchedAt?.length ?? 1,
       duration,
-      watchedAt: found ? found.watchedAt : (watchedAt || [])
+      watchedAt: found ? found.watchedAt : watchedAt || [],
     },
   });
   return res.json({ moviesWatched: user.moviesWatched });
 }
-
 
 // POST /api/user/movies/reset
 // Body: { movieId: string }
@@ -78,6 +83,11 @@ export async function toggleWatchLater(req: Request, res: Response) {
   const user = await User.findById(id);
   if (!user) return res.status(404).json({ message: "User not found" });
 
+  // Cache movie metadata when adding to watch later
+  if (!user.watchLater.includes(movieId)) {
+    await ensureMediaInCache(movieId);
+  }
+
   if (user.watchLater.includes(movieId)) {
     user.watchLater = user.watchLater.filter((id) => id !== movieId);
   } else {
@@ -91,13 +101,128 @@ export async function toggleWatchLater(req: Request, res: Response) {
   return res.json({ watchLater: user.watchLater });
 }
 
-// GET /api/user/movies/status
 export async function getUserMovieStatus(req: Request, res: Response) {
   const { id } = req;
-  const user = await User.findById(id);
-  if (!user) return res.status(404).json({ message: "User not found" });
-  res.json({
-    moviesWatched: user.moviesWatched,
-    watchLater: user.watchLater,
-  });
+
+  // Use aggregation to fetch everything in one DB round trip
+  const start = Date.now();
+  const [result] = await User.aggregate([
+    { $match: { _id: new mongoose.Types.ObjectId(id) } },
+    {
+      $project: {
+        moviesWatched: 1,
+        watchLater: 1,
+      },
+    },
+    // 1. Enrich Watch Later (Array of strings)
+    {
+      $lookup: {
+        from: MediaCacheModel.collection.name,
+        localField: "watchLater",
+        foreignField: "id",
+        as: "watchLaterDetails",
+      },
+    },
+    // 2. Unwind moviesWatched to enrich individual items
+    {
+      $unwind: {
+        path: "$moviesWatched",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+    // 3. Lookup details for each watched movie
+    {
+      $lookup: {
+        from: MediaCacheModel.collection.name,
+        localField: "moviesWatched.movieId",
+        foreignField: "id",
+        as: "watchedDetails",
+      },
+    },
+    // 4. Merge details and re-group
+    {
+      $addFields: {
+        // Take the first match from lookup (should be unique by imdbId)
+        movieDetail: { $arrayElemAt: ["$watchedDetails", 0] },
+      },
+    },
+    {
+      $group: {
+        _id: "$_id",
+        watchLaterDetails: { $first: "$watchLaterDetails" },
+        // Reconstruct moviesWatched array with merged data
+        moviesWatched: {
+          $push: {
+            $cond: [
+              { $ifNull: ["$moviesWatched.movieId", false] }, // Only if movieId exists (handle empty array case)
+              {
+                id: "$moviesWatched.movieId", // Frontend expects 'id'
+                movieId: "$moviesWatched.movieId",
+                count: "$moviesWatched.count",
+                duration: {
+                  $ifNull: [
+                    "$movieDetail.runtimeMins",
+                    "$moviesWatched.duration",
+                  ],
+                }, // Fallback to user stored duration or cached
+                watchedAt: "$moviesWatched.watchedAt",
+                // Full Metadata
+                type: { $ifNull: ["$movieDetail.type", "movie"] },
+                title: { $ifNull: ["$movieDetail.title", "Unknown Title"] },
+                year: "$movieDetail.year",
+                genres: { $ifNull: ["$movieDetail.genres", []] },
+                rating: "$movieDetail.rating",
+                description: { $ifNull: ["$movieDetail.description", ""] },
+                poster: { $ifNull: ["$movieDetail.poster", ""] },
+                backdrop: { $ifNull: ["$movieDetail.backdrop", ""] },
+                lastUpdated: "$movieDetail.lastUpdated",
+              },
+              "$$REMOVE", // Exclude nulls if array was initially empty
+            ],
+          },
+        },
+      },
+    },
+    {
+      $project: {
+        moviesWatched: 1,
+        // Format watchLater similar to enriched output
+        watchLater: {
+          $map: {
+            input: "$watchLaterDetails",
+            as: "wl",
+            in: {
+              id: "$$wl.id",
+              movieId: "$$wl.id",
+              watchLater: true,
+              // Full Metadata
+              type: { $ifNull: ["$$wl.type", "movie"] },
+              duration: "$$wl.duration",
+              title: "$$wl.title",
+              year: "$$wl.year",
+              genres: { $ifNull: ["$$wl.genres", []] },
+              rating: "$$wl.rating",
+              description: { $ifNull: ["$$wl.description", ""] },
+              poster: { $ifNull: ["$$wl.poster", ""] },
+              backdrop: { $ifNull: ["$$wl.backdrop", ""] },
+              lastUpdated: "$$wl.lastUpdated",
+            },
+          },
+        },
+      },
+    },
+  ]);
+
+  if (!result) return res.status(404).json({ message: "User not found" });
+
+  const response = {
+    moviesWatched: result.moviesWatched || [],
+    watchLater: result.watchLater || [],
+    stats: {
+      watchedCount: result.moviesWatched?.length || 0,
+      watchLaterCount: result.watchLater?.length || 0,
+    },
+  };
+
+  res.json(response);
 }

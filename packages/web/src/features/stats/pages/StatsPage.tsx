@@ -1353,7 +1353,7 @@ export default function StatsPage() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium flex gap-2 items-center">
                   <BarChart3 className="h-4 w-4 text-muted-foreground" />
-                  Percentiles de Rating
+                  Distribución de Rating Vistos
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -1401,7 +1401,7 @@ export default function StatsPage() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium flex gap-2 items-center">
                   <Clock className="h-4 w-4 text-muted-foreground" />
-                  Percentiles de Duración
+                  Distribución de Duraciones Vistas
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -1551,7 +1551,7 @@ export default function StatsPage() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium flex gap-2 items-center">
                   <Award className="h-4 w-4 text-muted-foreground" />
-                  Top 3 Géneros Favoritos
+                  Top 3 Géneros Vistos con Mejor Rating
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -1723,7 +1723,7 @@ export default function StatsPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1 p-2 bg-blue-950/30 rounded border border-blue-900/50">
                     <span className="text-xs text-blue-400 font-semibold uppercase tracking-wider">
-                      Más larga
+                      Película Más Larga
                     </span>
                     <span
                       className="font-medium truncate"
@@ -1738,7 +1738,7 @@ export default function StatsPage() {
 
                   <div className="flex flex-col gap-1 p-2 bg-pink-950/30 rounded border border-pink-900/50">
                     <span className="text-xs text-pink-400 font-semibold uppercase tracking-wider">
-                      Más corta
+                      Película Más Corta
                     </span>
                     <span
                       className="font-medium truncate"
@@ -1753,7 +1753,7 @@ export default function StatsPage() {
 
                   <div className="flex flex-col gap-1 p-2 bg-yellow-950/30 rounded border border-yellow-900/50">
                     <span className="text-xs text-yellow-400 font-semibold uppercase tracking-wider">
-                      Mayor Rating
+                      Película con Mayor Rating
                     </span>
                     <span
                       className="font-medium truncate"
@@ -1768,7 +1768,7 @@ export default function StatsPage() {
 
                   <div className="flex flex-col gap-1 p-2 bg-red-950/30 rounded border border-red-900/50">
                     <span className="text-xs text-red-400 font-semibold uppercase tracking-wider">
-                      Menor Rating
+                      Película con Menor Rating
                     </span>
                     <span
                       className="font-medium truncate"
@@ -1783,7 +1783,7 @@ export default function StatsPage() {
 
                   <div className="flex flex-col gap-1 p-2 bg-green-950/30 rounded border border-green-900/50">
                     <span className="text-xs text-green-400 font-semibold uppercase tracking-wider">
-                      Más Reciente
+                      Película Vista Más Nueva
                     </span>
                     <span
                       className="font-medium truncate"
@@ -1798,7 +1798,7 @@ export default function StatsPage() {
 
                   <div className="flex flex-col gap-1 p-2 bg-gray-800/30 rounded border border-gray-700/50">
                     <span className="text-xs text-gray-400 font-semibold uppercase tracking-wider">
-                      Más Antigua
+                      Película Vista Más Antigua
                     </span>
                     <span
                       className="font-medium truncate"
@@ -1813,7 +1813,7 @@ export default function StatsPage() {
 
                   <div className="flex flex-col gap-1 p-2 bg-purple-950/30 rounded border border-purple-900/50 col-span-1 sm:col-span-2">
                     <span className="text-xs text-purple-400 font-semibold uppercase tracking-wider">
-                      Más Rewatched
+                      Película Más Repetida
                     </span>
                     <span
                       className="font-medium truncate"
@@ -1850,7 +1850,7 @@ export default function StatsPage() {
                   Histograma de Ratings
                 </CardTitle>
                 <CardDescription>
-                  Distribución de tus calificaciones.
+                  Distribución de las calificaciones.
                 </CardDescription>
               </CardHeader>
               <CardContent className="h-54 w-full">
@@ -1934,7 +1934,7 @@ export default function StatsPage() {
                   Afinidad por Género
                 </CardTitle>
                 <CardDescription>
-                  Top géneros por rating promedio.
+                  Top mejores géneros por rating promedio.
                 </CardDescription>
               </CardHeader>
               <CardContent className="h-54 w-full">

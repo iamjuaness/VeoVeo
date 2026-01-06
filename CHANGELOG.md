@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.7.1] - 2026-01-06
+
+### Fixed
+
+- **Badge Synchronization**: "Watched" and "Watch Later" badges now correctly appear in all lists for both Movies and Series.
+- **Series Tracker Crash**: Fixed runtime error `s.title.trim is not a function` by adding robust type checks.
+- **Scroll Rendering**: Fixed blank spaces during fast scroll by removing conflicting `loading="lazy"` attributes in virtualized lists.
+- **Data Consistency**: Fixed issue where "Watched" Series tab was sometimes empty due to sync errors.
+
+### Improved
+
+- **Stats Page**: Updated chart titles for better Spanish localization.
+- **Optimistic UI**: Improved loading experience on Movie Details page.
+
+### Technical
+
+- **Database Schema**: Unified Media Cache schema to use `id` field consistently across the application.
+- **Context Logic**: Refactored `MoviesContext` and `SeriesContext` to use `useRef` preventing stale state during data synchronization.
+- **Aggregation Pipelines**: Corrected MongoDB aggregation lookups to properly match media metadata.
+
 ## [2.7.0] - 2026-01-05
 
 ### Added

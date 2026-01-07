@@ -34,13 +34,6 @@ export async function ensureMediaInCache(
 
     const data = await res.json();
 
-    console.log(`Caching ${data.id}:`, {
-      title: data.primaryTitle,
-      startYear: data.startYear,
-      endYear: data.endYear,
-      type: data.type,
-    });
-
     // Create new cache entry
     const newMedia = new MediaCacheModel({
       id: data.id,

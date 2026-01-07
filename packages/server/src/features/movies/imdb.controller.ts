@@ -2,7 +2,6 @@ import { Request, Response } from "express";
 import { console } from "inspector";
 const API_URL = "https://api.imdbapi.dev/";
 
-
 export async function fetchMoviesBatchRaw(
   ids: string[] | undefined | null,
   options?: {
@@ -33,7 +32,6 @@ export async function fetchMoviesBatchRaw(
       if (!res.ok) {
         // Aquí capturas el ID que falló
         const idStr = typeof id === "string" ? id : JSON.stringify(id);
-        console.log("Error al obtener película con ID", idStr);
         console.error(
           `Error al obtener película con ID ${idStr}:`,
           res.statusText

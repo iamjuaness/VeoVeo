@@ -1,7 +1,7 @@
 {
   "name": "veoveo",
   "private": true,
-  "version": "2.7.1",
+  "version": "2.7.2",
   "type": "module",
   "scripts": {
     "dev": "pnpm --parallel --filter @veoveo/web --filter @veoveo/server dev",
@@ -14,7 +14,7 @@
     "type-check": "pnpm -r type-check",
     "preinstall": "npx only-allow pnpm"
   },
-  "description": "**VeoVeo** is a modern web app for movie lovers who want to **track, organize, and discover movies** with ease. Built with **React**, **TypeScript**, and **Vite**, VeoVeo lets you manage your personal movie collection, track which films you've seen (and how many times), and create a watchlist for the future.",
+  "description": "**CineMate** is a modern web app for movie lovers who want to **track, organize, and discover movies** with ease. Built with **React**, **TypeScript**, and **Vite**, CineMate lets you manage your personal movie collection, track which films you've seen (and how many times), and create a watchlist for the future.",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/iamjuaness/VeoVeo.git"
@@ -38,6 +38,7 @@
   "dependencies": {
     "@types/html2canvas": "^1.0.0",
     "@types/jspdf": "^2.0.0",
+    "framer-motion": "^12.24.7",
     "html2canvas": "^1.4.1",
     "jspdf": "^3.0.4",
     "lucide-react": "^0.544.0",

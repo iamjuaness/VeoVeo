@@ -289,12 +289,12 @@ export default function SeriesTracker() {
               <div className="w-9 h-9 relative group-hover:scale-110 transition-transform duration-300">
                 <img
                   src="pelicula-de-video.png"
-                  alt="VeoVeo Logo"
+                  alt="CineMate Logo"
                   className="object-contain w-full h-full drop-shadow-md"
                 />
               </div>
               <h1 className="text-2xl font-bold tracking-tight bg-linear-to-r from-primary to-primary/70 bg-clip-text text-transparent hidden sm:block">
-                VeoVeo
+                CineMate
               </h1>
             </div>
 
@@ -321,7 +321,7 @@ export default function SeriesTracker() {
             </div>
 
             {/* Controls */}
-            <div className="fixed right-20 z-50 flex items-center gap-2">
+            <div className="fixed right-28 z-50 flex items-center gap-2">
               {showScrollSearch && (
                 <Button
                   variant="ghost"
@@ -350,18 +350,21 @@ export default function SeriesTracker() {
                       setOpen={setShowRegisterModal}
                     />
                   </div>
-                  <Hamburger
-                    showLoginModal={showLoginModal}
-                    setShowLoginModal={setShowLoginModal}
-                    showRegisterModal={showRegisterModal}
-                    setShowRegisterModal={setShowRegisterModal}
-                    showMobileMenu={showMobileMenu}
-                    setShowMobileMenu={setShowMobileMenu}
-                    setUser={setUser}
-                    toggleTheme={toggleTheme}
-                    isDarkMode={isDarkMode}
-                    handleLogout={handleLogout}
-                  />
+
+                  <div className="fixed right-4 z-50 flex items-center gap-2">
+                    <Hamburger
+                      showLoginModal={showLoginModal}
+                      setShowLoginModal={setShowLoginModal}
+                      showRegisterModal={showRegisterModal}
+                      setShowRegisterModal={setShowRegisterModal}
+                      showMobileMenu={showMobileMenu}
+                      setShowMobileMenu={setShowMobileMenu}
+                      setUser={setUser}
+                      toggleTheme={toggleTheme}
+                      isDarkMode={isDarkMode}
+                      handleLogout={handleLogout}
+                    />
+                  </div>
                 </>
               ) : (
                 <div className="fixed right-4 z-50 flex items-center gap-2">

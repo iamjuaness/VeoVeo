@@ -27,7 +27,7 @@ import { useContext, useState } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { ThemeContext } from "../../../core/providers/ThemeContext";
 
-const APP_VERSION = "2.7.1"; // Update this when releasing new versions
+const APP_VERSION = "2.7.2"; // Update this when releasing new versions
 
 interface UserMenuProps {
   open: boolean;
@@ -204,7 +204,7 @@ export function UserMenu({ open, setOpen }: UserMenuProps) {
 
             <div className="mt-6 text-center">
               <p className="text-xs text-muted-foreground/50">
-                VeoVeo v{APP_VERSION}
+                CineMate v{APP_VERSION}
               </p>
             </div>
           </div>

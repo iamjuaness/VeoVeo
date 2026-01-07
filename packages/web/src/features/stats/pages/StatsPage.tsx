@@ -734,7 +734,7 @@ export default function StatsPage() {
       }
 
       const date = new Date().toLocaleDateString("es-ES");
-      pdf.save(`VeoVeo-Stats-${date}.pdf`);
+      pdf.save(`CineMate-Stats-${date}.pdf`);
     } catch (error) {
       console.error("Error generating PDF:", error);
       alert("Error al generar el PDF. Por favor, inténtalo de nuevo.");

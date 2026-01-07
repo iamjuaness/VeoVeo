@@ -5,6 +5,75 @@ import MediaCacheModel from "../media/media.model.js";
 import { io } from "../../app.js";
 import { ensureMediaInCache, enrichMediaList } from "../media/media.service.js";
 
+// Función helper para obtener película enriquecida por ID
+async function getEnrichedWatchedMovie(
+  userId: string | undefined,
+  movieId: string
+) {
+  const [result] = await User.aggregate([
+    { $match: { _id: new mongoose.Types.ObjectId(userId) } },
+    { $unwind: { path: "$moviesWatched", preserveNullAndEmptyArrays: true } },
+    { $match: { "moviesWatched.movieId": movieId } },
+    {
+      $lookup: {
+        from: MediaCacheModel.collection.name,
+        localField: "moviesWatched.movieId",
+        foreignField: "id",
+        as: "watchedDetails",
+      },
+    },
+    {
+      $addFields: {
+        movieDetail: { $arrayElemAt: ["$watchedDetails", 0] },
+      },
+    },
+    {
+      $project: {
+        id: "$moviesWatched.movieId",
+        movieId: "$moviesWatched.movieId",
+        count: "$moviesWatched.count",
+        duration: {
+          $ifNull: ["$movieDetail.duration", "$moviesWatched.duration"],
+        },
+        watchedAt: "$moviesWatched.watchedAt",
+        type: { $ifNull: ["$movieDetail.type", "movie"] },
+        title: { $ifNull: ["$movieDetail.title", "Unknown Title"] },
+        year: "$movieDetail.year",
+        genres: { $ifNull: ["$movieDetail.genres", []] },
+        rating: "$movieDetail.rating",
+        description: { $ifNull: ["$movieDetail.description", ""] },
+        poster: { $ifNull: ["$movieDetail.poster", ""] },
+        backdrop: { $ifNull: ["$movieDetail.backdrop", ""] },
+        lastUpdated: "$movieDetail.lastUpdated",
+      },
+    },
+  ]);
+
+  return result[0] || null;
+}
+
+// Función para watchLater (más simple, solo cache)
+async function getEnrichedWatchLaterMovie(movieId: string) {
+  const media = await MediaCacheModel.findOne({ id: movieId });
+  if (!media) return null;
+
+  return {
+    id: media.id,
+    movieId: media.id,
+    watchLater: true,
+    type: media.type as "movie" | "tvSeries" | "tvMiniSeries",
+    duration: media.duration,
+    title: media.title,
+    year: media.year,
+    genres: media.genres,
+    rating: media.rating,
+    description: media.description,
+    poster: media.poster,
+    backdrop: media.backdrop,
+    lastUpdated: media.lastUpdated,
+  };
+}
+
 export async function addOrIncrementWatched(req: Request, res: Response) {
   const { id } = req;
   const { movieId, duration, watchedAt } = req.body;
@@ -16,17 +85,15 @@ export async function addOrIncrementWatched(req: Request, res: Response) {
   await ensureMediaInCache(movieId);
 
   const found = user.moviesWatched.find((item) => item.movieId === movieId);
+  let newMovieData;
 
   if (found) {
-    found.count += watchedAt?.length ?? 1; // suma las vistas nuevas
+    found.count += watchedAt?.length ?? 1;
     if (watchedAt && watchedAt.length > 0) {
-      // Evita fechas duplicadas (si lo deseas)
       const set = new Set([...(found.watchedAt || []), ...watchedAt]);
-      found.watchedAt = Array.from(set).sort(); // ordena si quieres por fecha
+      found.watchedAt = Array.from(set).sort();
     }
-    // Actualiza duration si lo necesitas...
   } else {
-    console.log("Array que vas a guardar (watchedAt):", watchedAt);
     user.moviesWatched.push({
       movieId,
       count: watchedAt?.length ?? 1,
@@ -35,19 +102,14 @@ export async function addOrIncrementWatched(req: Request, res: Response) {
     });
   }
   await user.save();
-  console.log(
-    "Película guardada en Mongo:",
-    user.moviesWatched[user.moviesWatched.length - 1]
-  );
+
+  newMovieData = await getEnrichedWatchedMovie(id, movieId);
+
   io.to(String(id)).emit("movies-watched", {
     type: "add",
-    data: {
-      movieId,
-      count: found ? found.count : watchedAt?.length ?? 1,
-      duration,
-      watchedAt: found ? found.watchedAt : watchedAt || [],
-    },
+    data: newMovieData,
   });
+
   return res.json({ moviesWatched: user.moviesWatched });
 }
 
@@ -83,6 +145,9 @@ export async function toggleWatchLater(req: Request, res: Response) {
   const user = await User.findById(id);
   if (!user) return res.status(404).json({ message: "User not found" });
 
+  let newWatchLaterData;
+  let isAdding = false;
+
   // Cache movie metadata when adding to watch later
   if (!user.watchLater.includes(movieId)) {
     await ensureMediaInCache(movieId);
@@ -91,12 +156,18 @@ export async function toggleWatchLater(req: Request, res: Response) {
   if (user.watchLater.includes(movieId)) {
     user.watchLater = user.watchLater.filter((id) => id !== movieId);
   } else {
+    await ensureMediaInCache(movieId);
     user.watchLater.push(movieId);
+    isAdding = true;
+
+    newWatchLaterData = await getEnrichedWatchLaterMovie(movieId);
   }
   await user.save();
+
   io.to(String(id)).emit("watch-later-toggled", {
     movieId,
     watchLater: user.watchLater,
+    newMovie: isAdding ? newWatchLaterData : null,
   });
   return res.json({ watchLater: user.watchLater });
 }

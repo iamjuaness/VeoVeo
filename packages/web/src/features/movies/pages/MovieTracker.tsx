@@ -100,7 +100,7 @@ export default function MovieTracker() {
   const navigate = useNavigate();
 
   useMovies();
-  const [showScrollSearch] = useState(false);
+  const [showScrollSearch, setShowScrollSearch] = useState(false);
   const [showFloatingSearch, setShowFloatingSearch] = useState(false);
 
   // Handler para Select (shadcn/ui Select envía string)
@@ -168,6 +168,21 @@ export default function MovieTracker() {
   useEffect(() => {
     const savedPage = localStorage.getItem("currentPage");
     if (savedPage) setCurrentPage(Number(savedPage));
+  }, []);
+
+  useEffect(() => {
+    let lastValue = false;
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      const newValue = currentScrollY > 700;
+      if (newValue !== lastValue) {
+        setShowScrollSearch(newValue);
+        lastValue = newValue;
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   const handleLogout = () => {
@@ -379,12 +394,12 @@ export default function MovieTracker() {
               <div className="w-9 h-9 relative group-hover:scale-110 transition-transform duration-300">
                 <img
                   src="pelicula-de-video.png"
-                  alt="VeoVeo Logo"
+                  alt="CineMate Logo"
                   className="object-contain w-full h-full drop-shadow-md"
                 />
               </div>
               <h1 className="text-2xl font-bold tracking-tight bg-linear-to-r from-primary to-primary/70 bg-clip-text text-transparent hidden sm:block">
-                VeoVeo
+                CineMate
               </h1>
             </div>
 
@@ -411,7 +426,7 @@ export default function MovieTracker() {
             </div>
 
             {/* Controles de navegación */}
-            <div className="fixed right-20 z-50 flex items-center gap-2">
+            <div className="fixed right-28 z-50 flex items-center gap-2">
               {/* Lupa flotante (solo visible al hacer scroll) */}
               {showScrollSearch && (
                 <Button
@@ -428,10 +443,7 @@ export default function MovieTracker() {
               {!user ? (
                 <>
                   {/* Botones de desktop (lg y superior) */}
-                  <div className="hidden lg:flex items-center gap-3">
-                    {/* Botón de tema*/}
-                    <Theme toggleTheme={toggleTheme} />
-                    <div className="h-6 w-px bg-border/50 mx-1" />
+                  <div className="hidden lg:flex items-center gap-3 fixed right-4 top-4 z-50">
                     {/* Modal de Inicio de Sesión */}
                     <ModalLogin
                       open={showLoginModal}
@@ -447,19 +459,24 @@ export default function MovieTracker() {
                     />
                   </div>
 
-                  {/* Menú hamburguesa para móviles (menor a lg) */}
-                  <Hamburger
-                    showLoginModal={showLoginModal}
-                    setShowLoginModal={setShowLoginModal}
-                    showRegisterModal={showRegisterModal}
-                    setShowRegisterModal={setShowRegisterModal}
-                    showMobileMenu={showMobileMenu}
-                    setShowMobileMenu={setShowMobileMenu}
-                    setUser={setUser}
-                    toggleTheme={toggleTheme}
-                    isDarkMode={isDarkMode}
-                    handleLogout={handleLogout}
-                  />
+                  <div className="fixed right-4 z-50 flex items-center gap-2 lg:hidden">
+                    {/* Botón de tema*/}
+                    <Theme toggleTheme={toggleTheme} />
+                    <div className="h-6 w-px bg-border/50 mx-1" />
+
+                    <Hamburger
+                      showLoginModal={showLoginModal}
+                      setShowLoginModal={setShowLoginModal}
+                      showRegisterModal={showRegisterModal}
+                      setShowRegisterModal={setShowRegisterModal}
+                      showMobileMenu={showMobileMenu}
+                      setShowMobileMenu={setShowMobileMenu}
+                      setUser={setUser}
+                      toggleTheme={toggleTheme}
+                      isDarkMode={isDarkMode}
+                      handleLogout={handleLogout}
+                    />
+                  </div>
                 </>
               ) : (
                 /* Avatar de usuario y menú lateral */
@@ -699,7 +716,7 @@ export default function MovieTracker() {
 
         <footer className="border-t border-gray-200 p-4 text-center">
           <p className="text-sm text-gray-500">
-            &copy; {new Date().getFullYear()} VeoVeo. Todos los derechos
+            &copy; {new Date().getFullYear()} CineMate. Todos los derechos
             reservados.
           </p>
         </footer>

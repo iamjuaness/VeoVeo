@@ -1,6 +1,6 @@
 {
   "name": "@veoveo/web",
-  "version": "2.1.1",
+  "version": "2.7.2",
   "private": true,
   "type": "module",
   "scripts": {
@@ -23,6 +23,7 @@
     "@radix-ui/react-slot": "^1.2.3",
     "@radix-ui/react-switch": "^1.2.6",
     "@radix-ui/react-tabs": "^1.1.13",
+    "@radix-ui/react-tooltip": "^1.2.8",
     "@react-oauth/google": "^0.12.2",
     "@socket.io/component-emitter": "^3.1.2",
     "@tailwindcss/typography": "^0.5.18",

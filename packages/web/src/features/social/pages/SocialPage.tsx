@@ -173,12 +173,12 @@ export default function SocialPage() {
             <div className="bg-primary/10 p-2 rounded-xl group-hover:scale-110 transition-transform duration-300">
               <img
                 src="pelicula-de-video.png"
-                alt="VeoVeo"
+                alt="CineMate"
                 className="w-6 h-6"
               />
             </div>
             <h1 className="text-xl font-black tracking-tighter bg-linear-to-r from-primary via-primary/80 to-primary/60 bg-clip-text text-transparent hidden xs:block">
-              VEOVEO SOCIAL
+              CineMate Social
             </h1>
           </div>
 
@@ -726,7 +726,7 @@ export default function SocialPage() {
               MI PERFIL
             </DialogTitle>
             <DialogDescription>
-              Personaliza tu presencia en VeoVeo Social.
+              Personaliza tu presencia en CineMate Social.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-6 py-4">

@@ -123,7 +123,6 @@ export function SeriesProvider({ children }: SeriesProviderProps) {
   useEffect(() => {
     if (!user || !token) return;
     if (lastLoadedUserRef.current && lastLoadedUserRef.current !== user.id) {
-      console.log("User changed, clearing local series state");
       setSeriesWatchedList([]);
       setSeriesInProgressList([]);
       setSeriesWatchLaterList([]);
@@ -299,7 +298,6 @@ export function SeriesProvider({ children }: SeriesProviderProps) {
 
   const loadSeriesWatched = async (force = false): Promise<Series[]> => {
     if (!force && Date.now() - lastManualUpdateRef.current < 10000) {
-      console.log("Ignoring loadSeriesWatched due to recent manual update");
       return seriesWatchedList;
     }
     try {

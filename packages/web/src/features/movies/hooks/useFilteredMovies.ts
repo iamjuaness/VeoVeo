@@ -59,6 +59,13 @@ export function useFilteredMovies({
     const currentGenre = selectedGenres[filterStatus];
     if (currentGenre && currentGenre !== "All") {
       base = base.filter((movie) => {
+        // const movieFirstGenre = Array.isArray(movie.genres)
+        //   ? movie.genres[0] // Primer elemento del array
+        //   : typeof movie.genres === "string"
+        //   ? movie.genres // String completo
+        //   : null;
+
+        // return movieFirstGenre === currentGenre;
         if (Array.isArray(movie.genres)) {
           return movie.genres.includes(currentGenre);
         }

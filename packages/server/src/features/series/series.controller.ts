@@ -9,6 +9,71 @@ import {
 } from "./imdb-series.controller.js";
 import { ensureMediaInCache, enrichMediaList } from "../media/media.service.js";
 
+async function getEnrichedSeriesWatched(
+  userId: string | undefined,
+  seriesId: string
+) {
+  const [result] = await User.aggregate([
+    { $match: { _id: new mongoose.Types.ObjectId(userId) } },
+    { $unwind: { path: "$seriesWatched", preserveNullAndEmptyArrays: true } },
+    { $match: { "seriesWatched.seriesId": seriesId } },
+    {
+      $lookup: {
+        from: MediaCacheModel.collection.name,
+        localField: "seriesWatched.seriesId",
+        foreignField: "id",
+        as: "seriesMeta",
+      },
+    },
+    {
+      $addFields: {
+        seriesDetail: { $arrayElemAt: ["$seriesMeta", 0] },
+      },
+    },
+    {
+      $project: {
+        id: "$seriesWatched.seriesId",
+        seriesId: "$seriesWatched.seriesId",
+        isCompleted: { $ifNull: ["$seriesWatched.isCompleted", false] },
+        episodes: "$seriesWatched.episodes",
+        type: { $ifNull: ["$seriesDetail.type", "tvSeries"] },
+        title: { $ifNull: ["$seriesDetail.title", "Unknown Series"] },
+        year: "$seriesDetail.year",
+        endYear: "$seriesDetail.endYear",
+        genres: { $ifNull: ["$seriesDetail.genres", []] },
+        rating: "$seriesDetail.rating",
+        description: { $ifNull: ["$seriesDetail.description", ""] },
+        poster: { $ifNull: ["$seriesDetail.poster", ""] },
+        backdrop: { $ifNull: ["$seriesDetail.backdrop", ""] },
+        lastUpdated: "$seriesDetail.lastUpdated",
+      },
+    },
+  ]);
+
+  return result[0] || null;
+}
+
+async function getEnrichedSeriesWatchLater(seriesId: string) {
+  const media = await MediaCacheModel.findOne({ id: seriesId });
+  if (!media) return null;
+
+  return {
+    id: media.id,
+    seriesId: media.id,
+    watchLater: true,
+    type: media.type as "movie" | "tvSeries" | "tvMiniSeries",
+    title: media.title,
+    year: media.year,
+    endYear: media.endYear,
+    genres: media.genres,
+    rating: media.rating,
+    description: media.description,
+    poster: media.poster,
+    backdrop: media.backdrop,
+    lastUpdated: media.lastUpdated,
+  };
+}
+
 // POST /api/user/series/watch-later
 // Body: { seriesId: string }
 export async function toggleSeriesWatchLater(req: Request, res: Response) {
@@ -17,6 +82,9 @@ export async function toggleSeriesWatchLater(req: Request, res: Response) {
 
   const user = await User.findById(id);
   if (!user) return res.status(404).json({ message: "User not found" });
+
+  let newSeriesData;
+  let isAdding = false;
 
   // Cache series metadata when adding to watch later
   if (!user.seriesWatchLater.includes(seriesId)) {
@@ -28,13 +96,20 @@ export async function toggleSeriesWatchLater(req: Request, res: Response) {
       (id) => id !== seriesId
     );
   } else {
+    await ensureMediaInCache(seriesId);
     user.seriesWatchLater.push(seriesId);
+    isAdding = true;
+
+    newSeriesData = await getEnrichedSeriesWatchLater(seriesId);
   }
   await user.save();
+
   io.to(String(id)).emit("series-watch-later-toggled", {
     seriesId,
     seriesWatchLater: user.seriesWatchLater,
+    newSeries: isAdding ? newSeriesData : null,
   });
+
   return res.json({ seriesWatchLater: user.seriesWatchLater });
 }
 
@@ -159,7 +234,6 @@ export async function getUserSeriesStatus(req: Request, res: Response) {
     },
   };
 
-  // console.log(`Aggregated Series Status in ${Date.now() - start}ms`);
   res.json(response);
 }
 
@@ -195,14 +269,6 @@ export async function toggleEpisodeWatched(req: Request, res: Response) {
       existingEpValue.count = (existingEpValue.count || 1) + 1;
       existingEpValue.watchedAt = new Date();
     } else {
-      // Default toggle behavior: If exists, remove it (unless count is high, but standard toggle usually means unwatch)
-      // For now, if user clicks standard check, we remove it.
-      // Or should we decrement? User asked "cuantas veces".
-      // Standard check usually means "I haven't seen it".
-      // But maybe we add logic: If count > 1, decrement?
-      // Let's stick to standard behavior: Toggle = Remove if exists, unless we add specific "Increment" UI.
-      // Actually, if simply toggling off, remove entirely.
-      // Rewatch logic will use 'force' or explicit increment.
       const idx = seriesEntry.episodes.indexOf(existingEpValue);
       seriesEntry.episodes.splice(idx, 1);
     }
@@ -229,11 +295,13 @@ export async function toggleEpisodeWatched(req: Request, res: Response) {
 
   await user.save();
 
+  const enrichedSeries = await getEnrichedSeriesWatched(id, seriesId);
+
   io.to(String(id)).emit("episode-watched-toggled", {
     seriesId,
     seasonNumber,
     episodeNumber,
-    seriesWatched: user.seriesWatched,
+    series: enrichedSeries,
   });
 
   return res.json({ seriesWatched: user.seriesWatched });
@@ -349,9 +417,12 @@ export async function markSeasonWatched(req: Request, res: Response) {
 
     user.markModified("seriesWatched");
     await user.save();
+
+    const enrichedSeries = await getEnrichedSeriesWatched(id, seriesId);
+
     io.to(String(id)).emit("series-season-marked", {
       seriesId,
-      seriesWatched: user.seriesWatched,
+      series: enrichedSeries,
     });
   }
 
@@ -369,8 +440,6 @@ export async function markAllEpisodesWatched(req: Request, res: Response) {
 
   // Cache series metadata
   await ensureMediaInCache(seriesId);
-
-  console.log(`MarkAllWatched: Starting Strict Deep Fetch for ${seriesId}...`);
 
   // 1. Fetch Authoritative Seasons List
   let targetSeasons: { seasonNumber: number; episodeCount: number }[] = [];
@@ -406,9 +475,6 @@ export async function markAllEpisodesWatched(req: Request, res: Response) {
         }
 
         const validCount = uniqueEpisodes.size;
-        console.log(
-          `Season ${season.seasonNumber}: Fetched ${eps.length} raw -> ${validCount} valid unique episodes.`
-        );
 
         targetSeasons.push({
           seasonNumber: season.seasonNumber,
@@ -473,10 +539,6 @@ export async function markAllEpisodesWatched(req: Request, res: Response) {
     );
   }
 
-  console.log(
-    `MarkAllWatched: Atomic Merge Save. Total Episodes: ${seriesEntry.episodes.length}`
-  );
-
   user.markModified("seriesWatched");
   try {
     await user.save();
@@ -485,9 +547,11 @@ export async function markAllEpisodesWatched(req: Request, res: Response) {
     return res.status(500).json({ message: "Error saving progress" });
   }
 
+  const enrichedSeries = await getEnrichedSeriesWatched(id, seriesId);
+
   io.to(String(id)).emit("series-marked-watched", {
     seriesId,
-    seriesWatched: user.seriesWatched,
+    series: enrichedSeries,
   });
 
   return res.json({ seriesWatched: user.seriesWatched });

@@ -11,7 +11,8 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/shared/utils/*": ["./packages/shared/utils/*"],
+      "@/shared/components/*": ["./packages/shared/components/ui/*"]
     }
   }
 }

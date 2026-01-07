@@ -9,7 +9,7 @@ const MOVIES_PER_PAGE = 24;
 const token = localStorage.getItem("authToken");
 
 export async function getMoviesByGenres(genre: string) {
-  const res = await fetch(`${API_URL}?genres=${genre}`, {
+  const res = await fetch(`${API_URL}titles?genres=${genre}`, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
@@ -40,8 +40,6 @@ export async function getMovieDetailById(
       getMovieInWatchLater(id).then((res) => res.inWatchLater),
     ]);
   }
-
-  console.log(watchCount, watchLater);
 
   return {
     id: data.id,

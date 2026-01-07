@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.7.2] - 2026-01-07
+
+### Fixed
+
+- **Modal Login**: Fixed responsive design issues.
+- **Modal Register**: Fixed responsive design issues.
+
 ## [2.7.1] - 2026-01-06
 
 ### Fixed

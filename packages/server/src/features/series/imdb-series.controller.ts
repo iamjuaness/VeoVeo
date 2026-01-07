@@ -31,7 +31,6 @@ export async function fetchSeriesBatchRaw(
       });
       if (!res.ok) {
         const idStr = typeof id === "string" ? id : JSON.stringify(id);
-        console.log("Error al obtener serie con ID", idStr);
         console.error(
           `Error al obtener serie con ID ${idStr}:`,
           res.statusText

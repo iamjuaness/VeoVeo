@@ -395,7 +395,7 @@ export default function SocialPage() {
 
                   {searchResults.length > 0 && (
                     <div className="mt-8 space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
                         {searchResults.map((result) => {
                           if (!result) return null;
                           const status = getRequestStatus(

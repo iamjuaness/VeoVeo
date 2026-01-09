@@ -19,6 +19,7 @@ import {
   fetchMoviesFromEndpoint,
   searchMovies,
 } from "../../../features/movies/services/imdb";
+import type { Genre } from "../../../shared/lib/genres";
 
 interface MoviesContextType {
   movies: Movie[];
@@ -60,6 +61,9 @@ interface MoviesContextType {
   setLastScrollPosition: React.Dispatch<React.SetStateAction<number>>;
   reportManualUpdate: () => void;
   movieStats: { watchedCount: number; watchLaterCount: number };
+  selectedGenre?: Genre;
+  setSelectedGenre?: (genre: Genre) => void;
+  setGenreMovies?: React.Dispatch<React.SetStateAction<Movie[]>>;
 }
 
 const MoviesContext = createContext<MoviesContextType | undefined>(undefined);
@@ -103,6 +107,8 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
     watchedCount: 0,
     watchLaterCount: 0,
   });
+  const [selectedGenre, setSelectedGenre] = useState<Genre>("All");
+  const [genreMovies, setGenreMovies] = useState<Movie[]>([]);
 
   const reportManualUpdate = useCallback(() => {
     lastManualUpdateRef.current = Date.now();
@@ -251,7 +257,14 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
   }, [moviesWatchedList, moviesWatchLaterList]);
 
   useEffect(() => {
-    if (filterStatus !== "all" || !hasMore || isFetchingRef.current) return;
+    if (
+      filterStatus !== "all" ||
+      !hasMore ||
+      isFetchingRef.current ||
+      (selectedGenre && selectedGenre !== "All")
+    ) {
+      return;
+    }
 
     isFetchingRef.current = true;
     setLoading(true);
@@ -284,7 +297,7 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
         setLoading(false);
         isFetchingRef.current = false;
       });
-  }, [currentPage]);
+  }, [currentPage, selectedGenre]);
 
   const loadMoviesWatched = async (force = false): Promise<Movie[]> => {
     if (!force && Date.now() - lastManualUpdateRef.current < 10000) {
@@ -405,6 +418,10 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
       setLastScrollPosition,
       reportManualUpdate,
       movieStats,
+      selectedGenre,
+      setSelectedGenre,
+      genreMovies,
+      setGenreMovies,
     }),
     [
       movies,
@@ -427,6 +444,8 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
       lastScrollPosition,
       setLastScrollPosition,
       reportManualUpdate,
+      selectedGenre,
+      genreMovies,
     ]
   );
 

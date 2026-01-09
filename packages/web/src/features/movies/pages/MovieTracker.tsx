@@ -40,6 +40,7 @@ import {
 } from "../../../shared/components/ui/select";
 import { VirtuosoGrid } from "react-virtuoso";
 import { NotificationCenter } from "../../social/components/NotificationCenter";
+import { useGenreMovies } from "../hooks/useGenreMovies";
 
 export default function MovieTracker() {
   const {
@@ -103,7 +104,6 @@ export default function MovieTracker() {
   const [showScrollSearch, setShowScrollSearch] = useState(false);
   const [showFloatingSearch, setShowFloatingSearch] = useState(false);
 
-  // Handler para Select (shadcn/ui Select envía string)
   const handleRatingChange = (value: string) => {
     const parsed = value === "All" ? "All" : (Number(value) as RatingValue);
     setSelectedRatings((prev) => ({
@@ -111,6 +111,25 @@ export default function MovieTracker() {
       [filterStatus]: parsed,
     }));
   };
+
+  const handleGenreChange = (genre: Genre) => {
+    setSelectedGenres((prev) => ({
+      ...prev,
+      [filterStatus]: genre,
+    }));
+
+    if (genre === "All" && filterStatus === "all") {
+      setCurrentPage(1);
+    }
+  };
+
+  const {
+    genreMovies,
+    isLoadingGenre,
+    errorGenre,
+    loadMoreGenreMovies,
+    setGenreMovies,
+  } = useGenreMovies(selectedGenres[filterStatus]);
 
   // Use the new custom hook for filtered movies
   const displayedMovies = useFilteredMovies({
@@ -122,6 +141,7 @@ export default function MovieTracker() {
     selectedGenres,
     selectedRatings,
     watchedOrder,
+    genreMovies,
   });
 
   const featuredMovies = [...movies]
@@ -207,14 +227,6 @@ export default function MovieTracker() {
     setCurrentSlide(index);
   };
 
-  // Función para cambiar género
-  const handleGenreChange = (genre: Genre) => {
-    setSelectedGenres((prev) => ({
-      ...prev,
-      [filterStatus]: genre,
-    }));
-  };
-
   // Incrementar contador de veces vista
   const incrementWatchCount = useCallback(
     async (id: string) => {
@@ -286,6 +298,20 @@ export default function MovieTracker() {
         return nextMovies;
       });
 
+      if (selectedGenres[filterStatus] !== "All" && setGenreMovies) {
+        setGenreMovies((prev) =>
+          prev.map((movie) =>
+            movie.id === id
+              ? {
+                  ...movie,
+                  watchCount: (movie.watchCount ?? 0) + 1,
+                  watchLater: false,
+                }
+              : movie
+          )
+        );
+      }
+
       setSearchResults((prev) =>
         prev.map((movie) =>
           movie.id === id
@@ -304,7 +330,15 @@ export default function MovieTracker() {
         return filtered;
       });
     },
-    [setMovies, setMoviesWatchLaterList, setMoviesWatchedList, setSearchResults]
+    [
+      setMovies,
+      setMoviesWatchLaterList,
+      setMoviesWatchedList,
+      setSearchResults,
+      setGenreMovies,
+      selectedGenres,
+      filterStatus,
+    ]
   );
 
   // Resetear contador de veces vista
@@ -316,6 +350,13 @@ export default function MovieTracker() {
           movie.id === id ? { ...movie, watchCount: 0 } : movie
         )
       );
+      if (selectedGenres[filterStatus] !== "All" && setGenreMovies) {
+        setGenreMovies((prev) =>
+          prev.map((movie) =>
+            movie.id === id ? { ...movie, watchCount: 0 } : movie
+          )
+        );
+      }
 
       setMoviesWatchedList((prev) => {
         const updated = prev.filter((movie) => movie.id !== id);
@@ -331,7 +372,14 @@ export default function MovieTracker() {
 
       resetWatched({ movieId: id.toString() });
     },
-    [setMovies, setMoviesWatchedList, setSearchResults]
+    [
+      setMovies,
+      setMoviesWatchedList,
+      setSearchResults,
+      setGenreMovies,
+      selectedGenres,
+      filterStatus,
+    ]
   );
 
   // Toggle watchLater status
@@ -364,13 +412,30 @@ export default function MovieTracker() {
         return nextMovies;
       });
 
+      if (selectedGenres[filterStatus] !== "All" && setGenreMovies) {
+        setGenreMovies((prev) =>
+          prev.map((movie) =>
+            movie.id === id
+              ? { ...movie, watchLater: !movie.watchLater }
+              : movie
+          )
+        );
+      }
+
       setSearchResults((prev) =>
         prev.map((movie) =>
           movie.id === id ? { ...movie, watchLater: !movie.watchLater } : movie
         )
       );
     },
-    [setMovies, setMoviesWatchLaterList, setSearchResults]
+    [
+      setMovies,
+      setMoviesWatchLaterList,
+      setSearchResults,
+      setGenreMovies,
+      selectedGenres,
+      filterStatus,
+    ]
   );
 
   // Estadísticas
@@ -642,6 +707,23 @@ export default function MovieTracker() {
               )}
             </div>
           </div>
+          {isLoadingGenre &&
+            selectedGenres[filterStatus] !== "All" &&
+            genreMovies.length === 0 && (
+              <div className="flex justify-center items-center py-12">
+                <Loader2 className="w-10 h-10 animate-spin text-primary" />
+                <p className="ml-3 text-muted-foreground">
+                  Cargando películas de {selectedGenres[filterStatus]}...
+                </p>
+              </div>
+            )}
+
+          {/* 🔥 Mostrar error si hay */}
+          {errorGenre && (
+            <div className="text-center py-8 text-destructive">
+              <p>{errorGenre}</p>
+            </div>
+          )}
           {filteredMoviesToDisplay.length === 0 ? (
             loading || searchLoading ? (
               <div className="flex justify-center py-12">
@@ -668,8 +750,14 @@ export default function MovieTracker() {
                 totalCount={filteredMoviesToDisplay.length}
                 overscan={3600}
                 endReached={() => {
-                  if (!loading && hasMore) {
-                    setCurrentPage((prev) => prev + 1);
+                  if (selectedGenres[filterStatus] !== "All") {
+                    // Si hay género seleccionado, usar loadMoreGenreMovies
+                    loadMoreGenreMovies();
+                  } else {
+                    // Si no hay género, usar paginación normal
+                    if (!loading && hasMore) {
+                      setCurrentPage((prev) => prev + 1);
+                    }
                   }
                 }}
                 listClassName="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 justify-items-center py-8"

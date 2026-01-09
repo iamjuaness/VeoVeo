@@ -66,13 +66,13 @@ export const MovieCard = memo(function MovieCard({
         {/* Badges de estado */}
         <div className="absolute top-2 left-2 flex flex-col gap-1.5 z-10">
           {movie.watchCount > 0 && (
-            <Badge className="bg-green-500/90 hover:bg-green-600 text-white backdrop-blur-md shadow-sm border-0">
+            <Badge className="bg-green-500/90 hover:bg-green-600 backdrop-blur-md shadow-sm border-0 text-gray-900">
               <Eye className="w-3 h-3 mr-1.5" />
               Vista {movie.watchCount > 1 ? `${movie.watchCount}x` : ""}
             </Badge>
           )}
           {movie.watchLater && (
-            <Badge className="bg-blue-500/90 hover:bg-blue-600 text-white backdrop-blur-md shadow-sm border-0">
+            <Badge className="bg-blue-500/90 hover:bg-blue-600 text-gray-900 backdrop-blur-md shadow-sm border-0">
               <Clock className="w-3 h-3 mr-1.5" />
               Pendiente
             </Badge>

@@ -29,20 +29,25 @@ export function SeriesSearchBar({
   return (
     <form
       onSubmit={handleSearch}
-      className={`relative flex gap-2 ${className}`}
+      className={`flex w-full justify-center ${className}`}
+      autoComplete="off"
     >
-      <div className="relative flex-1">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+      <div className="relative flex w-full max-w-2xl">
+        <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5 pointer-events-none z-10" />
         <Input
           type="text"
           placeholder="Buscar series..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           onKeyDown={handleKeyDown}
-          className="pl-10 bg-background/50 backdrop-blur-sm border-border/50 focus:border-primary/50 transition-colors"
+          className="pl-12 pr-4 h-11 rounded-lg border-border/50 bg-background/50 backdrop-blur-sm focus:bg-background transition-all shadow-sm"
         />
       </div>
-      <Button type="submit" size="default" className="shrink-0">
+      <Button
+        type="submit"
+        size="default"
+        className="ml-2 h-11 px-6 rounded-lg gap-2 font-medium shadow-sm hover:shadow-md transition-all"
+      >
         Buscar
       </Button>
     </form>

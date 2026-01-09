@@ -8,15 +8,30 @@ const API_URL = "https://api.imdbapi.dev/";
 const MOVIES_PER_PAGE = 24;
 const token = localStorage.getItem("authToken");
 
-export async function getMoviesByGenres(genre: string) {
-  const res = await fetch(`${API_URL}titles?genres=${genre}`, {
+export async function getMoviesByGenres(
+  genre: string,
+  pageToken?: string
+): Promise<{
+  titles: any[];
+  nextPageToken?: string;
+  totalCount?: number;
+}> {
+  const url = `${API_URL}titles?types=MOVIE&types=TV_MOVIE&types=VIDEO&genres=${genre}&limit=50&sortBy=SORT_BY_POPULARITY${
+    pageToken ? `&pageToken=${pageToken}` : ""
+  }`;
+
+  const res = await fetch(url, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
     },
   });
-  const result = await res.json();
-  return result;
+
+  if (!res.ok) {
+    throw new Error(`Error al obtener películas por género: ${res.statusText}`);
+  }
+
+  return await res.json();
 }
 
 export async function getMovieDetailById(

@@ -19,6 +19,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "../../../shared/components/ui/tabs";
+
 import {
   Dialog,
   DialogContent,
@@ -40,6 +41,8 @@ import {
   Trash2,
   Bell,
   CheckCircle2,
+  ShieldCheck,
+  Eraser,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { UserMenu } from "../../auth/components/UserMenu";
@@ -48,6 +51,7 @@ import { ThemeContext } from "../../../core/providers/ThemeContext";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { Textarea } from "../../../shared/components/ui/textarea";
 import { NotificationCenter } from "../components/NotificationCenter";
+import { predefinedAvatars } from "../../../shared/components/common/PredefinedAvatars";
 
 export default function SocialPage() {
   const {
@@ -63,6 +67,7 @@ export default function SocialPage() {
     updateProfile,
     sendMessage,
     getMessages,
+    deleteChat,
     search,
   } = useSocial();
   const { user: currentUser } = useAuth();
@@ -198,7 +203,7 @@ export default function SocialPage() {
         </div>
       </nav>
 
-      <main className="container mx-auto px-4 pt-28 pb-20">
+      <main className="container mx-auto px-4 pt-28 pb-32 sm:pb-20">
         <div className="max-w-5xl mx-auto space-y-8">
           <Tabs defaultValue="friends" className="w-full">
             <div className="flex overflow-x-auto pb-2 mb-8 scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0">
@@ -404,17 +409,27 @@ export default function SocialPage() {
                           return (
                             <div
                               key={result._id || result.id}
-                              className="flex items-center justify-between p-4 rounded-2xl border border-primary/5 bg-background/40 backdrop-blur-md hover:border-primary/40 transition-all hover:bg-background/60 group"
+                              onClick={() =>
+                                navigate(`/profile/${result._id || result.id}`)
+                              }
+                              className="flex items-center justify-between p-4 rounded-2xl border border-primary/5 bg-background/40 backdrop-blur-md hover:border-primary/40 transition-all hover:bg-background/60 group cursor-pointer"
                             >
                               <div className="flex items-center gap-4">
                                 <Avatar className="h-12 w-12 border-2 border-primary/10">
-                                  <AvatarImage src={result.selectedAvatar} />
+                                  <AvatarImage
+                                    src={
+                                      predefinedAvatars.find(
+                                        (a) => a.id === result.selectedAvatar
+                                      )?.url || "/placeholder.svg"
+                                    }
+                                  />
                                   <AvatarFallback className="font-bold text-primary">
                                     {(result.name || "U")
                                       .substring(0, 2)
                                       .toUpperCase()}
                                   </AvatarFallback>
                                 </Avatar>
+
                                 <div>
                                   <p className="font-bold text-sm sm:text-base">
                                     {result.name}
@@ -833,21 +848,38 @@ export default function SocialPage() {
       {/* Chat Dialog */}
       <Dialog open={!!activeChat} onOpenChange={() => setActiveChat(null)}>
         <DialogContent className="sm:max-w-[450px] h-[600px] p-0 flex flex-col rounded-3xl overflow-hidden">
-          <DialogHeader className="p-4 border-b bg-primary/5 flex flex-row items-center gap-3 space-y-0">
-            <Avatar className="h-10 w-10 border border-primary/20">
-              <AvatarImage src={activeChat?.selectedAvatar} />
-              <AvatarFallback className="font-bold">
-                {activeChat?.name?.substring(0, 2).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div className="text-left">
-              <DialogTitle className="text-lg font-black tracking-tight">
-                {activeChat?.name}
-              </DialogTitle>
-              <p className="text-xs font-bold text-green-500 flex items-center gap-1">
-                <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                En línea
-              </p>
+          <DialogHeader className="p-4 border-b bg-primary/5 flex flex-row items-center justify-between gap-3 space-y-0">
+            <div className="flex items-center gap-3">
+              <Avatar className="h-10 w-10 border border-primary/20">
+                <AvatarImage src={activeChat?.selectedAvatar} />
+                <AvatarFallback className="font-bold">
+                  {activeChat?.name?.substring(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="text-left">
+                <DialogTitle className="text-lg font-black tracking-tight flex items-center gap-2">
+                  {activeChat?.name}
+                  <ShieldCheck className="w-4 h-4 text-primary" />
+                </DialogTitle>
+                <p className="text-xs font-bold text-green-500 flex items-center gap-1">
+                  <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                  En línea
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1">
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-9 w-9 text-muted-foreground hover:text-destructive rounded-full"
+                onClick={() => {
+                  if (confirm("¿Estás seguro de borrar todo el historial?")) {
+                    deleteChat(activeChat._id || activeChat.id);
+                  }
+                }}
+              >
+                <Eraser className="w-4 h-4" />
+              </Button>
             </div>
           </DialogHeader>
 

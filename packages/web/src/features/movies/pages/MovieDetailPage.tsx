@@ -51,6 +51,10 @@ export default function MovieDetailPage() {
   const { isDarkMode, toggleTheme } = useContext(ThemeContext);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   const {
     movies,
     moviesWatchedList,

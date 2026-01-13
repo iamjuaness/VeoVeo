@@ -35,6 +35,40 @@ export const searchUsers = async (req: Request, res: Response) => {
   }
 };
 
+export const getUserProfile = async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+    const user = await UserModel.findById(userId)
+      .select(
+        "name email selectedAvatar bio socialLinks friends friendRequests recommendations"
+      )
+      .lean();
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Retornamos un objeto de perfil público
+    const profile = {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      selectedAvatar: user.selectedAvatar,
+      bio: user.bio,
+      socialLinks: user.socialLinks,
+      stats: {
+        friendsCount: (user.friends || []).length,
+        recommendationsCount: (user.recommendations || []).length,
+      },
+    };
+
+    res.json(profile);
+  } catch (error) {
+    console.error("Error in getUserProfile:", error);
+    res.status(500).json({ message: "Error fetching user profile" });
+  }
+};
+
 export const sendFriendRequest = async (req: Request, res: Response) => {
   try {
     const { toId } = req.body;
@@ -99,18 +133,14 @@ export const respondToFriendRequest = async (req: Request, res: Response) => {
     const userId = (req as any).id;
 
     if (!finalStatus || !["accepted", "rejected"].includes(finalStatus)) {
-      return res
-        .status(400)
-        .json({ message: "Valid status or action is required" });
+      return res.status(400).json({ message: "Invalid status" });
     }
 
     const user = await UserModel.findById(userId);
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    // Find the request in incoming friendRequests
     const requestIndex = user.friendRequests.findIndex(
-      (r) =>
-        (r as any)._id?.toString() === requestId || (r as any).id === requestId
+      (r) => r._id?.toString() === requestId
     );
 
     if (requestIndex === -1) {
@@ -118,43 +148,35 @@ export const respondToFriendRequest = async (req: Request, res: Response) => {
     }
 
     const request = user.friendRequests[requestIndex];
-    const fromUserId = request.from.toString();
+    const fromId = request.from;
 
-    // Update status in receiver's document
-    user.friendRequests[requestIndex].status = finalStatus;
-
-    const fromUser = await UserModel.findById(fromUserId);
-    if (fromUser) {
-      // Find and update the status in sender's sentRequests
-      const sentRequestIndex = fromUser.sentRequests.findIndex(
-        (r) => r.to.toString() === userId
-      );
-      if (sentRequestIndex !== -1) {
-        fromUser.sentRequests[sentRequestIndex].status = finalStatus;
+    if (finalStatus === "accepted") {
+      // Add to each other's friends list
+      if (!user.friends.includes(fromId)) {
+        user.friends.push(fromId);
       }
-
-      if (finalStatus === "accepted") {
-        if (!user.friends.map((f) => f.toString()).includes(fromUserId)) {
-          user.friends.push(fromUserId as any);
-        }
-        if (!fromUser.friends.map((f) => f.toString()).includes(userId)) {
-          fromUser.friends.push(userId as any);
-        }
+      const fromUser = await UserModel.findById(fromId);
+      if (fromUser && !fromUser.friends.includes(userId)) {
+        fromUser.friends.push(userId);
+        // Find and update the sender's sent request
+        const sentRequest = fromUser.sentRequests.find(
+          (r) => r.to.toString() === userId
+        );
+        if (sentRequest) sentRequest.status = "accepted";
+        await fromUser.save();
       }
-      await fromUser.save();
     }
 
+    request.status = finalStatus;
     await user.save();
 
-    // Emit to sender about the response
-    io.to(String(fromUserId)).emit("friend-request-response", {
-      requestId,
+    // Emit event to sender
+    io.to(String(fromId)).emit("friend-request-response", {
       status: finalStatus,
     });
 
     res.json({ message: `Request ${finalStatus}` });
   } catch (error) {
-    console.error("Error in respondToFriendRequest:", error);
     res.status(500).json({ message: "Error responding to request" });
   }
 };
@@ -178,7 +200,15 @@ export const removeFriend = async (req: Request, res: Response) => {
     await user.save();
     await friend.save();
 
-    res.json({ message: "Friend removed successfully" });
+    // Auto-delete chat on unfriend
+    await MessageModel.deleteMany({
+      $or: [
+        { from: userId, to: friendId },
+        { from: friendId, to: userId },
+      ],
+    });
+
+    res.json({ message: "Friend removed and chat deleted" });
   } catch (error) {
     res.status(500).json({ message: "Error removing friend" });
   }
@@ -188,21 +218,30 @@ export const getSocialData = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).id;
     const user = await UserModel.findById(userId)
-      .populate("friends", "name email selectedAvatar bio socialLinks")
+      .populate(
+        "friends",
+        "name email selectedAvatar bio socialLinks publicKey"
+      )
       .populate("friendRequests.from", "name email selectedAvatar")
       .populate("sentRequests.to", "name email selectedAvatar")
       .populate("recommendations.from", "name email selectedAvatar");
 
     if (!user) return res.status(404).json({ message: "User not found" });
 
+    // Count unread messages
+    const unreadMessagesCount = await MessageModel.countDocuments({
+      to: userId,
+      read: false,
+    });
+
     res.json({
       friends: user.friends,
       requests: user.friendRequests,
       sentRequests: user.sentRequests,
       recommendations: user.recommendations,
+      unreadMessagesCount,
     });
   } catch (error) {
-    console.error("Error in getSocialData:", error);
     res.status(500).json({ message: "Error getting social data" });
   }
 };
@@ -210,7 +249,7 @@ export const getSocialData = async (req: Request, res: Response) => {
 export const updateProfile = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).id;
-    const { bio, socialLinks, name } = req.body;
+    const { bio, socialLinks, name, publicKey } = req.body;
 
     const user = await UserModel.findById(userId);
     if (!user) return res.status(404).json({ message: "User not found" });
@@ -223,11 +262,17 @@ export const updateProfile = async (req: Request, res: Response) => {
         ...socialLinks,
       };
     }
+    if (publicKey !== undefined) user.publicKey = publicKey;
 
     await user.save();
     res.json({
       message: "Profile updated",
-      user: { name: user.name, bio: user.bio, socialLinks: user.socialLinks },
+      user: {
+        name: user.name,
+        bio: user.bio,
+        socialLinks: user.socialLinks,
+        publicKey: user.publicKey,
+      },
     });
   } catch (error) {
     res.status(500).json({ message: "Error updating profile" });
@@ -237,7 +282,7 @@ export const updateProfile = async (req: Request, res: Response) => {
 export const sendMessage = async (req: Request, res: Response) => {
   try {
     const fromId = (req as any).id;
-    const { toId, content } = req.body;
+    const { toId, content, encryptedKey, iv } = req.body;
 
     if (!toId || !content) {
       return res
@@ -249,6 +294,8 @@ export const sendMessage = async (req: Request, res: Response) => {
       from: fromId,
       to: toId,
       content,
+      encryptedKey,
+      iv,
       createdAt: new Date(),
     });
 
@@ -260,6 +307,7 @@ export const sendMessage = async (req: Request, res: Response) => {
 
     res.json(message);
   } catch (error) {
+    console.error("Error sending message:", error);
     res.status(500).json({ message: "Error sending message" });
   }
 };
@@ -327,5 +375,34 @@ export const markNotificationsAsRead = async (req: Request, res: Response) => {
     res.json({ message: "Notifications marked as read" });
   } catch (error) {
     res.status(500).json({ message: "Error marking notifications as read" });
+  }
+};
+
+export const getPublicKey = async (req: Request, res: Response) => {
+  try {
+    const { friendId } = req.params;
+    const friend = await UserModel.findById(friendId).select("publicKey");
+    if (!friend) return res.status(404).json({ message: "User not found" });
+    res.json({ publicKey: friend.publicKey });
+  } catch (error) {
+    res.status(500).json({ message: "Error getting public key" });
+  }
+};
+
+export const deleteChat = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).id;
+    const { friendId } = req.params;
+
+    await MessageModel.deleteMany({
+      $or: [
+        { from: userId, to: friendId },
+        { from: friendId, to: userId },
+      ],
+    });
+
+    res.json({ message: "Chat deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Error deleting chat" });
   }
 };

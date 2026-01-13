@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.8.0] - 2026-01-13
+
+### Fixed
+
+- **TypeScript Configuration**: Silenced `baseUrl` deprecation warning by updating `ignoreDeprecations` to "6.0" in preparation for TypeScript 7.0.
+
+### Changed
+
+- **Navigation Logic**: Refined `BottomNav` and `Hamburger` components to strictly show/hide menu items based on user authentication status.
+  - `Hamburger`: Movies/Series links are now hidden for guest users.
+  - `BottomNav`: Social and Stats options are hidden for guest users.
+- **Dependencies**: Updated `pnpm-lock.yaml` ensuring consistent dependency versions.
+
+### Improved
+
+- **Feature Modules**: General updates to Auth and Social feature components.
+- **PWA**: Updated service worker registration logic to handle dynamic manifest changes.
+- **Encrypted Messages**: Implemented end-to-end encryption for messages using AES-256.
+
 ## [2.7.3] - 2026-01-13
 
 ### Added

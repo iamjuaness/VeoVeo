@@ -1,6 +1,6 @@
 {
   "name": "@veoveo/web",
-  "version": "2.7.2",
+  "version": "2.8.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -59,6 +59,7 @@
     "tailwindcss": "^4.1.17",
     "typescript": "~5.9.2",
     "typescript-eslint": "^8.23.0",
-    "vite": "^7.1.6"
+    "vite": "^7.1.6",
+    "vite-plugin-pwa": "^1.2.0"
   }
 }

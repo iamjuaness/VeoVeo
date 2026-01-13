@@ -1,5 +1,5 @@
-import type { User } from "../../../interfaces/User";
 import { Button } from "../ui/button";
+import { useAuth } from "../../../features/auth/hooks/useAuth";
 import {
   Sheet,
   SheetClose,
@@ -12,6 +12,7 @@ import {
 import { Separator } from "../ui/separator";
 import { Menu, Film, Tv, LogIn, UserPlus, ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
+import type { User } from "../../../interfaces/User";
 
 interface HamburgerProps {
   showMobileMenu: boolean;
@@ -27,6 +28,7 @@ interface HamburgerProps {
 }
 
 export function Hamburger(props: HamburgerProps) {
+  const { user } = useAuth();
   const closeMenu = () => props.setShowMobileMenu(false);
 
   return (
@@ -79,52 +81,64 @@ export function Hamburger(props: HamburgerProps) {
             </motion.div>
 
             {/* Navegación con animaciones */}
-            <motion.nav
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.1 }}
-              className="p-6 pb-4 space-y-1"
-            >
-              <SheetClose asChild>
-                <Button
-                  variant="ghost"
-                  size="lg"
-                  className="w-full h-16 group justify-start gap-4 rounded-2xl hover:bg-linear-to-r hover:from-accent/30 hover:to-primary/20 hover:shadow-lg hover:shadow-accent/20 text-foreground/80 hover:text-foreground transition-all duration-300 hover:scale-[1.02] active:scale-100"
-                >
-                  <div className="w-12 h-12 rounded-xl bg-muted/50 group-hover:bg-accent/50 flex items-center justify-center transition-all duration-300">
-                    <Film className="h-6 w-6 text-muted-foreground group-hover:text-accent-foreground transition-colors" />
-                  </div>
-                  <div className="flex-1 text-left">
-                    <span className="text-lg font-semibold block">
-                      Películas
-                    </span>
-                    <span className="text-xs text-muted-foreground font-medium tracking-wide">
-                      Explora +3M títulos
-                    </span>
-                  </div>
-                  <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-accent-foreground ml-auto transition-transform group-hover:translate-x-1" />
-                </Button>
-              </SheetClose>
+            {user && (
+              <motion.nav
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.1 }}
+                className="p-6 pb-4 space-y-1"
+              >
+                <SheetClose asChild>
+                  <Button
+                    variant="ghost"
+                    size="lg"
+                    className="w-full h-16 group justify-start gap-4 rounded-2xl hover:bg-linear-to-r hover:from-accent/30 hover:to-primary/10 hover:text-foreground transition-all duration-300 hover:scale-[1.02] active:scale-100"
+                    onClick={() => {
+                      window.location.href = "/home";
+                      closeMenu();
+                    }}
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-muted/50 group-hover:bg-accent/50 flex items-center justify-center transition-all duration-300">
+                      <Film className="h-6 w-6 text-muted-foreground group-hover:text-accent-foreground transition-colors" />
+                    </div>
+                    <div className="flex-1 text-left">
+                      <span className="text-lg font-semibold block">
+                        Películas
+                      </span>
+                      <span className="text-xs text-muted-foreground font-medium tracking-wide">
+                        Novedades y Tendencias
+                      </span>
+                    </div>
+                    <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-accent-foreground ml-auto transition-transform group-hover:translate-x-1" />
+                  </Button>
+                </SheetClose>
 
-              <SheetClose asChild>
-                <Button
-                  variant="ghost"
-                  size="lg"
-                  className="w-full h-16 group justify-start gap-4 rounded-2xl hover:bg-linear-to-r hover:from-accent/30 hover:to-primary/20 hover:shadow-lg hover:shadow-accent/20 text-foreground/80 hover:text-foreground transition-all duration-300 hover:scale-[1.02] active:scale-100"
-                >
-                  <div className="w-12 h-12 rounded-xl bg-muted/50 group-hover:bg-accent/50 flex items-center justify-center transition-all duration-300">
-                    <Tv className="h-6 w-6 text-muted-foreground group-hover:text-accent-foreground transition-colors" />
-                  </div>
-                  <div className="flex-1 text-left">
-                    <span className="text-lg font-semibold block">Series</span>
-                    <span className="text-xs text-muted-foreground font-medium tracking-wide">
-                      Temporadas completas
-                    </span>
-                  </div>
-                  <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-accent-foreground ml-auto transition-transform group-hover:translate-x-1" />
-                </Button>
-              </SheetClose>
-            </motion.nav>
+                <SheetClose asChild>
+                  <Button
+                    variant="ghost"
+                    size="lg"
+                    className="w-full h-16 group justify-start gap-4 rounded-2xl hover:bg-linear-to-r hover:from-accent/30 hover:to-primary/10 hover:text-foreground transition-all duration-300 hover:scale-[1.02] active:scale-100"
+                    onClick={() => {
+                      window.location.href = "/series";
+                      closeMenu();
+                    }}
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-muted/50 group-hover:bg-accent/50 flex items-center justify-center transition-all duration-300">
+                      <Tv className="h-6 w-6 text-muted-foreground group-hover:text-accent-foreground transition-colors" />
+                    </div>
+                    <div className="flex-1 text-left">
+                      <span className="text-lg font-semibold block">
+                        Series
+                      </span>
+                      <span className="text-xs text-muted-foreground font-medium tracking-wide">
+                        Temporadas completas
+                      </span>
+                    </div>
+                    <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-accent-foreground ml-auto transition-transform group-hover:translate-x-1" />
+                  </Button>
+                </SheetClose>
+              </motion.nav>
+            )}
 
             <Separator className="border-border/50 mx-6" />
 

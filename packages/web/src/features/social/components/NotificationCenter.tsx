@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "../../../shared/components/ui/button";
-import { Bell, UserPlus, Film, Tv } from "lucide-react";
+import { Bell, UserPlus, Film, Tv, MessageSquare } from "lucide-react";
 import { useAuth } from "../../auth/hooks/useAuth";
 import {
   getSocialData,
@@ -27,7 +27,6 @@ export function NotificationCenter() {
   const { token, user } = useAuth();
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [loading, setLoading] = useState(false);
 
   const fetchNotifications = async () => {
     if (!token) return;
@@ -35,13 +34,25 @@ export function NotificationCenter() {
       const data = await getSocialData(token);
 
       // Combine requests and recommendations
-      const combined = [
+      const combined: any[] = [
         ...data.requests.map((r: any) => ({ ...r, type: "request" })),
         ...data.recommendations.map((r: any) => ({
           ...r,
           type: "recommendation",
         })),
-      ].sort(
+      ];
+
+      if (data.unreadMessagesCount > 0) {
+        combined.push({
+          _id: "unread-msgs",
+          type: "messages",
+          count: data.unreadMessagesCount,
+          createdAt: new Date().toISOString(),
+          isRead: false,
+        });
+      }
+
+      combined.sort(
         (a, b) =>
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
@@ -64,26 +75,21 @@ export function NotificationCenter() {
       try {
         await markNotificationsAsRead(token!);
         setUnreadCount(0);
-        // We don't necessarily need to re-fetch immediately, but we can update local state
-        setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+        // We don't necessarily want to mark as read immediately if they just view the popover
+        // but the backend implementation usually marks all as read when queried or via this call.
       } catch (error) {
-        console.error("Error marking as read:", error);
+        console.error("Error marking read:", error);
       }
     }
   };
 
-  const handleRespond = async (
-    requestId: string,
-    action: "accepted" | "rejected"
-  ) => {
-    setLoading(true);
+  const handleRespond = async (requestId: string, action: "accepted" | "rejected") => {
+    if (!token) return;
     try {
-      await respondToRequest(requestId, action, token!);
-      await fetchNotifications();
+      await respondToRequest(requestId, action, token);
+      fetchNotifications();
     } catch (error) {
       console.error("Error responding to request:", error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -115,7 +121,7 @@ export function NotificationCenter() {
 
         <ScrollArea className="h-[400px]">
           {notifications.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center opa">
+            <div className="flex flex-col items-center justify-center py-12 text-center opacity-50">
               <div className="bg-muted/50 p-3 rounded-full mb-3">
                 <Bell className="w-6 h-6 text-muted-foreground/50" />
               </div>
@@ -127,11 +133,12 @@ export function NotificationCenter() {
             <div className="divide-y divide-border/50">
               {notifications.map((notif, idx) => {
                 const isRequest = notif.type === "request";
-                const actor = isRequest ? notif.from : notif.from; // Both have 'from'
-                const actorAvatar =
-                  predefinedAvatars.find(
-                    (a) => a.id === actor.selectedAvatar
-                  ) || predefinedAvatars[0];
+                const isMessages = notif.type === "messages";
+                const actor = isMessages ? null : notif.from;
+                const actorAvatar = actor
+                  ? predefinedAvatars.find((a) => a.id === actor.selectedAvatar) ||
+                    predefinedAvatars[0]
+                  : null;
 
                 return (
                   <div
@@ -142,16 +149,24 @@ export function NotificationCenter() {
                   >
                     <div className="flex gap-3">
                       <Avatar className="h-9 w-9 border border-border/50">
-                        <AvatarImage src={actorAvatar.url} />
-                        <AvatarFallback>
-                          {actor.name.substring(0, 2).toUpperCase()}
-                        </AvatarFallback>
+                        {isMessages ? (
+                          <AvatarFallback className="bg-blue-500 text-white">
+                            <MessageSquare className="w-4 h-4" />
+                          </AvatarFallback>
+                        ) : (
+                          <>
+                            <AvatarImage src={actorAvatar?.url} />
+                            <AvatarFallback>
+                              {actor?.name?.substring(0, 2).toUpperCase() || "U"}
+                            </AvatarFallback>
+                          </>
+                        )}
                       </Avatar>
 
                       <div className="flex-1 space-y-1">
                         <div className="flex items-center justify-between">
                           <p className="text-sm font-semibold leading-none">
-                            {actor.name}
+                            {isMessages ? "Mensajes" : actor?.name}
                           </p>
                           <span className="text-[10px] text-muted-foreground">
                             {formatDistanceToNow(new Date(notif.createdAt), {
@@ -164,8 +179,8 @@ export function NotificationCenter() {
                         {isRequest ? (
                           <>
                             <p className="text-xs text-muted-foreground flex items-center gap-1">
-                              <UserPlus className="w-3 h-3" /> te envió una
-                              solicitud de amistad
+                              <UserPlus className="w-3 h-3 text-primary" /> te
+                              envió una solicitud de amistad
                             </p>
                             {notif.status === "pending" ? (
                               <div className="flex gap-2 mt-2">
@@ -175,20 +190,8 @@ export function NotificationCenter() {
                                   onClick={() =>
                                     handleRespond(notif._id, "accepted")
                                   }
-                                  disabled={loading}
                                 >
-                                  Aceptar
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-7 px-3 border-border/50 hover:bg-destructive/10 hover:text-destructive rounded-md text-[11px]"
-                                  onClick={() =>
-                                    handleRespond(notif._id, "rejected")
-                                  }
-                                  disabled={loading}
-                                >
-                                  Rechazar
+                                  ACEPTAR
                                 </Button>
                               </div>
                             ) : (
@@ -201,6 +204,24 @@ export function NotificationCenter() {
                                   : "Rechazada"}
                               </Badge>
                             )}
+                          </>
+                        ) : isMessages ? (
+                          <>
+                            <p className="text-xs text-muted-foreground flex items-center gap-1">
+                              Tienes{" "}
+                              <span className="font-bold text-foreground">
+                                {notif.count}
+                              </span>{" "}
+                              mensajes nuevos
+                            </p>
+                            <Button
+                              variant="link"
+                              size="sm"
+                              className="p-0 h-auto text-[11px] text-primary"
+                              onClick={() => (window.location.href = "/social")}
+                            >
+                              Ver chat
+                            </Button>
                           </>
                         ) : (
                           <>

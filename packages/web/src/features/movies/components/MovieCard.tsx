@@ -122,8 +122,8 @@ export const MovieCard = memo(function MovieCard({
           </div>
         </div>
 
-        {/* Descripción (solo desktop) */}
-        <p className="hidden sm:block text-xs text-muted-foreground line-clamp-2 mt-1 flex-1">
+        {/* Descripción */}
+        <p className="text-[10px] sm:text-xs text-muted-foreground line-clamp-1 sm:line-clamp-2 mt-1 flex-1">
           {movie.description}
         </p>
 

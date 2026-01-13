@@ -27,7 +27,7 @@ import { useContext, useState } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { ThemeContext } from "../../../core/providers/ThemeContext";
 
-const APP_VERSION = "2.7.3"; // Update this when releasing new versions
+const APP_VERSION = "2.8.0"; // Update this when releasing new versions
 
 interface UserMenuProps {
   open: boolean;
@@ -111,11 +111,28 @@ export function UserMenu({ open, setOpen }: UserMenuProps) {
         </div>
 
         <div className="p-6 space-y-6">
-          {/* Sección Principal */}
-          <div className="space-y-2">
+          {/* Sección Principal - OCULTA EN MÓVIL (ya está en BottomNav) */}
+          <div className="space-y-2 hidden lg:block">
             <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
               Mi Cuenta
             </h4>
+
+            <Button
+              variant="ghost"
+              className="w-full justify-between h-12 px-4 rounded-xl hover:bg-primary/5 group transition-all"
+              onClick={() => {
+                window.location.href = "/profile";
+                setOpen(false);
+              }}
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-orange-500/10 text-orange-600 rounded-lg group-hover:bg-orange-500/20 transition-colors">
+                  <UserIcon className="w-5 h-5" />
+                </div>
+                <span className="font-medium">Mi Perfil</span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
+            </Button>
 
             <Button
               variant="ghost"
@@ -162,8 +179,8 @@ export function UserMenu({ open, setOpen }: UserMenuProps) {
 
           <Separator className="bg-border/50" />
 
-          {/* Sección Preferencias */}
-          <div className="space-y-2">
+          {/* Sección Preferencias - OCULTA EN MÓVIL */}
+          <div className="space-y-2 hidden lg:block">
             <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
               Preferencias
             </h4>
@@ -188,8 +205,6 @@ export function UserMenu({ open, setOpen }: UserMenuProps) {
               <Switch checked={isDarkMode} onCheckedChange={toggleTheme} />
             </div>
           </div>
-
-          <Separator className="bg-border/50" />
 
           {/* Footer / Logout */}
           <div className="pt-2">

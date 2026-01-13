@@ -53,6 +53,11 @@ export default function SeriesDetailPage() {
   const { id } = useParams<{ id: string }>();
   // const navigate = useNavigate();
   const { user, setUser, logout } = useAuth();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   const {
     seriesWatchLaterList,
     seriesWatchedList,

@@ -24,6 +24,7 @@ export interface IUser extends Document {
   }[];
   friends: string[];
   friendRequests: {
+    _id?: any;
     from: string;
     status: "pending" | "accepted" | "rejected";
     createdAt: Date;
@@ -66,6 +67,7 @@ export interface IUser extends Document {
     language: string;
     region: string;
   };
+  publicKey?: string;
 }
 
 const userSchema = new Schema<IUser>({
@@ -131,6 +133,7 @@ const userSchema = new Schema<IUser>({
     language: { type: String, default: "Español" },
     region: { type: String, default: "España" },
   },
+  publicKey: { type: String, default: "" },
   moviesWatched: [
     {
       movieId: { type: String, required: true },

@@ -66,34 +66,52 @@ export function SeasonAccordion({
 
   useEffect(() => {
     if (isOpen && episodes.length === 0) {
-      setLoading(true);
-      getSeasonEpisodes(seriesId, season.season)
-        .then((data) => {
-          // @ts-ignore - Handle potential old return type while transitioning or strict metadata return
-          if (data.episodes) {
-            // New Return Type
-            setEpisodes(data.episodes);
-            setTotalEpisodesCount(data.totalCount);
-            setNextPageToken(data.nextPageToken);
-          } else {
-            // Fallback (should not happen with updated service)
-            // @ts-ignore
-            setEpisodes(data);
-          }
-        })
-        .catch((err) => console.error("Error loading episodes:", err))
-        .finally(() => setLoading(false));
+      // Auto-load ALL episodes with pagination
+      const loadAllEpisodes = async () => {
+        setLoading(true);
+        let allEpisodes: any[] = [];
+        let currentPageToken: string | undefined = undefined;
+
+        try {
+          do {
+            const data = await getSeasonEpisodes(
+              seriesId,
+              season.season,
+              currentPageToken
+            );
+
+            if (data.episodes) {
+              allEpisodes.push(...data.episodes);
+              setTotalEpisodesCount(data.totalCount);
+              currentPageToken = data.nextPageToken;
+            } else {
+              // Fallback: old format returns episodes array directly
+              allEpisodes = Array.isArray(data) ? data : [];
+              break;
+            }
+          } while (currentPageToken);
+
+          setEpisodes(allEpisodes);
+          setNextPageToken(undefined); // All loaded
+        } catch (err) {
+          console.error("Error loading episodes:", err);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      loadAllEpisodes();
     }
   }, [isOpen, seriesId, season.season]);
 
   const loadMoreEpisodes = () => {
+    // No longer needed since we auto-load all, but keep for compatibility
     if (!nextPageToken) return;
     setLoading(true);
     getSeasonEpisodes(seriesId, season.season, nextPageToken)
       .then((data) => {
         setEpisodes((prev) => [...prev, ...data.episodes]);
         setNextPageToken(data.nextPageToken);
-        // Don't overwrite totalCount on appends usually, safe to keep or update
       })
       .catch((err) => console.error("Error loading more episodes:", err))
       .finally(() => setLoading(false));
@@ -222,12 +240,16 @@ export function SeasonAccordion({
     }
 
     try {
-      // Send EMPTY episodes list to trigger Server-Side Filling (Authoritative Fetch)
-      // Pass 'increment' flag for re-watch logic
+      // Use loaded episodes from component state instead of empty array
+      // This avoids unnecessary backend API calls since we already have all episodes
+      const episodesToMark = episodes.map(ep => ({
+        episodeNumber: ep.episodeNumber
+      }));
+      
       await markSeasonWatchedApi({
         seriesId,
         seasonNumber,
-        episodes: [],
+        episodes: episodesToMark,
         increment: isRewatch,
       });
 
@@ -330,7 +352,7 @@ export function SeasonAccordion({
               No hay episodios disponibles
             </div>
           ) : (
-            <div className="divide-y">
+            <div className="divide-y max-h-[480px] overflow-y-auto scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent hover:scrollbar-thumb-muted-foreground/40">
               {episodes.map((episode) => {
                 const watchedData = getWatchedEpisodeData(
                   episode.episodeNumber

@@ -114,7 +114,7 @@ export async function addOrIncrementWatched(req: Request, res: Response) {
 }
 
 // POST /api/user/movies/reset
-// Body: { movieId: string }
+// POST /api/user/movies/reset
 export async function resetWatched(req: Request, res: Response) {
   const { id } = req;
   const { movieId } = req.body;
@@ -122,17 +122,29 @@ export async function resetWatched(req: Request, res: Response) {
   const user = await User.findById(id);
   if (!user) return res.status(404).json({ message: "User not found" });
 
-  // Elimina del array la película con ese movieId
-  user.moviesWatched = user.moviesWatched.filter(
-    (item) => item.movieId !== movieId
-  );
+  const movieIndex = user.moviesWatched.findIndex((m) => m.movieId === movieId);
+
+  if (movieIndex > -1) {
+    const movieEntry = user.moviesWatched[movieIndex];
+    if (movieEntry.count && movieEntry.count > 1) {
+      // Decrement count
+      movieEntry.count -= 1;
+      // Remove the last watched date
+      if (movieEntry.watchedAt && movieEntry.watchedAt.length > 0) {
+        movieEntry.watchedAt.pop();
+      }
+    } else {
+      // Remove completely if count is 1 or 0
+      user.moviesWatched.splice(movieIndex, 1);
+    }
+  }
 
   await user.save();
-  io.to(String(id)).emit("movies-reset", {
-    type: "reset",
-    movieId,
+
+  io.to(String(id)).emit("movie-watched-updated", {
     moviesWatched: user.moviesWatched,
   });
+
   return res.json({ moviesWatched: user.moviesWatched });
 }
 

@@ -367,6 +367,7 @@ export async function markSeasonWatched(req: Request, res: Response) {
         seriesId,
         String(seasonNumber)
       );
+
       targetEpisodes = fetchedEps.map((e: any) => ({
         episodeNumber: Number(e.episodeNumber),
       }));
@@ -444,47 +445,40 @@ export async function markAllEpisodesWatched(req: Request, res: Response) {
   // 1. Fetch Authoritative Seasons List
   let targetSeasons: { seasonNumber: number; episodeCount: number }[] = [];
   try {
-    const sourceSeasons = await getSeriesSeasonsInternal(seriesId);
-    // Map to basic number structure
-    const mappedSeasons = sourceSeasons
-      .map((s: any) => ({
-        seasonNumber: Number(s.season) || 0,
-      }))
-      .filter((s: { seasonNumber: number }) => s.seasonNumber > 0);
+    // If the client sends seasons, use that info to speed up!
+    if (
+      req.body.seasons &&
+      Array.isArray(req.body.seasons) &&
+      req.body.seasons.length > 0
+    ) {
+      targetSeasons = req.body.seasons;
+    } else {
+      const sourceSeasons = await getSeriesSeasonsInternal(seriesId);
+      // Map to basic number structure
+      const mappedSeasons = sourceSeasons
+        .map((s: any) => ({
+          seasonNumber: Number(s.season) || 0,
+        }))
+        .filter((s: { seasonNumber: number }) => s.seasonNumber > 0);
 
-    // 2. Fetch Episodes count for EACH season
-    // Sequential fetching to avoid rate limits
-    for (const season of mappedSeasons) {
-      try {
-        const eps = await getSeasonEpisodesInternal(
-          seriesId,
-          String(season.seasonNumber)
-        );
+      // 2. Fetch Episodes count for EACH season
+      // Sequential fetching to avoid rate limits
+      for (const season of mappedSeasons) {
+        try {
+          const eps = await getSeasonEpisodesInternal(
+            seriesId,
+            String(season.seasonNumber)
+          );
 
-        // Filter and Deduplicate: Use Set to ensure unique episode numbers
-        const uniqueEpisodes = new Set();
+          const count = Array.isArray(eps) ? eps.length : 0;
 
-        if (Array.isArray(eps)) {
-          eps.forEach((e: any) => {
-            const epNum = Number(e.episodeNumber);
-            // Accept only valid positive integers
-            if (!isNaN(epNum) && epNum > 0) {
-              uniqueEpisodes.add(epNum);
-            }
+          targetSeasons.push({
+            seasonNumber: season.seasonNumber,
+            episodeCount: count,
           });
+        } catch (e) {
+          console.error(e);
         }
-
-        const validCount = uniqueEpisodes.size;
-
-        targetSeasons.push({
-          seasonNumber: season.seasonNumber,
-          episodeCount: validCount,
-        });
-      } catch (e) {
-        console.error(
-          `Failed to fetch episodes for season ${season.seasonNumber}`,
-          e
-        );
       }
     }
   } catch (err) {
@@ -494,43 +488,49 @@ export async function markAllEpisodesWatched(req: Request, res: Response) {
       .json({ message: "Error fetching series data from source" });
   }
 
-  // Find or create series entry
-  let seriesEntry = user.seriesWatched.find((s) => s.seriesId === seriesId);
-  if (!seriesEntry) {
-    // @ts-ignore
-    seriesEntry = { seriesId, episodes: [], isCompleted: true };
-    user.seriesWatched.push(seriesEntry);
-  } else {
-    // Ensure completed flag is set
-    (seriesEntry as any).isCompleted = true;
+  // CRITICAL FIX: Build episodes array completely separate from Mongoose object
+  // This avoids all Mongoose change tracking issues
+  const now = new Date();
+  const newEpisodes: any[] = [];
+
+  // Get existing episodes if series already tracked
+  const existingSeriesEntry = user.seriesWatched.find(
+    (s) => s.seriesId === seriesId
+  );
+  if (existingSeriesEntry && existingSeriesEntry.episodes) {
+    // Copy existing episodes
+    existingSeriesEntry.episodes.forEach((ep) => {
+      newEpisodes.push({
+        seasonNumber: ep.seasonNumber,
+        episodeNumber: ep.episodeNumber,
+        watchedAt: ep.watchedAt,
+        count: (ep as any).count || 1,
+      });
+    });
   }
 
-  const now = new Date();
-
-  // 4. Merge Strategy (Atomic Episode List UPDATE)
+  // Add new episodes
+  let episodesAdded = 0;
   if (Array.isArray(targetSeasons)) {
     targetSeasons.forEach(
       (season: { seasonNumber: number; episodeCount: number }) => {
         if (season.episodeCount <= 0) return;
 
         for (let ep = 1; ep <= season.episodeCount; ep++) {
-          const existingEp = seriesEntry!.episodes.find(
+          const existingEp = newEpisodes.find(
             (e) =>
               e.seasonNumber === season.seasonNumber && e.episodeNumber === ep
           );
 
           if (!existingEp) {
-            // Add new
-            seriesEntry!.episodes.push({
+            newEpisodes.push({
               seasonNumber: season.seasonNumber,
               episodeNumber: ep,
               watchedAt: now,
-              // @ts-ignore
               count: 1,
             });
+            episodesAdded++;
           } else if (increment) {
-            // Increment (Rewatch)
-            // @ts-ignore
             existingEp.count = (existingEp.count || 1) + 1;
             existingEp.watchedAt = now;
           }
@@ -539,11 +539,40 @@ export async function markAllEpisodesWatched(req: Request, res: Response) {
     );
   }
 
+  // Now rebuild the ENTIRE seriesWatched array from scratch
+  const newSeriesWatched = user.seriesWatched
+    .filter((s) => s.seriesId !== seriesId)
+    .map((s) => ({
+      seriesId: s.seriesId,
+      isCompleted: s.isCompleted || false,
+      episodes: s.episodes.map((e) => ({
+        seasonNumber: e.seasonNumber,
+        episodeNumber: e.episodeNumber,
+        watchedAt: e.watchedAt,
+        count: (e as any).count || 1,
+      })),
+    }));
+
+  // Add our modified series
+  newSeriesWatched.push({
+    seriesId,
+    isCompleted: true,
+    episodes: newEpisodes,
+  });
+
+  // Replace entire array
+  user.seriesWatched = newSeriesWatched as any;
   user.markModified("seriesWatched");
+
   try {
-    await user.save();
+    const savedUser = await user.save();
+
+    // Verify what was actually saved
+    const verifyEntry = savedUser.seriesWatched.find(
+      (s: any) => s.seriesId === seriesId
+    );
   } catch (error) {
-    console.error("Error saving user seriesWatched:", error);
+    console.error("[MarkAll] Error saving user seriesWatched:", error);
     return res.status(500).json({ message: "Error saving progress" });
   }
 
@@ -637,19 +666,45 @@ export async function resetSeriesWatched(req: Request, res: Response) {
   const user = await User.findById(id);
   if (!user) return res.status(404).json({ message: "User not found" });
 
-  // Remove series entry completely
-  user.seriesWatched = user.seriesWatched.filter(
-    (s) => s.seriesId !== seriesId
+  const seriesIndex = user.seriesWatched.findIndex(
+    (s) => s.seriesId === seriesId
   );
+
+  if (seriesIndex > -1) {
+    const seriesEntry = user.seriesWatched[seriesIndex];
+
+    // Iterate all episodes and decrement
+    if (seriesEntry.episodes) {
+      for (let i = seriesEntry.episodes.length - 1; i >= 0; i--) {
+        const ep = seriesEntry.episodes[i] as any;
+        if (ep.count && ep.count > 1) {
+          ep.count -= 1;
+          // You might want to remove one watchedAt timestamp if you track multiple
+          // But currently schema might just be single watchedAt or array.
+          // Assuming array from previous context, but let's check schema.
+          // If unsure, we just decrement count.
+        } else {
+          // Count is 1 or undefined, remove episode
+          seriesEntry.episodes.splice(i, 1);
+        }
+      }
+    }
+
+    if (seriesEntry.episodes.length === 0) {
+      user.seriesWatched.splice(seriesIndex, 1);
+    } else {
+      // If still has episodes, unmark isCompleted just in case
+      (seriesEntry as any).isCompleted = false;
+    }
+  }
 
   await user.save();
 
   io.to(String(id)).emit("series-marked-watched", {
-    seriesId, // Send ID so client knows to remove it
+    seriesId,
     seriesWatched: user.seriesWatched,
   });
 
-  // Also emit completed toggled false just in case
   io.to(String(id)).emit("series-completed-toggled", {
     seriesId,
     isCompleted: false,

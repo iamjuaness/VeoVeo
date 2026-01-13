@@ -26,7 +26,7 @@ import {
 import { Progress } from "../../../shared/components/ui/progress";
 import { Badge } from "../../../shared/components/ui/badge";
 import { useMovies } from "../../movies/context/MoviesContext";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { UserMenu } from "../../auth/components/UserMenu";
 import { useMemo, useState, useRef } from "react";
 import { FullScreenLoader } from "../../../shared/components/common/Loader";
@@ -75,6 +75,31 @@ export default function StatsPage() {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
   const { moviesWatchedList, moviesWatchLaterList, statsLoading } = useMovies();
+  const navigate = useNavigate();
+
+  // Gesture handling
+  const touchStart = useRef<number | null>(null);
+  const touchEnd = useRef<number | null>(null);
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchEnd.current = null;
+    touchStart.current = e.targetTouches[0].clientX;
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    touchEnd.current = e.targetTouches[0].clientX;
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart.current || !touchEnd.current) return;
+    const distance = touchStart.current - touchEnd.current;
+    const isRightSwipe = distance < -60; // Deslizar de izquierda a derecha (negativo)
+    
+    // Solo navegar si es un swipe claro
+    if (isRightSwipe) {
+        navigate("/");
+    }
+  };
 
   // Calcular estadísticas
   const stats = useMemo(() => {
@@ -749,19 +774,24 @@ export default function StatsPage() {
     );
   }
   return (
-    <div className="min-h-screen bg-background">
+    <div 
+      className="min-h-screen bg-background"
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+    >
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 border-b bg-card shadow-md">
         <div className="container mx-auto px-4 py-4 flex flex-row items-center justify-between relative">
-          {/* Botón volver: muestra solo flecha en móvil, flecha + texto en desktop */}
-          <Link to="/" className="flex-none">
+          {/* Botón volver: Oculto en móvil, visible en desktop */}
+          <Link to="/" className="hidden sm:flex flex-none">
             <Button
               variant="outline"
               size="sm"
               className="gap-2 bg-transparent flex items-center"
             >
               <ArrowLeft className="w-5 h-5" />
-              <span className="hidden sm:inline">Volver</span>
+              <span>Volver</span>
             </Button>
           </Link>
 
@@ -788,7 +818,7 @@ export default function StatsPage() {
       </header>
 
       {/* Download Report Button - Outside PDF capture area */}
-      <div className="container mx-auto px-4 pt-28 pb-4">
+      <div className="container mx-auto px-4 pt-24 sm:pt-28 pb-4">
         <div className="flex justify-end">
           <Button
             onClick={handleDownloadPDF}
@@ -805,8 +835,8 @@ export default function StatsPage() {
         <div>
           {/* Estadísticas generales */}
           <div className="mb-6">
-            <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
-              <BarChart3 className="w-6 h-6 text-primary" />
+            <h2 className="text-xl sm:text-2xl font-bold mb-4 flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
               Resumen General
             </h2>
             <p className="text-muted-foreground mb-4 text-sm">
@@ -894,7 +924,7 @@ export default function StatsPage() {
 
           {/* Actividad reciente - Calendar Heatmap */}
           <section className="mt-8 mb-8">
-            <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+            <h2 className="text-xl sm:text-2xl font-bold mb-4 flex items-center gap-2">
               🔥 Actividad Reciente
             </h2>
             <p className="text-muted-foreground mb-4 text-sm">
@@ -903,7 +933,7 @@ export default function StatsPage() {
               celda representa un día, y su intensidad refleja cuántas películas
               viste. Identifica tus rachas y días más activos.
             </p>
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
               {/* Calendar Heatmap */}
               <Card className="py-4 rounded-lg shadow bg-card flex flex-col col-span-1 sm:col-span-2 lg:col-span-3">
                 <CardHeader>
@@ -990,7 +1020,7 @@ export default function StatsPage() {
           {/* Actividad reciente - Calendar Heatmap */}
           <div className="space-y-8">
             {/* Primera fila - Géneros (Full Width) */}
-            <div className="grid grid-cols-1 gap-8">
+            <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:gap-8">
               {/* Géneros más vistos */}
               <Card className="py-4 rounded-lg shadow bg-card hover:shadow-xl transition-shadow">
                 <CardHeader className="pb-2">
@@ -1002,7 +1032,7 @@ export default function StatsPage() {
                     Tus preferencias principales por género.
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="h-64">
+                <CardContent className="h-56 sm:h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                       data={stats.topGenres
@@ -1056,7 +1086,7 @@ export default function StatsPage() {
             </div>
 
             {/* Segunda fila - Películas más vistas y Décadas */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
               {/* Películas más vistas */}
               <Card className="py-4 rounded-lg shadow bg-card hover:shadow-xl transition-shadow">
                 <CardHeader className="pb-2">
@@ -1126,7 +1156,7 @@ export default function StatsPage() {
                     Tu viaje en el tiempo cinematográfico.
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="h-64">
+                <CardContent className="h-56 sm:h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                       data={stats.topDecades
@@ -1172,7 +1202,7 @@ export default function StatsPage() {
             </div>
 
             {/* Tercera fila - Actividad y Logros */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
               {/* Actividad reciente (KPIs) */}
               <Card className="py-4 rounded-lg shadow bg-card hover:shadow-xl transition-shadow col-span-1">
                 <CardHeader className="pb-2">
@@ -1338,7 +1368,7 @@ export default function StatsPage() {
         </div>
         {}
         <section className="mt-20">
-          <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+          <h2 className="text-xl sm:text-2xl font-bold mb-4 flex items-center gap-2">
             <BarChart3 className="w-6 h-6 text-primary" /> Analítica Básica
           </h2>
           <p className="text-muted-foreground mb-6 text-sm">
@@ -1346,7 +1376,7 @@ export default function StatsPage() {
             Métricas estadísticas avanzadas que revelan patrones ocultos en tus
             preferencias cinematográficas.
           </p>
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
             {/* Por Género */}
             {/* Percentiles de Rating */}
             <Card className="py-4 rounded-lg shadow bg-card hover:shadow-xl transition-shadow">
@@ -1832,7 +1862,7 @@ export default function StatsPage() {
         </section>
         {/* Segunda sección - Gráficos avanzados */}
         <section className="mt-20">
-          <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+          <h2 className="text-xl sm:text-2xl font-bold mb-4 flex items-center gap-2">
             <BarChart3 className="w-6 h-6 text-primary" />
             Analítica & Gráficos Avanzados
           </h2>
@@ -1841,7 +1871,7 @@ export default function StatsPage() {
             Visualizaciones interactivas que transforman tus datos en insights
             accionables. Descubre tendencias, patrones y evolución temporal.
           </p>
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
             {/* Histograma de Ratings */}
             <Card className="py-4 rounded-lg shadow bg-card hover:shadow-xl transition-shadow flex flex-col">
               <CardHeader>
@@ -2131,7 +2161,7 @@ export default function StatsPage() {
                   más activos y rachas.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="h-80 w-full">
+              <CardContent className="h-64 sm:h-80 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart
                     data={viewsByMonth}
@@ -2191,7 +2221,7 @@ export default function StatsPage() {
                   vuelves más exigente?
                 </CardDescription>
               </CardHeader>
-              <CardContent className="h-80 w-full">
+              <CardContent className="h-64 sm:h-80 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart
                     data={avgRatingByMonth}
@@ -2255,7 +2285,7 @@ export default function StatsPage() {
                   Descubre tu "duración ideal".
                 </CardDescription>
               </CardHeader>
-              <CardContent className="h-80 w-full">
+              <CardContent className="h-64 sm:h-80 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart
                     data={ratingByDurationInterval}

@@ -133,6 +133,21 @@ export default function SeriesDetailPage() {
       return;
     }
 
+    /* OPTIMISTIC UPDATE: Generate fake watched episodes for all seasons */
+    if (series && series.seasons) {
+      const allEpisodes: WatchedEpisode[] = [];
+      series.seasons.forEach((season) => {
+        for (let i = 1; i <= (season.episodeCount || 0); i++) {
+          allEpisodes.push({
+            seasonNumber: Number(season.season),
+            episodeNumber: i,
+            watchedAt: new Date(),
+          });
+        }
+      });
+      setWatchedEpisodes(allEpisodes);
+    }
+
     await markAsWatchedContext(id);
     handleProgressChange();
   };
@@ -326,6 +341,7 @@ export default function SeriesDetailPage() {
 
                 {/* Action Buttons */}
                 <div className="flex flex-wrap gap-4">
+                  {/* Mark as Watched / Rewatch */}
                   <Button
                     variant="default"
                     size="lg"
@@ -333,7 +349,7 @@ export default function SeriesDetailPage() {
                     disabled={!user}
                     className={`gap-2 font-bold shadow-xl hover:scale-105 transition-all px-6 ${
                       isWatched
-                        ? "bg-red-600 hover:bg-red-700 text-white"
+                        ? "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
                         : "bg-white text-black hover:bg-white/90"
                     }`}
                   >
@@ -342,12 +358,31 @@ export default function SeriesDetailPage() {
                     ) : (
                       <Tv className="w-5 h-5" />
                     )}
-                    {isWatched
-                      ? isWatched && watchedEpisodes.length > 0
-                        ? "Ver serie de nuevo (+1)"
-                        : "Quitar de Vistas"
-                      : "Marcar Todo Visto"}
+                    {isWatched && watchedEpisodes.length > 0
+                      ? "Ver serie de nuevo (+1)"
+                      : isWatched 
+                        ? "Marcar como Vista"
+                        : "Marcar Todo Visto"}
                   </Button>
+
+                  {/* Remove from Watched (decrement) */}
+                  {isWatched && watchedEpisodes.length > 0 && (
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      onClick={async () => {
+                        if (!id) return;
+                        await resetWatchedContext(id);
+                        setWatchedEpisodes([]);
+                        handleProgressChange();
+                      }}
+                      disabled={!user}
+                      className="gap-2 bg-red-500/10 border-red-500/30 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-xl font-bold"
+                    >
+                      <Award className="w-5 h-5" />
+                      Quitar Vista (-1)
+                    </Button>
+                  )}
 
                   <Button
                     variant="outline"

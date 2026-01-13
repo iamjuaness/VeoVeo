@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.8.1] - 2026-01-13
+
+### Fixed
+
+- **MarkAllEpisodes**: Fixed issue where MarkAllEpisodes was not working correctly.
+
+### Changed
+
+- **Dependencies**: Updated `pnpm-lock.yaml` ensuring consistent dependency versions.
+
 ## [2.8.0] - 2026-01-13
 
 ### Fixed

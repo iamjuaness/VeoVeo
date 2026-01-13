@@ -31,7 +31,7 @@ export function BottomNav() {
 
   return (
     <>
-      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-xl border-t border-border/50 flex justify-around items-center h-16 lg:hidden pb-safe">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-xl border-t border-border/50 flex justify-around items-center h-auto py-3 lg:hidden pb-safe">
         {filteredItems.map((item) => {
           const Icon = item.icon;
           const isActive = path === item.path;

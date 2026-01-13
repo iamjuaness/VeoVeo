@@ -406,7 +406,7 @@ export function SeriesProvider({ children }: SeriesProviderProps) {
         const seriesDetail = await getSeriesDetailById(id);
         const seasons =
           seriesDetail.seasons?.map((season: any) => ({
-            seasonNumber: season.season,
+            seasonNumber: Number(season.season),
             episodeCount: season.episodeCount || 0,
           })) || [];
 

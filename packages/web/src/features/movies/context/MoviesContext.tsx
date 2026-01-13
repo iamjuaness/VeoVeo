@@ -109,7 +109,7 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
   >("all");
   const [moviesWatchedList, setMoviesWatchedList] = useState<Movie[]>([]);
   const [moviesWatchLaterList, setMoviesWatchLaterList] = useState<Movie[]>([]);
-  const [statsLoading, setStatsLoading] = useState(false);
+  const [statsLoading, setStatsLoading] = useState(true);
   const isFetchingRef = useRef(false);
   const [lastScrollPosition, setLastScrollPosition] = useState(0);
   const lastManualUpdateRef = useRef<number>(0);
@@ -485,12 +485,7 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
   }, [lastScrollPosition]);
 
   useEffect(() => {
-    if (
-      filterStatus !== "all" ||
-      !hasMore ||
-      isFetchingRef.current ||
-      (selectedGenre && selectedGenre !== "All")
-    ) {
+    if (filterStatus !== "all" || !hasMore || isFetchingRef.current) {
       return;
     }
 
@@ -517,9 +512,8 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
       })
       .catch((err) => {
         console.error("Error fetching movies:", err);
-        if (err?.message?.includes("429")) {
-          setHasMore(false);
-        }
+        // Retrying on 429 should be handled by the user scrolling again,
+        // do not disable hasMore permanently.
       })
       .finally(() => {
         setLoading(false);

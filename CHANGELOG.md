@@ -4,6 +4,31 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.7.3] - 2026-01-13
+
+### Added
+
+- **Status Badges**: Added "Vista", "En Progreso", and "Pendiente" badges to Movie and Series detail pages for better visual tracking.
+- **Image Transitions**: Implemented smooth fade-in animations for movie and series cards to improve perceived performance.
+- **New Genres**: Expanded movie filtering options with Biography, Mystery, and Western genres.
+
+### Improved
+
+- **Centralized Mutations**: Refactored watched, watch-later, and reset actions into centralized context methods (`MoviesContext`, `SeriesContext`).
+- **Optimistic UI Updates**: Actions now provide immediate local feedback while synchronizing with the server in the background.
+- **Smart Item Lookup**: Enhanced context methods to find media metadata across trending, search, and genre lists automatically.
+- **Detail View UI**: Modernized badge styling in hero sections with larger icons and bold typography.
+- **Virtualization Tuning**: Adjusted `SeriesTracker` parameters for optimized rendering during fast scrolling.
+
+### Backend
+
+- **Clean Interface**: Removed redundant server listener in `app.ts` (express) as it's handled by dev servers.
+
+### Technical
+
+- **Refactoring**: Eliminated code duplication by moving business logic from components to feature-specific contexts.
+- **Code Quality**: Cleaned up unused imports and standardized action handlers across the frontend.
+
 ## [2.7.2] - 2026-01-07
 
 ### Fixed

@@ -18,7 +18,13 @@ import { API_BASE_URL } from "../../../shared/utils/urls";
 import {
   fetchMoviesFromEndpoint,
   searchMovies,
+  getMovieDurationById,
 } from "../../../features/movies/services/imdb";
+import {
+  addOrIncrementWatched,
+  resetWatched,
+  toggleWatchLaterApi,
+} from "../services/movie";
 import type { Genre } from "../../../shared/lib/genres";
 
 interface MoviesContextType {
@@ -63,7 +69,11 @@ interface MoviesContextType {
   movieStats: { watchedCount: number; watchLaterCount: number };
   selectedGenre?: Genre;
   setSelectedGenre?: (genre: Genre) => void;
+  genreMovies: Movie[];
   setGenreMovies?: React.Dispatch<React.SetStateAction<Movie[]>>;
+  incrementWatchCount: (id: string) => Promise<void>;
+  resetWatchCount: (id: string) => Promise<void>;
+  toggleWatchLater: (id: string) => Promise<void>;
 }
 
 const MoviesContext = createContext<MoviesContextType | undefined>(undefined);
@@ -114,6 +124,200 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
     lastManualUpdateRef.current = Date.now();
   }, []);
 
+  // Centralized Mutation Functions
+  const incrementWatchCount = useCallback(
+    async (id: string) => {
+      reportManualUpdate();
+
+      // Find movie in any available source
+      const movieOriginal =
+        movies.find((m) => m.id === id) ||
+        searchResults.find((m) => m.id === id) ||
+        genreMovies.find((m) => m.id === id) ||
+        moviesWatchLaterList.find((m) => m.id === id) ||
+        moviesWatchedList.find((m) => m.id === id);
+
+      if (!movieOriginal) {
+        console.warn("Movie not found for incrementing watch count:", id);
+        return;
+      }
+
+      // 1. Optimistic Update for Movies Array
+      setMovies((prev) =>
+        prev.map((m) =>
+          m.id === id
+            ? { ...m, watchCount: (m.watchCount ?? 0) + 1, watchLater: false }
+            : m
+        )
+      );
+
+      // 2. Optimistic Update for Search Results
+      setSearchResults((prev) =>
+        prev.map((m) =>
+          m.id === id
+            ? { ...m, watchCount: (m.watchCount ?? 0) + 1, watchLater: false }
+            : m
+        )
+      );
+
+      // 3. Optimistic Update for Genre Movies
+      setGenreMovies((prev) =>
+        prev.map((m) =>
+          m.id === id
+            ? { ...m, watchCount: (m.watchCount ?? 0) + 1, watchLater: false }
+            : m
+        )
+      );
+
+      // 4. Update Watch Later list (remove)
+      setMoviesWatchLaterList((prev) => {
+        const filtered = prev.filter((m) => m.id !== id);
+        localStorage.setItem("moviesWatchLater", JSON.stringify(filtered));
+        return filtered;
+      });
+
+      // 5. Update Watched list
+      try {
+        const durationData = await getMovieDurationById(id.toString());
+        const duration = durationData.duration;
+        const userOffset = new Date().getTimezoneOffset();
+        const watchedAtNew = new Date(
+          new Date().getTime() - userOffset * 60 * 1000
+        ).toISOString();
+
+        setMoviesWatchedList((prev) => {
+          let found = false;
+          const updated = prev.map((m) => {
+            if (m.id === id) {
+              found = true;
+              return {
+                ...m,
+                ...movieOriginal,
+                watchCount: (m.watchCount ?? 0) + 1,
+                watchLater: false,
+                duration,
+                watchedAt: Array.isArray(m.watchedAt)
+                  ? [...m.watchedAt, watchedAtNew]
+                  : [watchedAtNew],
+              };
+            }
+            return m;
+          });
+          if (!found) {
+            updated.push({
+              ...movieOriginal,
+              watchCount: 1,
+              watchLater: false,
+              duration,
+              watchedAt: [watchedAtNew],
+            });
+          }
+          localStorage.setItem("moviesWatched", JSON.stringify(updated));
+          return updated;
+        });
+
+        // API calls
+        if (
+          movieOriginal.watchLater ||
+          moviesWatchLaterList.some((m) => m.id === id)
+        ) {
+          await toggleWatchLaterApi({ movieId: id.toString() });
+        }
+        await addOrIncrementWatched({
+          movieId: id.toString(),
+          duration,
+          watchedAt: [watchedAtNew],
+        });
+      } catch (err) {
+        console.error("Error updating movie status:", err);
+      }
+    },
+    [
+      movies,
+      searchResults,
+      genreMovies,
+      moviesWatchLaterList,
+      moviesWatchedList,
+      reportManualUpdate,
+    ]
+  );
+
+  const resetWatchCount = useCallback(
+    async (id: string) => {
+      reportManualUpdate();
+
+      // Update all lists
+      const updateFn = (m: Movie) =>
+        m.id === id ? { ...m, watchCount: 0 } : m;
+      setMovies((prev) => prev.map(updateFn));
+      setSearchResults((prev) => prev.map(updateFn));
+      setGenreMovies((prev) => prev.map(updateFn));
+
+      setMoviesWatchedList((prev) => {
+        const updated = prev.filter((m) => m.id !== id);
+        localStorage.setItem("moviesWatched", JSON.stringify(updated));
+        return updated;
+      });
+
+      try {
+        await resetWatched({ movieId: id.toString() });
+      } catch (err) {
+        console.error("Error resetting watch count:", err);
+      }
+    },
+    [reportManualUpdate]
+  );
+
+  const toggleWatchLater = useCallback(
+    async (id: string) => {
+      reportManualUpdate();
+
+      const movieOriginal =
+        movies.find((m) => m.id === id) ||
+        searchResults.find((m) => m.id === id) ||
+        genreMovies.find((m) => m.id === id) ||
+        moviesWatchLaterList.find((m) => m.id === id) ||
+        moviesWatchedList.find((m) => m.id === id);
+
+      if (!movieOriginal) return;
+
+      const nextWatchLater = !movieOriginal.watchLater;
+
+      // Update all lists
+      const updateFn = (m: Movie) =>
+        m.id === id ? { ...m, watchLater: nextWatchLater } : m;
+      setMovies((prev) => prev.map(updateFn));
+      setSearchResults((prev) => prev.map(updateFn));
+      setGenreMovies((prev) => prev.map(updateFn));
+
+      setMoviesWatchLaterList((prev) => {
+        const exists = prev.some((m) => m.id === id);
+        let updated;
+        if (exists) {
+          updated = prev.filter((m) => m.id !== id);
+        } else {
+          updated = [...prev, { ...movieOriginal, watchLater: true }];
+        }
+        localStorage.setItem("moviesWatchLater", JSON.stringify(updated));
+        return updated;
+      });
+
+      try {
+        await toggleWatchLaterApi({ movieId: id.toString() });
+      } catch (err) {
+        console.error("Error toggling watch later:", err);
+      }
+    },
+    [
+      movies,
+      searchResults,
+      genreMovies,
+      moviesWatchLaterList,
+      moviesWatchedList,
+      reportManualUpdate,
+    ]
+  );
+
   // Después de cargar las lists específicas:
   const syncMoviesFlags = (
     baseMovies: Movie[],
@@ -139,7 +343,6 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
   useEffect(() => {
     if (!user || !token) return;
     if (lastLoadedUserRef.current && lastLoadedUserRef.current !== user.id) {
-      console.log("User changed, clearing local movies state");
       setMoviesWatchedList([]);
       setMoviesWatchLaterList([]);
     }
@@ -229,7 +432,9 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
           return {
             ...movie,
             watchCount: watched ? watched.count : 0,
-            watchLater: userStatus.watchLater.includes(String(movie.id)),
+            watchLater: userStatus.watchLater.some(
+              (wl: any) => String(wl.id || wl.movieId) === String(movie.id)
+            ),
             duration: watched ? watched.duration : movie.duration,
             watchedAt: watched ? watched.watchedAt : [],
           };
@@ -251,10 +456,33 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
 
   // Sync movies with user lists when they change
   useEffect(() => {
-    setMovies((prevMovies) =>
-      syncMoviesFlags(prevMovies, moviesWatchedList, moviesWatchLaterList)
-    );
+    const syncFn = (prev: Movie[]) =>
+      syncMoviesFlags(prev, moviesWatchedList, moviesWatchLaterList);
+
+    setMovies(syncFn);
+    setSearchResults(syncFn);
+    setGenreMovies(syncFn);
+
+    // Update stats immediately
+    setMovieStats({
+      watchedCount: moviesWatchedList.length,
+      watchLaterCount: moviesWatchLaterList.length,
+    });
   }, [moviesWatchedList, moviesWatchLaterList]);
+
+  // Persistence for scroll position
+  useEffect(() => {
+    const savedScroll = localStorage.getItem("moviesLastScroll");
+    if (savedScroll) {
+      setLastScrollPosition(Number(savedScroll));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (lastScrollPosition > 0) {
+      localStorage.setItem("moviesLastScroll", lastScrollPosition.toString());
+    }
+  }, [lastScrollPosition]);
 
   useEffect(() => {
     if (
@@ -301,7 +529,6 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
 
   const loadMoviesWatched = async (force = false): Promise<Movie[]> => {
     if (!force && Date.now() - lastManualUpdateRef.current < 10000) {
-      console.log("Ignoring loadMoviesWatched due to recent manual update");
       return moviesWatchedList;
     }
     try {
@@ -422,6 +649,9 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
       setSelectedGenre,
       genreMovies,
       setGenreMovies,
+      incrementWatchCount,
+      resetWatchCount,
+      toggleWatchLater,
     }),
     [
       movies,
@@ -446,6 +676,9 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
       reportManualUpdate,
       selectedGenre,
       genreMovies,
+      incrementWatchCount,
+      resetWatchCount,
+      toggleWatchLater,
     ]
   );
 

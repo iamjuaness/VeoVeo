@@ -7,18 +7,12 @@ import { SeriesSlider } from "../components/SeriesSlider";
 import { ModalLogin } from "../../auth/components/ModalLogin";
 import { ModalRegister } from "../../auth/components/ModalRegister";
 import { UserMenu } from "../../auth/components/UserMenu";
-import {
-  toggleSeriesWatchLaterApi,
-  markAllEpisodesWatchedApi,
-  resetSeriesWatchedApi,
-} from "../services/series";
-import { getSeriesDetailById } from "../services/imdb";
 import { Theme } from "../../../shared/components/layout/Theme";
 import { Hamburger } from "../../../shared/components/layout/Hamburguer";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../../../shared/components/ui/button";
 import { useFilteredSeries } from "../hooks/useFilteredSeries";
-import { useCallback, useContext } from "react";
+import { useContext } from "react";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { useSeries } from "../context/SeriesContext";
 import { ThemeContext } from "../../../core/providers/ThemeContext";
@@ -35,22 +29,21 @@ export default function SeriesTracker() {
     loading,
     hasMore,
     seriesWatchLaterList,
-    setSeriesWatchLaterList,
     seriesWatchedList,
-    setSeriesWatchedList,
     seriesInProgressList,
     searchTerm,
     setSearchTerm,
     statsLoading,
     performSearch,
     searchResults,
-    setSearchResults,
     searchLoading,
     filterStatus,
     setFilterStatus,
     lastScrollPosition,
     setLastScrollPosition,
-    reportManualUpdate,
+    markAsWatched,
+    resetWatched,
+    toggleWatchLater,
   } = useSeries();
 
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -66,26 +59,30 @@ export default function SeriesTracker() {
   const isMountedRef = useRef(false);
   const navigate = useNavigate();
 
-  // Restore Scroll Position on Mount
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      setShowScrollSearch(currentScrollY > 700);
+
+      const timer = setTimeout(() => {
+        setLastScrollPosition(currentScrollY);
+      }, 500);
+      return () => clearTimeout(timer);
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [setLastScrollPosition]);
+
   useEffect(() => {
     if (lastScrollPosition > 0) {
-      const timer = setTimeout(() => {
-        window.scrollTo({ top: lastScrollPosition, behavior: "auto" });
-      }, 150);
-      return () => clearTimeout(timer);
-    } else {
-      const timer = setTimeout(() => {
-        window.scrollTo(0, 0);
+      setTimeout(() => {
+        window.scrollTo({
+          top: lastScrollPosition,
+          behavior: "instant" as any,
+        });
       }, 100);
-      return () => clearTimeout(timer);
     }
-  }, []);
-
-  // Save Scroll Position on Unmount
-  useEffect(() => {
-    return () => {
-      setLastScrollPosition(window.scrollY);
-    };
   }, []);
 
   // Featured series for slider (top rated)
@@ -173,100 +170,6 @@ export default function SeriesTracker() {
     setFilterStatus("all");
     setSearchTerm("");
   };
-
-  const toggleWatchLater = useCallback(
-    (id: string) => {
-      reportManualUpdate();
-      setSeries((prevSeries) => {
-        const seriesOriginal =
-          prevSeries.find((s) => s.id === id) ||
-          searchResults.find((s) => s.id === id);
-
-        const nextSeries = prevSeries.map((s) =>
-          s.id === id ? { ...s, watchLater: !s.watchLater } : s
-        );
-
-        setSeriesWatchLaterList((prev) => {
-          const exists = prev.some((s) => s.id === id);
-          if (exists) {
-            const updated = prev.filter((s) => s.id !== id);
-            localStorage.setItem("seriesWatchLater", JSON.stringify(updated));
-            return updated;
-          } else {
-            if (!seriesOriginal) return prev;
-            const updated = [...prev, { ...seriesOriginal, watchLater: true }];
-            localStorage.setItem("seriesWatchLater", JSON.stringify(updated));
-            return updated;
-          }
-        });
-
-        toggleSeriesWatchLaterApi({ seriesId: id });
-        return nextSeries;
-      });
-
-      setSearchResults((prev) =>
-        prev.map((s) => (s.id === id ? { ...s, watchLater: !s.watchLater } : s))
-      );
-    },
-    [searchResults, setSeries, setSeriesWatchLaterList, setSearchResults]
-  );
-
-  const markAsWatched = useCallback(
-    async (id: string) => {
-      reportManualUpdate();
-      setSeries((prevSeries) => {
-        const seriesOriginal =
-          prevSeries.find((s) => s.id === id) ||
-          searchResults.find((s) => s.id === id);
-
-        if (!seriesOriginal) return prevSeries;
-
-        if (seriesOriginal.watchLater) {
-          toggleWatchLater(id);
-        }
-
-        setSeriesWatchedList((prev) => {
-          const exists = prev.some((s) => s.id === id);
-          if (exists) return prev;
-
-          const updated = [...prev, seriesOriginal];
-          localStorage.setItem("seriesWatched", JSON.stringify(updated));
-          return updated;
-        });
-
-        (async () => {
-          try {
-            const seriesDetail = await getSeriesDetailById(id);
-            const seasons =
-              seriesDetail.seasons?.map((season: any) => ({
-                seasonNumber: season.season,
-                episodeCount: season.episodeCount || 0,
-              })) || [];
-
-            await markAllEpisodesWatchedApi({ seriesId: id, seasons });
-          } catch (err) {
-            console.error("Error marking series as watched:", err);
-          }
-        })();
-
-        return prevSeries; // No local state change for 'series' array needed here as it doesn't have a 'watched' flag directly like movies
-      });
-    },
-    [searchResults, toggleWatchLater, setSeriesWatchedList, setSeries]
-  );
-
-  const resetWatched = useCallback(
-    async (id: string) => {
-      reportManualUpdate();
-      setSeriesWatchedList((prev) => {
-        const updated = prev.filter((s) => s.id !== id);
-        localStorage.setItem("seriesWatched", JSON.stringify(updated));
-        return updated;
-      });
-      await resetSeriesWatchedApi({ seriesId: id });
-    },
-    [setSeriesWatchedList]
-  );
 
   const stats = {
     total: totalResults,
@@ -483,7 +386,8 @@ export default function SeriesTracker() {
                 useWindowScroll
                 data={filteredSeriesToDisplay}
                 totalCount={filteredSeriesToDisplay.length}
-                overscan={3600}
+                overscan={1200}
+                increaseViewportBy={800}
                 endReached={() => {
                   if (!loading && hasMore) {
                     setCurrentPage((prev) => prev + 1);

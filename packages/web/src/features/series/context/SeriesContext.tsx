@@ -15,7 +15,16 @@ import { useAuth } from "../../auth/hooks/useAuth";
 import { io, Socket } from "socket.io-client";
 import type { DefaultEventsMap } from "@socket.io/component-emitter";
 import { API_BASE_URL } from "../../../shared/utils/urls";
-import { fetchSeriesFromEndpoint, searchSeries } from "../services/imdb";
+import {
+  fetchSeriesFromEndpoint,
+  searchSeries,
+  getSeriesDetailById,
+} from "../services/imdb";
+import {
+  toggleSeriesWatchLaterApi,
+  markAllEpisodesWatchedApi,
+  resetSeriesWatchedApi,
+} from "../services/series";
 
 interface SeriesContextType {
   series: Series[];
@@ -61,6 +70,9 @@ interface SeriesContextType {
     inProgressCount: number;
     watchLaterCount: number;
   };
+  markAsWatched: (id: string) => Promise<void>;
+  resetWatched: (id: string) => Promise<void>;
+  toggleWatchLater: (id: string) => Promise<void>;
 }
 
 const SeriesContext = createContext<SeriesContextType | undefined>(undefined);
@@ -214,7 +226,7 @@ export function SeriesProvider({ children }: SeriesProviderProps) {
         const enrichedResults = results.map((s) => ({
           ...s,
           watchLater: (userStatus.seriesWatchLater || []).some(
-            (wl: any) => wl.id === s.id || wl.seriesId === s.id
+            (wl: any) => String(wl.id || wl.seriesId) === String(s.id)
           ),
         }));
 
@@ -233,10 +245,33 @@ export function SeriesProvider({ children }: SeriesProviderProps) {
 
   // Sync series with watch later list when it changes
   useEffect(() => {
-    setSeries((prevSeries) =>
-      syncSeriesFlags(prevSeries, seriesWatchLaterList)
-    );
-  }, [seriesWatchLaterList]);
+    const syncFn = (prev: Series[]) =>
+      syncSeriesFlags(prev, seriesWatchLaterList);
+
+    setSeries(syncFn);
+    setSearchResults(syncFn);
+
+    // Update stats immediately
+    setSeriesStats({
+      watchedCount: seriesWatchedList.length,
+      inProgressCount: seriesInProgressList.length,
+      watchLaterCount: seriesWatchLaterList.length,
+    });
+  }, [seriesWatchLaterList, seriesWatchedList, seriesInProgressList]);
+
+  // Persistence for scroll position
+  useEffect(() => {
+    const savedScroll = localStorage.getItem("seriesLastScroll");
+    if (savedScroll) {
+      setLastScrollPosition(Number(savedScroll));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (lastScrollPosition > 0) {
+      localStorage.setItem("seriesLastScroll", lastScrollPosition.toString());
+    }
+  }, [lastScrollPosition]);
 
   useEffect(() => {
     if (filterStatus !== "all" || !hasMore || isFetchingRef.current) return;
@@ -276,6 +311,145 @@ export function SeriesProvider({ children }: SeriesProviderProps) {
   const reportManualUpdate = useCallback(() => {
     lastManualUpdateRef.current = Date.now();
   }, []);
+
+  const toggleWatchLater = useCallback(
+    async (id: string) => {
+      reportManualUpdate();
+
+      const seriesOriginal =
+        series.find((s) => s.id === id) ||
+        searchResults.find((s) => s.id === id) ||
+        seriesWatchLaterList.find((s) => s.id === id) ||
+        seriesWatchedList.find((s) => s.id === id) ||
+        seriesInProgressList.find((s) => s.id === id);
+
+      if (!seriesOriginal) return;
+
+      const nextWatchLater = !seriesOriginal.watchLater;
+
+      // 1. Optimistic Update for Lists
+      const updateFn = (s: Series) =>
+        s.id === id ? { ...s, watchLater: nextWatchLater } : s;
+      setSeries((prev) => prev.map(updateFn));
+      setSearchResults((prev) => prev.map(updateFn));
+
+      setSeriesWatchLaterList((prev) => {
+        const exists = prev.some((s) => s.id === id);
+        let updated;
+        if (exists) {
+          updated = prev.filter((s) => s.id !== id);
+        } else {
+          updated = [...prev, { ...seriesOriginal, watchLater: true }];
+        }
+        localStorage.setItem("seriesWatchLater", JSON.stringify(updated));
+        return updated;
+      });
+
+      try {
+        await toggleSeriesWatchLaterApi({ seriesId: id });
+      } catch (err) {
+        console.error("Error toggling series watch later:", err);
+      }
+    },
+    [
+      series,
+      searchResults,
+      seriesWatchLaterList,
+      seriesWatchedList,
+      seriesInProgressList,
+      reportManualUpdate,
+    ]
+  );
+
+  const markAsWatched = useCallback(
+    async (id: string) => {
+      reportManualUpdate();
+
+      const seriesOriginal =
+        series.find((s) => s.id === id) ||
+        searchResults.find((s) => s.id === id) ||
+        seriesWatchLaterList.find((s) => s.id === id) ||
+        seriesWatchedList.find((s) => s.id === id) ||
+        seriesInProgressList.find((s) => s.id === id);
+
+      if (!seriesOriginal) return;
+
+      // 1. If in watch later, remove it
+      if (seriesOriginal.watchLater) {
+        toggleWatchLater(id);
+      }
+
+      // 2. Update Series Array (optimistic)
+      setSeries((prev) =>
+        prev.map((s) => (s.id === id ? { ...s, watchLater: false } : s))
+      );
+      setSearchResults((prev) =>
+        prev.map((s) => (s.id === id ? { ...s, watchLater: false } : s))
+      );
+
+      // 3. Update Watched list
+      setSeriesWatchedList((prev) => {
+        if (prev.some((s) => s.id === id)) return prev;
+        const updated = [...prev, seriesOriginal];
+        localStorage.setItem("seriesWatched", JSON.stringify(updated));
+        return updated;
+      });
+
+      // 4. Remove from in progress
+      setSeriesInProgressList((prev) => {
+        const updated = prev.filter((s) => s.id !== id);
+        localStorage.setItem("seriesInProgress", JSON.stringify(updated));
+        return updated;
+      });
+
+      try {
+        const seriesDetail = await getSeriesDetailById(id);
+        const seasons =
+          seriesDetail.seasons?.map((season: any) => ({
+            seasonNumber: season.season,
+            episodeCount: season.episodeCount || 0,
+          })) || [];
+
+        await markAllEpisodesWatchedApi({ seriesId: id, seasons });
+      } catch (err) {
+        console.error("Error marking series as watched:", err);
+      }
+    },
+    [
+      series,
+      searchResults,
+      seriesWatchLaterList,
+      seriesWatchedList,
+      seriesInProgressList,
+      toggleWatchLater,
+      reportManualUpdate,
+    ]
+  );
+
+  const resetWatched = useCallback(
+    async (id: string) => {
+      reportManualUpdate();
+
+      setSeriesWatchedList((prev) => {
+        const updated = prev.filter((s) => s.id !== id);
+        localStorage.setItem("seriesWatched", JSON.stringify(updated));
+        return updated;
+      });
+
+      setSeriesInProgressList((prev) => {
+        const updated = prev.filter((s) => s.id !== id);
+        localStorage.setItem("seriesInProgress", JSON.stringify(updated));
+        return updated;
+      });
+
+      try {
+        await resetSeriesWatchedApi({ seriesId: id });
+      } catch (err) {
+        console.error("Error resetting series watched status:", err);
+      }
+    },
+    [reportManualUpdate]
+  );
 
   const loadSeriesWatchLater = async (): Promise<Series[]> => {
     try {
@@ -426,6 +600,9 @@ export function SeriesProvider({ children }: SeriesProviderProps) {
       setLastScrollPosition,
       reportManualUpdate,
       seriesStats,
+      markAsWatched,
+      resetWatched,
+      toggleWatchLater,
     }),
     [
       series,
@@ -447,6 +624,10 @@ export function SeriesProvider({ children }: SeriesProviderProps) {
       lastScrollPosition,
       setLastScrollPosition,
       reportManualUpdate,
+      seriesStats,
+      markAsWatched,
+      resetWatched,
+      toggleWatchLater,
     ]
   );
 

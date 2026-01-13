@@ -10,7 +10,9 @@ export const movieGenres = [
   "Fantasy",
   "Horror",
   "Sci-Fi",
-  "Short",
+  "Biography",
+  "Mystery",
+  "Western",
 ] as const;
 
 export type Genre = (typeof movieGenres)[number];

@@ -19,6 +19,7 @@ import {
   Film,
   Award,
   Timer,
+  Clock,
 } from "lucide-react";
 import {
   Avatar,
@@ -27,7 +28,8 @@ import {
 } from "../../../shared/components/ui/avatar";
 import { Separator } from "../../../shared/components/ui/separator";
 import type { MovieDetail } from "../../../interfaces/MovieDetail";
-import { getMovieDetailById, getMovieDurationById } from "../services/imdb";
+import type { Movie } from "../../../interfaces/Movie";
+import { getMovieDetailById } from "../services/imdb";
 import { Link, useParams } from "react-router-dom";
 import { Theme } from "../../../shared/components/layout/Theme";
 import { ModalLogin } from "../../auth/components/ModalLogin";
@@ -37,11 +39,6 @@ import { UserMenu } from "../../auth/components/UserMenu";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { ThemeContext } from "../../../core/providers/ThemeContext";
 import { useMovies } from "../context/MoviesContext";
-import {
-  addOrIncrementWatched,
-  resetWatched,
-  toggleWatchLaterApi,
-} from "../../../features/movies/services/movie";
 import { RecommendModal } from "../../social/components/RecommendModal";
 import { useSocial } from "../../social/context/SocialContext";
 
@@ -54,10 +51,24 @@ export default function MovieDetailPage() {
   const { isDarkMode, toggleTheme } = useContext(ThemeContext);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
-  const { movies, setMovies, setMoviesWatchedList, setMoviesWatchLaterList } =
-    useMovies();
+  const {
+    movies,
+    moviesWatchedList,
+    moviesWatchLaterList,
+    searchResults,
+    genreMovies,
+    incrementWatchCount: incrementWatchCountContext,
+    resetWatchCount: resetWatchCountContext,
+    toggleWatchLater: toggleWatchLaterContext,
+  } = useMovies();
 
-  const movieFromContext = movies.find((m) => m.id === id);
+  const movieFromContext =
+    movies.find((m: Movie) => m.id === id) ||
+    moviesWatchedList.find((m: Movie) => m.id === id) ||
+    moviesWatchLaterList.find((m: Movie) => m.id === id) ||
+    searchResults.find((m: Movie) => m.id === id) ||
+    genreMovies.find((m: Movie) => m.id === id);
+
   const watchCount = movieFromContext?.watchCount ?? 0;
   const watchLater = movieFromContext?.watchLater ?? false;
 
@@ -120,119 +131,35 @@ export default function MovieDetailPage() {
   }, [id, token, movieFromContext]); // Dependencias actualizadas
 
   const incrementWatchCount = async (id: string) => {
-    const movieOriginal = movies.find((m) => m.id === id);
-
-    // Sube el contador en la lista principal
-    setMovies((movies) =>
-      movies.map((movie) =>
-        movie.id === id
-          ? {
-              ...movie,
-              watchCount: (movie.watchCount ?? 0) + 1,
-              watchLater: false,
-            }
-          : movie
-      )
-    );
-
-    // Quita de por ver
-    setMoviesWatchLaterList((prev) => {
-      const filtered = prev.filter((movie) => movie.id !== id);
-      localStorage.setItem("moviesWatchLater", JSON.stringify(filtered));
-      return filtered;
-    });
-
-    // Información para la visualización
-    const duration = await getMovieDurationById(id.toString()).then(
-      (res) => res.duration
-    );
-    const userOffset = new Date().getTimezoneOffset();
-    const watchedAtNew = new Date(
-      new Date().getTime() - userOffset * 60 * 1000
-    ).toISOString();
-
-    setMoviesWatchedList((prev) => {
-      let found = false;
-      const updated = prev.map((movie) => {
-        if (movie.id === id) {
-          found = true;
-          return {
-            ...movie,
-            ...(movieOriginal || {}),
-            watchCount: (movie.watchCount ?? 0) + 1,
-            watchLater: false,
-            duration,
-            watchedAt: Array.isArray(movie.watchedAt)
-              ? [...movie.watchedAt, watchedAtNew]
-              : [watchedAtNew],
-          };
-        }
-        return movie;
-      });
-      if (!found && movieOriginal) {
-        updated.push({
-          ...movieOriginal,
-          watchCount: 1,
-          watchLater: false,
-          duration,
-          watchedAt: [watchedAtNew],
-        });
-      }
-      localStorage.setItem("moviesWatched", JSON.stringify(updated));
-      return updated;
-    });
-
-    // Backend
-    if (movieOriginal?.watchLater) {
-      await toggleWatchLaterApi({ movieId: id.toString() });
-    }
-    await addOrIncrementWatched({
-      movieId: id.toString(),
-      duration,
-      watchedAt: [watchedAtNew],
+    await incrementWatchCountContext(id);
+    // Update local state for immediate feedback
+    setMovie((prev) => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        watchCount: (prev.watchCount || 0) + 1,
+        watchLater: false,
+      };
     });
   };
 
-  const resetWatchCount = (id: string) => {
-    setMovies((movies) =>
-      movies.map((movie) =>
-        movie.id === id ? { ...movie, watchCount: 0 } : movie
-      )
-    );
-
-    setMoviesWatchedList((prev) => {
-      const updated = prev.filter((movie) => movie.id !== id);
-      localStorage.setItem("moviesWatched", JSON.stringify(updated)); // Guarda la lista actualizada
-      return updated;
+  const resetWatchCount = async (id: string) => {
+    await resetWatchCountContext(id);
+    setMovie((prev) => {
+      if (!prev) return null;
+      return { ...prev, watchCount: 0 };
     });
-
-    // Llamada al backend para resetear
-    resetWatched({ movieId: id.toString() });
   };
 
-  const toggleWatchLater = (id: string) => {
-    const movieOriginal = movies.find((m) => m.id === id);
-
-    setMovies((movies) =>
-      movies.map((movie) =>
-        movie.id === id ? { ...movie, watchLater: !movie.watchLater } : movie
-      )
-    );
-
-    setMoviesWatchLaterList((prev) => {
-      const exists = prev.some((m) => m.id === id);
-      let updated;
-      if (exists) {
-        updated = prev.filter((movie) => movie.id !== id);
-      } else {
-        if (!movieOriginal) return prev;
-        updated = [...prev, { ...movieOriginal, watchLater: true }];
-      }
-      localStorage.setItem("moviesWatchLater", JSON.stringify(updated)); // Guarda aquí
-      return updated;
+  const toggleWatchLater = async (id: string) => {
+    await toggleWatchLaterContext(id);
+    setMovie((prev) => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        watchLater: !prev.watchLater,
+      };
     });
-    // Actualizar backend
-    toggleWatchLaterApi({ movieId: id.toString() });
   };
 
   const formatRuntime = (seconds: number) => {
@@ -392,6 +319,20 @@ export default function MovieDetailPage() {
                     <Timer className="w-4 h-4" />
                     {formatRuntime(movie.runtimeSeconds)}
                   </Badge>
+
+                  {watchCount > 0 && (
+                    <Badge className="bg-green-500/90 hover:bg-green-600 text-black backdrop-blur-md shadow-sm border-0 font-bold px-3 py-1">
+                      <Eye className="w-4 h-4 mr-1.5" />
+                      Vista {watchCount > 1 ? `(${watchCount}x)` : ""}
+                    </Badge>
+                  )}
+
+                  {watchLater && (
+                    <Badge className="bg-blue-500/90 hover:bg-blue-600 text-white backdrop-blur-md shadow-sm border-0 font-bold px-3 py-1">
+                      <Clock className="w-4 h-4 mr-1.5" />
+                      Pendiente
+                    </Badge>
+                  )}
                 </div>
 
                 <h1 className="text-3xl md:text-5xl lg:text-6xl font-extrabold mb-3 max-w-3xl leading-tight drop-shadow-2xl">

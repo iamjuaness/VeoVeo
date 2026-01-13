@@ -6,11 +6,6 @@ import { MovieCard } from "../components/MovieCard";
 import { ModalLogin } from "../../auth/components/ModalLogin";
 import { ModalRegister } from "../../auth/components/ModalRegister";
 import { UserMenu } from "../../auth/components/UserMenu";
-import {
-  addOrIncrementWatched,
-  resetWatched,
-  toggleWatchLaterApi,
-} from "../../../features/movies/services/movie";
 import { Theme } from "../../../shared/components/layout/Theme";
 import { Hamburger } from "../../../shared/components/layout/Hamburguer";
 import { Slider } from "../../../features/movies/components/Slider";
@@ -18,10 +13,9 @@ import { useNavigate } from "react-router-dom";
 import { movieGenres, type Genre } from "../../../shared/lib/genres";
 import { Button } from "../../../shared/components/ui/button";
 import { useFilteredMovies } from "../hooks/useFilteredMovies";
-import { useCallback, useContext } from "react";
+import { useContext } from "react";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { useMovies } from "../context/MoviesContext";
-import { getMovieDurationById } from "../services/imdb";
 import { ThemeContext } from "../../../core/providers/ThemeContext";
 import {
   Loader2,
@@ -52,27 +46,31 @@ export default function MovieTracker() {
     hasMore,
     moviesWatchedList,
     moviesWatchLaterList,
-    setMoviesWatchedList,
-    setMoviesWatchLaterList,
     searchTerm,
     setSearchTerm,
     statsLoading,
     performSearch,
     searchResults,
-    setSearchResults,
     searchLoading,
     filterStatus,
     setFilterStatus,
-    reportManualUpdate,
+    incrementWatchCount,
+    resetWatchCount,
+    toggleWatchLater,
   } = useMovies();
   const [selectedGenres, setSelectedGenres] = useState<{
     all: Genre;
     watched: Genre;
     watchLater: Genre;
-  }>({
-    all: "All",
-    watched: "All",
-    watchLater: "All",
+  }>(() => {
+    const saved = localStorage.getItem("moviesSelectedGenres");
+    return saved
+      ? JSON.parse(saved)
+      : {
+          all: "All",
+          watched: "All",
+          watchLater: "All",
+        };
   });
 
   // Tipo para el filtro de rating
@@ -83,10 +81,15 @@ export default function MovieTracker() {
     all: RatingValue;
     watched: RatingValue;
     watchLater: RatingValue;
-  }>({
-    all: "All",
-    watched: "All",
-    watchLater: "All",
+  }>(() => {
+    const saved = localStorage.getItem("moviesSelectedRatings");
+    return saved
+      ? JSON.parse(saved)
+      : {
+          all: "All",
+          watched: "All",
+          watchLater: "All",
+        };
   });
 
   const [watchedOrder, setWatchedOrder] = useState<"asc" | "desc">("desc");
@@ -123,13 +126,8 @@ export default function MovieTracker() {
     }
   };
 
-  const {
-    genreMovies,
-    isLoadingGenre,
-    errorGenre,
-    loadMoreGenreMovies,
-    setGenreMovies,
-  } = useGenreMovies(selectedGenres[filterStatus]);
+  const { genreMovies, isLoadingGenre, errorGenre, loadMoreGenreMovies } =
+    useGenreMovies(selectedGenres[filterStatus]);
 
   // Use the new custom hook for filtered movies
   const displayedMovies = useFilteredMovies({
@@ -186,24 +184,52 @@ export default function MovieTracker() {
   }, [featuredMovies]);
 
   useEffect(() => {
+    localStorage.setItem(
+      "moviesSelectedGenres",
+      JSON.stringify(selectedGenres)
+    );
+  }, [selectedGenres]);
+
+  useEffect(() => {
+    localStorage.setItem(
+      "moviesSelectedRatings",
+      JSON.stringify(selectedRatings)
+    );
+  }, [selectedRatings]);
+
+  useEffect(() => {
     const savedPage = localStorage.getItem("currentPage");
     if (savedPage) setCurrentPage(Number(savedPage));
   }, []);
 
+  const { lastScrollPosition, setLastScrollPosition } = useMovies();
+
   useEffect(() => {
-    let lastValue = false;
+    if (lastScrollPosition > 0) {
+      setTimeout(() => {
+        window.scrollTo({
+          top: lastScrollPosition,
+          behavior: "instant" as any,
+        });
+      }, 100);
+    }
+  }, []);
+
+  useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
-      const newValue = currentScrollY > 700;
-      if (newValue !== lastValue) {
-        setShowScrollSearch(newValue);
-        lastValue = newValue;
-      }
+      setShowScrollSearch(currentScrollY > 700);
+
+      // Debounce saving scroll position
+      const timer = setTimeout(() => {
+        setLastScrollPosition(currentScrollY);
+      }, 500);
+      return () => clearTimeout(timer);
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  }, [setLastScrollPosition]);
 
   const handleLogout = () => {
     logout();
@@ -226,217 +252,6 @@ export default function MovieTracker() {
   const goToSlide = (index: number) => {
     setCurrentSlide(index);
   };
-
-  // Incrementar contador de veces vista
-  const incrementWatchCount = useCallback(
-    async (id: string) => {
-      reportManualUpdate();
-      setMovies((prevMovies) => {
-        const movieOriginal = prevMovies.find((m) => m.id === id);
-
-        // Update list
-        const nextMovies = prevMovies.map((movie) =>
-          movie.id === id
-            ? {
-                ...movie,
-                watchCount: (movie.watchCount ?? 0) + 1,
-                watchLater: false,
-              }
-            : movie
-        );
-
-        // Separate async side effects
-        (async () => {
-          const durationData = await getMovieDurationById(id.toString());
-          const duration = durationData.duration;
-          const userOffset = new Date().getTimezoneOffset();
-          const watchedAtNew = new Date(
-            new Date().getTime() - userOffset * 60 * 1000
-          ).toISOString();
-
-          setMoviesWatchedList((prev) => {
-            let found = false;
-            const updated = prev.map((movie) => {
-              if (movie.id === id) {
-                found = true;
-                return {
-                  ...movie,
-                  ...(movieOriginal || {}),
-                  watchCount: (movie.watchCount ?? 0) + 1,
-                  watchLater: false,
-                  duration,
-                  watchedAt: Array.isArray(movie.watchedAt)
-                    ? [...movie.watchedAt, watchedAtNew]
-                    : [watchedAtNew],
-                };
-              }
-              return movie;
-            });
-            if (!found && movieOriginal) {
-              updated.push({
-                ...movieOriginal,
-                watchCount: 1,
-                watchLater: false,
-                duration,
-                watchedAt: [watchedAtNew],
-              });
-            }
-            localStorage.setItem("moviesWatched", JSON.stringify(updated));
-            return updated;
-          });
-
-          if (movieOriginal?.watchLater) {
-            await toggleWatchLaterApi({ movieId: id.toString() });
-          }
-          await addOrIncrementWatched({
-            movieId: id.toString(),
-            duration,
-            watchedAt: [watchedAtNew],
-          });
-        })();
-
-        return nextMovies;
-      });
-
-      if (selectedGenres[filterStatus] !== "All" && setGenreMovies) {
-        setGenreMovies((prev) =>
-          prev.map((movie) =>
-            movie.id === id
-              ? {
-                  ...movie,
-                  watchCount: (movie.watchCount ?? 0) + 1,
-                  watchLater: false,
-                }
-              : movie
-          )
-        );
-      }
-
-      setSearchResults((prev) =>
-        prev.map((movie) =>
-          movie.id === id
-            ? {
-                ...movie,
-                watchCount: (movie.watchCount || 0) + 1,
-                watchLater: false,
-              }
-            : movie
-        )
-      );
-
-      setMoviesWatchLaterList((prev) => {
-        const filtered = prev.filter((movie) => movie.id !== id);
-        localStorage.setItem("moviesWatchLater", JSON.stringify(filtered));
-        return filtered;
-      });
-    },
-    [
-      setMovies,
-      setMoviesWatchLaterList,
-      setMoviesWatchedList,
-      setSearchResults,
-      setGenreMovies,
-      selectedGenres,
-      filterStatus,
-    ]
-  );
-
-  // Resetear contador de veces vista
-  const resetWatchCount = useCallback(
-    (id: string) => {
-      reportManualUpdate();
-      setMovies((prevMovies) =>
-        prevMovies.map((movie) =>
-          movie.id === id ? { ...movie, watchCount: 0 } : movie
-        )
-      );
-      if (selectedGenres[filterStatus] !== "All" && setGenreMovies) {
-        setGenreMovies((prev) =>
-          prev.map((movie) =>
-            movie.id === id ? { ...movie, watchCount: 0 } : movie
-          )
-        );
-      }
-
-      setMoviesWatchedList((prev) => {
-        const updated = prev.filter((movie) => movie.id !== id);
-        localStorage.setItem("moviesWatched", JSON.stringify(updated));
-        return updated;
-      });
-
-      setSearchResults((prev) =>
-        prev.map((movie) =>
-          movie.id === id ? { ...movie, watchCount: 0 } : movie
-        )
-      );
-
-      resetWatched({ movieId: id.toString() });
-    },
-    [
-      setMovies,
-      setMoviesWatchedList,
-      setSearchResults,
-      setGenreMovies,
-      selectedGenres,
-      filterStatus,
-    ]
-  );
-
-  // Toggle watchLater status
-  const toggleWatchLater = useCallback(
-    (id: string) => {
-      reportManualUpdate();
-      setMovies((prevMovies) => {
-        const movieOriginal = prevMovies.find((m) => m.id === id);
-
-        const nextMovies = prevMovies.map((movie) =>
-          movie.id === id ? { ...movie, watchLater: !movie.watchLater } : movie
-        );
-
-        setMoviesWatchLaterList((prev) => {
-          const exists = prev.some((m) => m.id === id);
-          if (exists) {
-            const updated = prev.filter((movie) => movie.id !== id);
-            localStorage.setItem("moviesWatchLater", JSON.stringify(updated));
-            return updated;
-          } else {
-            if (!movieOriginal) return prev;
-            const updated = [...prev, { ...movieOriginal, watchLater: true }];
-            localStorage.setItem("moviesWatchLater", JSON.stringify(updated));
-            return updated;
-          }
-        });
-
-        toggleWatchLaterApi({ movieId: id.toString() });
-
-        return nextMovies;
-      });
-
-      if (selectedGenres[filterStatus] !== "All" && setGenreMovies) {
-        setGenreMovies((prev) =>
-          prev.map((movie) =>
-            movie.id === id
-              ? { ...movie, watchLater: !movie.watchLater }
-              : movie
-          )
-        );
-      }
-
-      setSearchResults((prev) =>
-        prev.map((movie) =>
-          movie.id === id ? { ...movie, watchLater: !movie.watchLater } : movie
-        )
-      );
-    },
-    [
-      setMovies,
-      setMoviesWatchLaterList,
-      setSearchResults,
-      setGenreMovies,
-      selectedGenres,
-      filterStatus,
-    ]
-  );
 
   // Estadísticas
   const stats = {
@@ -748,7 +563,8 @@ export default function MovieTracker() {
                 useWindowScroll
                 data={filteredMoviesToDisplay}
                 totalCount={filteredMoviesToDisplay.length}
-                overscan={3600}
+                overscan={1200}
+                increaseViewportBy={800}
                 endReached={() => {
                   if (selectedGenres[filterStatus] !== "All") {
                     // Si hay género seleccionado, usar loadMoreGenreMovies

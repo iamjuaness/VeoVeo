@@ -29,6 +29,4 @@ io.on("connection", (socket) => {
   });
 });
 
-server.listen(5000, () => console.log("Servidor corriendo en puerto 5000"));
-
 export default app;

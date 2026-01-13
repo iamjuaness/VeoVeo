@@ -1,4 +1,11 @@
-import { ChevronLeft, ChevronRight, Star, Play } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Star,
+  Play,
+  Eye,
+  Clock,
+} from "lucide-react";
 import type { Movie } from "../../../interfaces/Movie";
 import { Badge } from "../../../shared/components/ui/badge";
 import { Button } from "../../../shared/components/ui/button";
@@ -75,6 +82,21 @@ export function Slider({
                     >
                       {movie.year}
                     </Badge>
+
+                    {movie.watchCount > 0 && (
+                      <Badge className="bg-green-500/90 hover:bg-green-600 text-black font-bold backdrop-blur-sm">
+                        <Eye className="w-4 h-4 mr-1" />
+                        Vista{" "}
+                        {movie.watchCount > 1 ? `(${movie.watchCount}x)` : ""}
+                      </Badge>
+                    )}
+
+                    {movie.watchLater && (
+                      <Badge className="bg-blue-500/90 hover:bg-blue-600 text-white font-bold backdrop-blur-sm">
+                        <Clock className="w-4 h-4 mr-1" />
+                        Pendiente
+                      </Badge>
+                    )}
                   </div>
 
                   <h2 className="text-3xl md:text-5xl lg:text-6xl font-extrabold text-white drop-shadow-2xl mb-4 leading-tight">

@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useState } from "react";
 import { Card } from "../../../shared/components/ui/card";
 import { Badge } from "../../../shared/components/ui/badge";
 import { Eye, EyeOff, Clock, Star, Calendar, Tv } from "lucide-react";
@@ -27,6 +27,7 @@ export const SeriesCard = memo(function SeriesCard({
   watched = false,
   inProgress = false,
 }: Props) {
+  const [isLoaded, setIsLoaded] = useState(false);
   function handleToggleWatchLater(e: React.MouseEvent<HTMLButtonElement>) {
     e.stopPropagation();
     if (!user) {
@@ -65,7 +66,10 @@ export const SeriesCard = memo(function SeriesCard({
               : "/placeholder.svg"
           }
           alt={series.title}
-          className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105"
+          onLoad={() => setIsLoaded(true)}
+          className={`object-cover w-full h-full transition-all duration-700 group-hover:scale-105 ${
+            isLoaded ? "opacity-100" : "opacity-0"
+          }`}
         />
 
         {/* Gradient overlay */}

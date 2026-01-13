@@ -19,6 +19,7 @@ import {
   Award,
   Eye,
   Loader2,
+  Clock,
 } from "lucide-react";
 import {
   Avatar,
@@ -28,12 +29,7 @@ import {
 import type { SeriesDetail } from "../../../interfaces/SeriesDetail";
 import type { Series } from "../../../interfaces/Series";
 import { getSeriesDetailById } from "../services/imdb";
-import {
-  toggleSeriesWatchLaterApi,
-  markAllEpisodesWatchedApi,
-  getSeriesProgressApi,
-  resetSeriesWatchedApi,
-} from "../services/series";
+import { getSeriesProgressApi } from "../services/series";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { useSeries } from "../context/SeriesContext";
 import { SeasonAccordion } from "../components/SeasonAccordion";
@@ -59,13 +55,11 @@ export default function SeriesDetailPage() {
   const { user, setUser, logout } = useAuth();
   const {
     seriesWatchLaterList,
-    setSeriesWatchLaterList,
     seriesWatchedList,
-    setSeriesWatchedList,
     seriesInProgressList,
-    setSeriesInProgressList,
-    loadSeriesWatched,
-    reportManualUpdate,
+    markAsWatched: markAsWatchedContext,
+    resetWatched: resetWatchedContext,
+    toggleWatchLater: toggleWatchLaterContext,
   } = useSeries();
   const { isDarkMode, toggleTheme } = useContext(ThemeContext);
 
@@ -120,187 +114,22 @@ export default function SeriesDetailPage() {
   }, [seriesWatchedList, seriesInProgressList, id]);
 
   const toggleWatchLater = async () => {
-    if (!user || !series) return;
-    reportManualUpdate();
-    const newWatchLaterState = !watchLater;
-
-    setSeriesWatchLaterList((prev) => {
-      if (newWatchLaterState) {
-        // ... (rest of logic same) ...
-        const newSeries = {
-          id: series.id,
-          type: series.type,
-          title: series.primaryTitle,
-          year: series.startYear,
-          endYear: series.endYear,
-          genres: series.genres,
-          rating: series.rating.aggregateRating,
-          description: series.plot,
-          poster: series.primaryImage.url,
-          backdrop: series.primaryImage.url,
-          watchLater: true,
-        };
-        return [...prev, newSeries];
-      } else {
-        return prev.filter((s) => s.id !== id);
-      }
-    });
-
-    await toggleSeriesWatchLaterApi({ seriesId: id! });
+    if (!id) return;
+    await toggleWatchLaterContext(id);
   };
 
   const markAsWatched = async () => {
-    if (!user || !series) return;
-    reportManualUpdate();
-
-    // Check if we should UNWATCH or REWATCH.
-    // If isWatched=true AND we have episodes loaded (implies completed/progress), we consider it a REWATCH action if initiated.
-    // However, we need to support "Quitar" too.
-    // Logic: If (isWatched && !isCompleted) -> Unwatch.
-    // If (isWatched && isCompleted) -> Fall through to Rewatch logic.
-    // But 'isCompleted' helper isn't defined here yet.
-
-    // Simplification: If watchedEpisodes > 0, we assume user might want to rewatch.
-    // But if they want to unwatch?
-    // They can use the "Quitar" button.
-    // Wait, the button TEXT changes.
-    // unique Button -> "Ver de nuevo (+1)" OR "Quitar".
-    // "Quitar" only appears if isWatched=true AND watchedEpisodes=0? No.
-    // Let's rely on the button text Logic from UI:
-    // isWatched && watchedEpisodes.length > 0 ? "Ver serie de nuevo (+1)" : "Quitar de Vistas"
-
-    // So if watchedEpisodes.length > 0, we skip the unwatch block.
-    // Logic:
-    // If not watched -> Mark Watched
-    // If watched AND (not completed OR user wants to unwatch) -> Unwatch
-    // If watched AND (completed) -> Rewatch (increment)
-
-    // Check for "Unwatch" action (only if it's currently watched AND not being rewatched)
-    // We'll use the same logic as the UI button: if it's watched but not rewatch-ready (e.g. 0 episodes or user specifically wants to unwatch)
-    // Actually, let's just make "Quitar" more accessible.
-    // If we have a rewatch button, we use it. If not, toggle should unwatch.
-
+    if (!id) return;
     const canRewatch = isWatched && watchedEpisodes.length > 0;
 
     if (isWatched && !canRewatch) {
-      setSeriesWatchedList((prev) => prev.filter((s) => s.id !== id));
-      try {
-        await resetSeriesWatchedApi({ seriesId: id! });
-        loadSeriesWatched();
-        setWatchedEpisodes([]);
-      } catch (err) {
-        console.error("Error resetting series:", err);
-      }
+      await resetWatchedContext(id);
+      setWatchedEpisodes([]);
       return;
     }
 
-    if (watchLater) {
-      await toggleWatchLater();
-    }
-
-    const seriesForList = {
-      id: series.id,
-      type: series.type,
-      title: series.primaryTitle,
-      year: series.startYear,
-      endYear: series.endYear,
-      genres: series.genres,
-      rating: series.rating.aggregateRating,
-      description: series.plot,
-      poster: series.primaryImage.url,
-      backdrop: series.primaryImage.url,
-      watchLater: false,
-    };
-
-    setSeriesWatchedList((prev) => {
-      const exists = prev.some((s) => s.id === id);
-      if (exists) return prev;
-      const updated = [...prev, seriesForList];
-      localStorage.setItem("seriesWatched", JSON.stringify(updated));
-      return updated;
-    });
-
-    setSeriesInProgressList((prev: Series[]) =>
-      prev.filter((s) => s.id !== id)
-    );
-
-    try {
-      // Simplified Logic: Use Server-Side Filling (Strict Mode)
-      // Check if we are already marking this as watched (rewatch) or new
-      // Note: 'isWatched' flag from context might be true, but we check if we have episodes to confirm completion state if needed.
-      // Actually 'isWatched' in UI toggles between "Quitar" and "Mark".
-      // But if we have the "Rewatch" button separate or integrated, we need to handle it.
-      // The UI logic has "Marcar Todo Visto" vs "Quitar de Vistas" vs "Ver serie de nuevo".
-
-      // UI State:
-      // If isWatched=false -> "Marcar Todo Visto" -> Call with increment=false
-      // If isWatched=true -> "Quitar de Vistas" -> (Handled by EARLY RETURN at top of function)
-      // Wait, if isWatched=true, line 147 returns early for "Quitar".
-
-      // SO: How do we reach "Rewatch"?
-      // The button logic in UI (line 417 approx) determines text.
-      // But 'markAsWatched' currently handles "Quitar" first.
-
-      // We need to change the recursion/early return logic if we want "Rewatch" to work via the SAME button flow
-      // OR we rely on a separate specific flow?
-
-      // IF the user clicks "Ver serie de nuevo (+1)", they call 'markAsWatched'.
-      // But 'isWatched' is true! So line 147 triggers "Quitar".
-      // we need to avoid "Quitar" if it is a rewatch action.
-      // But how do we distinguish?
-      // Maybe we should NOT have 'isWatched' check at the top if we want to allow rewatch?
-
-      // If 'isWatched' is true, and we want to allow rewatch, we need to differentiate "Unwatch" from "Rewatch".
-      // Current UI has ONE button that toggles.
-      // The plan says: Show "Ver serie de nuevo (+1)" if completed.
-      // If I click that, I expect rewatch, NOT unwatch.
-
-      // Fix: We need to modify the early return logic.
-      // If isWatched is true, AND we are acting as "Rewatch", we skip unwatch.
-      // But 'markAsWatched' is a toggle.
-      // We should separate the function or use a flag.
-      // However, to minimize changes, let's assume if it is FULLY WATCHED, the primary action becomes REWATCH.
-      // If it is PARTIALLY watched, maybe "Quitar"?
-      // Typically "Toggle" implies Unwatch.
-      // But if the button text says "Ver de nuevo", unwatching is confusing.
-
-      // Let's implement:
-      // If (isWatched && isCompleted) -> Rewatch
-      // If (isWatched && !isCompleted) -> Unwatch? (Or continue watching? series usually don't have unwatch easily)
-      // Let's stick to: "Quitar" is available via "isWatched" check.
-      // But wait, if I want to REWATCH, I can't if it triggers UNWATCH.
-
-      // Let's change the condition at line 147.
-      // OR better: Create a separate `rewatchSeries` function?
-      // OR modify `markAsWatched` to accept a `forceRewatch` param?
-
-      // Since I can't easily change the onClick in the JSX without context, I will modify `markAsWatched` to handle this.
-      // Actually I CAN change the JSX in the same file.
-
-      // Let's modify `markAsWatched` to be smart.
-
-      // If IS WATCHED...
-      // We only "Unwatch" if we are NOT in "Completed" state?
-      // No, user might want to unwatch a completed series.
-
-      // USE CASE:
-      // User sees "Ver serie de nuevo (+1)". Clicks it.
-      // Function `markAsWatched` called.
-      // `isWatched` is true.
-      // Enters line 147 -> Resets/Unwatches.
-      // THIS IS WRONG for rewatch.
-
-      // I need to change loop 147.
-
-      await markAllEpisodesWatchedApi({
-        seriesId: id!,
-        increment: canRewatch, // Increment if we are rewatching
-      });
-      await loadSeriesWatched();
-      handleProgressChange();
-    } catch (err) {
-      console.error("Error marking series as watched:", err);
-    }
+    await markAsWatchedContext(id);
+    handleProgressChange();
   };
 
   const handleLogout = () => {
@@ -454,9 +283,24 @@ export default function SeriesDetailPage() {
                   </Badge>
 
                   {isWatched && (
-                    <Badge className="bg-green-500/90 hover:bg-green-600 text-white backdrop-blur-md shadow-sm border-0">
-                      <Eye className="w-3 h-3 mr-1.5" />
+                    <Badge className="bg-green-500/90 hover:bg-green-600 text-white backdrop-blur-md shadow-sm border-0 font-bold px-3 py-1">
+                      <Eye className="w-4 h-4 mr-1.5" />
                       Vista
+                    </Badge>
+                  )}
+
+                  {seriesInProgressList.some((s) => s.id === id) &&
+                    !isWatched && (
+                      <Badge className="bg-yellow-500/90 hover:bg-yellow-600 text-black backdrop-blur-md shadow-sm border-0 font-bold px-3 py-1">
+                        <Tv className="w-4 h-4 mr-1.5" />
+                        En Progreso
+                      </Badge>
+                    )}
+
+                  {watchLater && (
+                    <Badge className="bg-blue-500/90 hover:bg-blue-600 text-white backdrop-blur-md shadow-sm border-0 font-bold px-3 py-1">
+                      <Clock className="w-4 h-4 mr-1.5" />
+                      Pendiente
                     </Badge>
                   )}
                 </div>

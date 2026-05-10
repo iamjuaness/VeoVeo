@@ -6,6 +6,7 @@ import { io } from "../../app.js";
 import {
   getSeriesSeasonsInternal,
   getSeasonEpisodesInternal,
+  getAllEpisodesInternal,
 } from "./imdb-series.controller.js";
 import { ensureMediaInCache, enrichMediaList } from "../media/media.service.js";
 
@@ -169,7 +170,28 @@ export async function getUserSeriesStatus(req: Request, res: Response) {
               {
                 id: "$seriesWatched.seriesId",
                 seriesId: "$seriesWatched.seriesId",
-                isCompleted: { $ifNull: ["$seriesWatched.isCompleted", false] },
+                isCompleted: {
+                  $cond: [
+                    {
+                      $and: [
+                        { $ifNull: ["$seriesWatched.isCompleted", false] },
+                        {
+                          $or: [
+                            { $not: ["$seriesMeta.totalEpisodes"] },
+                            {
+                              $gte: [
+                                { $size: "$seriesWatched.episodes" },
+                                "$seriesMeta.totalEpisodes",
+                              ],
+                            },
+                          ],
+                        },
+                      ],
+                    },
+                    true,
+                    false,
+                  ],
+                },
                 episodes: "$seriesWatched.episodes",
 
                 // Full Metadata
@@ -183,6 +205,8 @@ export async function getUserSeriesStatus(req: Request, res: Response) {
                 poster: { $ifNull: ["$seriesMeta.poster", ""] },
                 backdrop: { $ifNull: ["$seriesMeta.backdrop", ""] },
                 lastUpdated: "$seriesMeta.lastUpdated",
+                totalEpisodes: "$seriesMeta.totalEpisodes",
+                status: "$seriesMeta.status",
               },
               "$$REMOVE",
             ],
@@ -293,6 +317,7 @@ export async function toggleEpisodeWatched(req: Request, res: Response) {
   // Check completion after toggle
   await checkSeriesCompletion(seriesId, seriesEntry);
 
+  user.markModified("seriesWatched");
   await user.save();
 
   const enrichedSeries = await getEnrichedSeriesWatched(id, seriesId);
@@ -312,13 +337,14 @@ export async function toggleEpisodeWatched(req: Request, res: Response) {
  */
 async function checkSeriesCompletion(seriesId: string, seriesEntry: any) {
   try {
-    const seasons = await getSeriesSeasonsInternal(seriesId);
-    let totalEpisodesCount = 0;
+    const allEpisodes = await getAllEpisodesInternal(seriesId);
+    const totalEpisodesCount = allEpisodes.length;
 
-    for (const season of seasons) {
-      const eps = await getSeasonEpisodesInternal(seriesId, season.season);
-      totalEpisodesCount += eps.length;
-    }
+    // Update MediaCache with latest episode count
+    await MediaCacheModel.updateOne(
+      { id: seriesId },
+      { $set: { totalEpisodes: totalEpisodesCount, lastUpdated: new Date() } }
+    );
 
     if (
       seriesEntry.episodes.length >= totalEpisodesCount &&
@@ -647,6 +673,7 @@ export async function toggleSeriesCompleted(req: Request, res: Response) {
     );
   }
 
+  user.markModified("seriesWatched");
   await user.save();
 
   io.to(String(id)).emit("series-completed-toggled", {
@@ -698,6 +725,7 @@ export async function resetSeriesWatched(req: Request, res: Response) {
     }
   }
 
+  user.markModified("seriesWatched");
   await user.save();
 
   io.to(String(id)).emit("series-marked-watched", {

@@ -12,6 +12,8 @@ export interface IMediaCache extends Document {
   poster: string;
   backdrop: string;
   duration: number;
+  totalEpisodes?: number;
+  status?: string;
   lastUpdated: Date;
 }
 
@@ -27,6 +29,8 @@ const MediaCacheSchema = new Schema<IMediaCache>({
   poster: { type: String, default: "" },
   backdrop: { type: String, default: "" },
   duration: { type: Number, default: 0 },
+  totalEpisodes: { type: Number },
+  status: { type: String },
   lastUpdated: { type: Date, default: Date.now },
 });
 

@@ -471,7 +471,8 @@ export function SeriesProvider({ children }: SeriesProviderProps) {
   };
 
   const loadSeriesWatched = async (force = false): Promise<Series[]> => {
-    if (!force && Date.now() - lastManualUpdateRef.current < 10000) {
+    const isRecentlyUpdated = Date.now() - lastManualUpdateRef.current < 10000;
+    if (!force && isRecentlyUpdated) {
       return seriesWatchedList;
     }
     try {
@@ -546,11 +547,15 @@ export function SeriesProvider({ children }: SeriesProviderProps) {
         });
     });
 
-    socketRef.current.on("series-marked-watched", () => refreshRef.current());
-    socketRef.current.on("series-completed-toggled", () =>
-      refreshRef.current()
+    socketRef.current.on("series-marked-watched", () =>
+      loadSeriesWatched(true)
     );
-    socketRef.current.on("episode-watched-toggled", () => refreshRef.current());
+    socketRef.current.on("series-completed-toggled", () =>
+      loadSeriesWatched(true)
+    );
+    socketRef.current.on("episode-watched-toggled", () =>
+      loadSeriesWatched(true)
+    );
 
     socketRef.current.on("connect_error", (err) => {
       console.error("Error de conexión en socket:", err);

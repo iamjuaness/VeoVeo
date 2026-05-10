@@ -7,7 +7,7 @@ export async function fetchSeriesBatchRaw(
   options?: {
     concurrentRequests?: number;
     delayMs?: number;
-  }
+  },
 ) {
   if (!ids || !Array.isArray(ids) || ids.length === 0) return null;
 
@@ -33,7 +33,7 @@ export async function fetchSeriesBatchRaw(
         const idStr = typeof id === "string" ? id : JSON.stringify(id);
         console.error(
           `Error al obtener serie con ID ${idStr}:`,
-          res.statusText
+          res.statusText,
         );
         return null;
       }
@@ -52,7 +52,7 @@ export async function fetchSeriesBatchRaw(
 
 export async function fetchSeriesBatchRawController(
   req: Request,
-  res: Response
+  res: Response,
 ) {
   const { ids, options } = req.body;
 
@@ -114,7 +114,7 @@ export async function fetchSeasonEpisodes(req: Request, res: Response) {
 
   try {
     const episodesUrl = `${API_URL}/titles/${encodeURIComponent(
-      id
+      id,
     )}/episodes?season=${season}`;
     const episodesRes = await fetch(episodesUrl, {
       method: "GET",
@@ -134,85 +134,101 @@ export async function fetchSeasonEpisodes(req: Request, res: Response) {
 // Helper for internal use
 export async function getSeriesSeasonsInternal(id: string) {
   try {
-    // User request: Use ONLY the episodes endpoint to deduce seasons
-    // This avoids issues where the /seasons endpoint returns correct counts but other endpoints fail
-    const episodesUrl = `${API_URL}/titles/${encodeURIComponent(id)}/episodes`;
-    const episodesRes = await fetch(episodesUrl, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-    });
-
-    if (episodesRes.ok) {
-      const data = await episodesRes.json();
-      const episodes = data.episodes || [];
-
-      // Group by season to reconstruct the metadata structure
-      const seasonMap = new Map<string, number>();
-
-      episodes.forEach((ep: any) => {
-        if (ep.season) {
-          const s = String(ep.season);
-          seasonMap.set(s, (seasonMap.get(s) || 0) + 1);
-        }
-      });
-
-      const uniqueSeasons = Array.from(seasonMap.entries()).map(
-        ([season, count]) => ({
-          season,
-          episodeCount: count,
-        })
-      );
-
-      // Sort numerically
-      return uniqueSeasons.sort((a, b) => Number(a.season) - Number(b.season));
-    }
-  } catch (err) {
-    console.error("Error fetching internal seasons:", err);
-  }
-  return [];
-}
-// Helper for internal use
-export async function getSeasonEpisodesInternal(
-  id: string,
-  season: string,
-  pageToken?: string
-): Promise<any[]> {
-  try {
-    // Fetch ALL episodes with pagination support
+    // Fetch ALL episodes with pagination support to get accurate season/episode counts
     let allEpisodes: any[] = [];
     let currentPageToken: string | undefined = undefined;
 
     do {
-      const allEpisodesUrl = `${API_URL}/titles/${encodeURIComponent(
-        id
+      const episodesUrl = `${API_URL}/titles/${encodeURIComponent(
+        id,
       )}/episodes${currentPageToken ? `?pageToken=${currentPageToken}` : ""}`;
 
-      const allRes = await fetch(allEpisodesUrl, {
+      const episodesRes: any = await fetch(episodesUrl, {
         method: "GET",
         headers: { "Content-Type": "application/json" },
       });
 
-      if (allRes.ok) {
-        const data: { episodes?: any[]; nextPageToken?: string } =
-          await allRes.json();
+      if (episodesRes.ok) {
+        const data = await episodesRes.json();
         const episodes = data.episodes || [];
         allEpisodes.push(...episodes);
-
-        // Check if there are more pages
         currentPageToken = data.nextPageToken;
       } else {
         break;
       }
     } while (currentPageToken);
 
-    // Filter by requested season
-    const seasonEpisodes = allEpisodes.filter(
-      (e: any) => String(e.season) === String(season)
+    // Group by season to reconstruct the metadata structure
+    const seasonMap = new Map<string, number>();
+
+    allEpisodes.forEach((ep: any) => {
+      if (ep.season) {
+        const s = String(ep.season);
+        seasonMap.set(s, (seasonMap.get(s) || 0) + 1);
+      }
+    });
+
+    const uniqueSeasons = Array.from(seasonMap.entries()).map(
+      ([season, count]) => ({
+        season,
+        episodeCount: count,
+      }),
     );
 
-    return seasonEpisodes;
+    // Sort numerically
+    return uniqueSeasons.sort((a, b) => Number(a.season) - Number(b.season));
+  } catch (err) {
+    console.error("Error fetching internal seasons:", err);
+  }
+  return [];
+}
+
+// Helper for internal use
+export async function getSeasonEpisodesInternal(
+  id: string,
+  season: string,
+): Promise<any[]> {
+  try {
+    // We can optimize this by using the seasons we already fetched,
+    // but for now let's just make it call the episodes endpoint for THAT season if possible.
+    // Actually, the API might not support filtering by season directly in a clean way
+    // that returns ALL episodes of that season without pagination issues if there are many.
+
+    // For now, let's use the same paginated approach but only return the requested season.
+    // This is still better than the previous one which was called in a loop.
+    const allEpisodes = await getAllEpisodesInternal(id);
+    return allEpisodes.filter((e: any) => String(e.season) === String(season));
   } catch (err) {
     console.error("Error fetching internal season episodes:", err);
   }
   return [];
+}
+
+// New helper to avoid redundant calls
+export async function getAllEpisodesInternal(id: string): Promise<any[]> {
+  let allEpisodes: any[] = [];
+  let currentPageToken: string | undefined = undefined;
+
+  try {
+    do {
+      const url = `${API_URL}/titles/${encodeURIComponent(id)}/episodes${
+        currentPageToken ? `?pageToken=${currentPageToken}` : ""
+      }`;
+      const res: any = await fetch(url, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        allEpisodes.push(...(data.episodes || []));
+        currentPageToken = data.nextPageToken;
+      } else {
+        break;
+      }
+    } while (currentPageToken);
+  } catch (err) {
+    console.error("Error in getAllEpisodesInternal:", err);
+  }
+  return allEpisodes;
 }

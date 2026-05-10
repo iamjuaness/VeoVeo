@@ -119,9 +119,9 @@ export function SeasonAccordion({
 
   // Sync with prop updates if they change
   useEffect(() => {
-    // Only update from props if we haven't made a local update in the last 2 seconds
+    // Only update from props if we haven't made a local update in the last 5 seconds
     const now = Date.now();
-    if (initialWatchedEpisodes && now - lastUpdateRef.current > 2000) {
+    if (initialWatchedEpisodes && now - lastUpdateRef.current > 5000) {
       setWatchedEpisodes(initialWatchedEpisodes);
     }
   }, [initialWatchedEpisodes]);

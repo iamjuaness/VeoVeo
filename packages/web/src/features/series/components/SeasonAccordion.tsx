@@ -6,6 +6,7 @@ import {
   Clock,
   Star,
   Plus,
+  Loader2,
 } from "lucide-react";
 import { Button } from "../../../shared/components/ui/button";
 import { Card } from "../../../shared/components/ui/card";
@@ -54,6 +55,12 @@ export function SeasonAccordion({
   const { user } = useAuth();
   const { reportManualUpdate } = useSeries();
   const lastUpdateRef = useRef<number>(0);
+
+  // New loading states for feedback
+  const [loadingEpisodes, setLoadingEpisodes] = useState<{
+    [key: number]: boolean;
+  }>({});
+  const [isProcessingSeason, setIsProcessingSeason] = useState(false);
 
   /* State for pagination */
   const [nextPageToken, setNextPageToken] = useState<string | undefined>(
@@ -175,6 +182,7 @@ export function SeasonAccordion({
       ]);
     }
 
+    setLoadingEpisodes((prev) => ({ ...prev, [episodeNumber]: true }));
     try {
       await toggleEpisodeWatchedApi({
         seriesId,
@@ -192,6 +200,8 @@ export function SeasonAccordion({
       getSeriesProgressApi(seriesId)
         .then((data: any) => setWatchedEpisodes(data.episodes || []))
         .catch(() => {});
+    } finally {
+      setLoadingEpisodes((prev) => ({ ...prev, [episodeNumber]: false }));
     }
   };
 
@@ -239,6 +249,7 @@ export function SeasonAccordion({
       });
     }
 
+    setIsProcessingSeason(true);
     try {
       // Use loaded episodes from component state instead of empty array
       // This avoids unnecessary backend API calls since we already have all episodes
@@ -259,6 +270,8 @@ export function SeasonAccordion({
       getSeriesProgressApi(seriesId)
         .then((data: any) => setWatchedEpisodes(data.episodes || []))
         .catch(() => {});
+    } finally {
+      setIsProcessingSeason(false);
     }
   };
 
@@ -321,14 +334,18 @@ export function SeasonAccordion({
                 </span>
               </div>
               {!isSeasonFullyWatched && episodes.length > 0 && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="w-full text-xs h-8 border-primary/20 hover:bg-primary/10 text-primary"
-                  onClick={markEntireSeasonWatched}
-                >
-                  Marcar toda la temporada como vista
-                </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full text-xs h-8 border-primary/20 hover:bg-primary/10 text-primary"
+                    onClick={markEntireSeasonWatched}
+                    disabled={isProcessingSeason}
+                  >
+                    {isProcessingSeason ? (
+                      <Loader2 className="h-3 w-3 animate-spin mr-2" />
+                    ) : null}
+                    Marcar toda la temporada como vista
+                  </Button>
               )}
               {isSeasonFullyWatched && (
                 <Button
@@ -336,7 +353,11 @@ export function SeasonAccordion({
                   variant="outline"
                   className="w-full text-xs h-8 border-primary/20 hover:bg-primary/10 text-primary mt-2"
                   onClick={markEntireSeasonWatched}
+                  disabled={isProcessingSeason}
                 >
+                  {isProcessingSeason ? (
+                    <Loader2 className="h-3 w-3 animate-spin mr-2" />
+                  ) : null}
                   Ver toda la temporada de nuevo (+1)
                 </Button>
               )}
@@ -370,32 +391,41 @@ export function SeasonAccordion({
                     <div className="p-4 flex gap-4">
                       {user && (
                         <div className="flex flex-col items-center gap-2 pt-1">
-                          <Checkbox
-                            checked={isWatched}
-                            onCheckedChange={() =>
-                              toggleEpisodeWatched(episode.episodeNumber)
-                            }
-                            className="mt-1"
-                          />
+                          {loadingEpisodes[episode.episodeNumber] ? (
+                            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                          ) : (
+                            <Checkbox
+                              checked={isWatched}
+                              onCheckedChange={() =>
+                                toggleEpisodeWatched(episode.episodeNumber)
+                              }
+                              className="mt-1"
+                            />
+                          )}
                           {isWatched && (
                             <div className="flex flex-col items-center">
                               <span className="text-[10px] text-muted-foreground font-mono">
                                 x{count}
                               </span>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-5 w-5 rounded-full hover:bg-muted"
-                                onClick={() =>
-                                  toggleEpisodeWatched(
-                                    episode.episodeNumber,
-                                    true
-                                  )
-                                }
-                                title="Ver otra vez (+1)"
-                              >
-                                <Plus className="h-3 w-3" />
-                              </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-5 w-5 rounded-full hover:bg-muted"
+                                  disabled={loadingEpisodes[episode.episodeNumber]}
+                                  onClick={() =>
+                                    toggleEpisodeWatched(
+                                      episode.episodeNumber,
+                                      true
+                                    )
+                                  }
+                                  title="Ver otra vez (+1)"
+                                >
+                                  {loadingEpisodes[episode.episodeNumber] ? (
+                                    <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                                  ) : (
+                                    <Plus className="h-3 w-3" />
+                                  )}
+                                </Button>
                             </div>
                           )}
                         </div>

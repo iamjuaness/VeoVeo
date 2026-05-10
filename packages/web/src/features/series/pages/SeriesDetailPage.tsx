@@ -78,6 +78,7 @@ export default function SeriesDetailPage() {
   const { friends } = useSocial();
 
   const [watchedEpisodes, setWatchedEpisodes] = useState<WatchedEpisode[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const isWatched = seriesWatchedList.some((s: Series) => s.id === id);
   const watchLater = seriesWatchLaterList.some((s: Series) => s.id === id);
@@ -120,7 +121,12 @@ export default function SeriesDetailPage() {
 
   const toggleWatchLater = async () => {
     if (!id) return;
-    await toggleWatchLaterContext(id);
+    setIsProcessing(true);
+    try {
+      await toggleWatchLaterContext(id);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const markAsWatched = async () => {
@@ -148,8 +154,13 @@ export default function SeriesDetailPage() {
       setWatchedEpisodes(allEpisodes);
     }
 
-    await markAsWatchedContext(id);
-    handleProgressChange();
+    setIsProcessing(true);
+    try {
+      await markAsWatchedContext(id);
+      handleProgressChange();
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleLogout = () => {
@@ -346,23 +357,25 @@ export default function SeriesDetailPage() {
                     variant="default"
                     size="lg"
                     onClick={markAsWatched}
-                    disabled={!user}
+                    disabled={!user || isProcessing}
                     className={`gap-2 font-bold shadow-xl hover:scale-105 transition-all px-6 ${
                       isWatched
                         ? "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
                         : "bg-white text-black hover:bg-white/90"
                     }`}
                   >
-                    {isWatched ? (
+                    {isProcessing ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : isWatched ? (
                       <Award className="w-5 h-5" />
                     ) : (
                       <Tv className="w-5 h-5" />
                     )}
                     {isWatched && watchedEpisodes.length > 0
                       ? "Ver serie de nuevo (+1)"
-                      : isWatched 
-                        ? "Marcar como Vista"
-                        : "Marcar Todo Visto"}
+                      : isWatched
+                      ? "Marcar como Vista"
+                      : "Marcar Todo Visto"}
                   </Button>
 
                   {/* Remove from Watched (decrement) */}
@@ -372,14 +385,23 @@ export default function SeriesDetailPage() {
                       size="lg"
                       onClick={async () => {
                         if (!id) return;
-                        await resetWatchedContext(id);
-                        setWatchedEpisodes([]);
-                        handleProgressChange();
+                        setIsProcessing(true);
+                        try {
+                          await resetWatchedContext(id);
+                          setWatchedEpisodes([]);
+                          handleProgressChange();
+                        } finally {
+                          setIsProcessing(false);
+                        }
                       }}
-                      disabled={!user}
+                      disabled={!user || isProcessing}
                       className="gap-2 bg-red-500/10 border-red-500/30 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-xl font-bold"
                     >
-                      <Award className="w-5 h-5" />
+                      {isProcessing ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : (
+                        <Award className="w-5 h-5" />
+                      )}
                       Quitar Vista (-1)
                     </Button>
                   )}
@@ -388,14 +410,16 @@ export default function SeriesDetailPage() {
                     variant="outline"
                     size="lg"
                     onClick={toggleWatchLater}
-                    disabled={!user || isWatched}
+                    disabled={!user || isWatched || isProcessing}
                     className={`gap-2 backdrop-blur-md shadow-xl transition-all ${
                       watchLater
                         ? "bg-blue-600 border-blue-600 text-white hover:bg-blue-700"
                         : "bg-black/40 border-white/30 text-white hover:bg-white hover:text-black"
                     }`}
                   >
-                    {watchLater ? (
+                    {isProcessing ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : watchLater ? (
                       <>
                         <Check className="w-5 h-5" />
                         En Lista

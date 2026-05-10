@@ -74,6 +74,7 @@ interface MoviesContextType {
   incrementWatchCount: (id: string) => Promise<void>;
   resetWatchCount: (id: string) => Promise<void>;
   toggleWatchLater: (id: string) => Promise<void>;
+  processingMovies: Record<string, boolean>;
 }
 
 const MoviesContext = createContext<MoviesContextType | undefined>(undefined);
@@ -110,6 +111,9 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
   const [moviesWatchedList, setMoviesWatchedList] = useState<Movie[]>([]);
   const [moviesWatchLaterList, setMoviesWatchLaterList] = useState<Movie[]>([]);
   const [statsLoading, setStatsLoading] = useState(true);
+  const [processingMovies, setProcessingMovies] = useState<
+    Record<string, boolean>
+  >({});
   const isFetchingRef = useRef(false);
   const [lastScrollPosition, setLastScrollPosition] = useState(0);
   const lastManualUpdateRef = useRef<number>(0);
@@ -127,6 +131,7 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
   // Centralized Mutation Functions
   const incrementWatchCount = useCallback(
     async (id: string) => {
+      setProcessingMovies((prev) => ({ ...prev, [id]: true }));
       reportManualUpdate();
 
       // Find movie in any available source
@@ -230,6 +235,8 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
         });
       } catch (err) {
         console.error("Error updating movie status:", err);
+      } finally {
+        setProcessingMovies((prev) => ({ ...prev, [id]: false }));
       }
     },
     [
@@ -244,6 +251,7 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
 
   const resetWatchCount = useCallback(
     async (id: string) => {
+      setProcessingMovies((prev) => ({ ...prev, [id]: true }));
       reportManualUpdate();
 
       // Update all lists
@@ -263,6 +271,8 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
         await resetWatched({ movieId: id.toString() });
       } catch (err) {
         console.error("Error resetting watch count:", err);
+      } finally {
+        setProcessingMovies((prev) => ({ ...prev, [id]: false }));
       }
     },
     [reportManualUpdate]
@@ -270,6 +280,7 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
 
   const toggleWatchLater = useCallback(
     async (id: string) => {
+      setProcessingMovies((prev) => ({ ...prev, [id]: true }));
       reportManualUpdate();
 
       const movieOriginal =
@@ -306,6 +317,8 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
         await toggleWatchLaterApi({ movieId: id.toString() });
       } catch (err) {
         console.error("Error toggling watch later:", err);
+      } finally {
+        setProcessingMovies((prev) => ({ ...prev, [id]: false }));
       }
     },
     [
@@ -646,6 +659,7 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
       incrementWatchCount,
       resetWatchCount,
       toggleWatchLater,
+      processingMovies,
     }),
     [
       movies,

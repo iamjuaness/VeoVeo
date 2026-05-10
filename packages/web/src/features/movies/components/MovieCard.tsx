@@ -1,7 +1,7 @@
 import { memo, useState } from "react";
 import { Card } from "../../../shared/components/ui/card";
 import { Badge } from "../../../shared/components/ui/badge";
-import { Eye, EyeOff, Clock, Star, Calendar } from "lucide-react";
+import { Eye, EyeOff, Clock, Star, Calendar, Loader2 } from "lucide-react";
 import type { Movie } from "../../../interfaces/Movie";
 import { Button } from "../../../shared/components/ui/button";
 import type { User } from "../../../interfaces/User";
@@ -13,6 +13,7 @@ interface Props {
   toggleWatchLater: (id: string) => void;
   user: User | null;
   openLoginModal: () => void;
+  isProcessing?: boolean;
 }
 
 export const MovieCard = memo(function MovieCard({
@@ -22,6 +23,7 @@ export const MovieCard = memo(function MovieCard({
   toggleWatchLater,
   user,
   openLoginModal,
+  isProcessing,
 }: Props) {
   const [isLoaded, setIsLoaded] = useState(false);
   function handleIncrement(e: React.MouseEvent<HTMLButtonElement>) {
@@ -133,11 +135,16 @@ export const MovieCard = memo(function MovieCard({
             variant={movie.watchCount > 0 ? "default" : "secondary"}
             size="sm"
             onClick={handleIncrement}
+            disabled={isProcessing}
             className={`flex-1 gap-1.5 h-8 text-xs font-medium transition-all ${
               movie.watchCount > 0 ? "bg-green-600 hover:bg-green-700" : ""
             }`}
           >
-            <Eye className="w-3.5 h-3.5" />
+            {isProcessing ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Eye className="w-3.5 h-3.5" />
+            )}
             {movie.watchCount > 0 ? "Visto" : "Ver"}
           </Button>
 
@@ -146,10 +153,15 @@ export const MovieCard = memo(function MovieCard({
               variant="outline"
               size="sm"
               onClick={handleResetWatchCount}
+              disabled={isProcessing}
               className="h-8 w-8 p-0 shrink-0 text-muted-foreground hover:text-destructive hover:border-destructive/50"
               title="Resetear"
             >
-              <EyeOff className="w-3.5 h-3.5" />
+              {isProcessing ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <EyeOff className="w-3.5 h-3.5" />
+              )}
             </Button>
           )}
 
@@ -157,13 +169,17 @@ export const MovieCard = memo(function MovieCard({
             variant={movie.watchLater ? "default" : "outline"}
             size="sm"
             onClick={handleToggleWatchLater}
-            disabled={movie.watchCount > 0}
+            disabled={isProcessing || movie.watchCount > 0}
             className={`h-8 w-8 p-0 shrink-0 transition-colors ${
               movie.watchLater ? "bg-blue-600 hover:bg-blue-700 text-white" : ""
             }`}
             title={movie.watchLater ? "Quitar de pendientes" : "Ver después"}
           >
-            <Clock className="w-3.5 h-3.5" />
+            {isProcessing ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Clock className="w-3.5 h-3.5" />
+            )}
           </Button>
         </div>
       </div>

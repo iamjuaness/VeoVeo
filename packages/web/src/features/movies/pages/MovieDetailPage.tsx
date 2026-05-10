@@ -20,6 +20,7 @@ import {
   Award,
   Timer,
   Clock,
+  Loader2,
 } from "lucide-react";
 import {
   Avatar,
@@ -64,6 +65,7 @@ export default function MovieDetailPage() {
     incrementWatchCount: incrementWatchCountContext,
     resetWatchCount: resetWatchCountContext,
     toggleWatchLater: toggleWatchLaterContext,
+    processingMovies,
   } = useMovies();
 
   const movieFromContext =
@@ -359,13 +361,18 @@ export default function MovieDetailPage() {
                     variant="default"
                     size="lg"
                     onClick={() => incrementWatchCount(movie.id)}
+                    disabled={processingMovies[movie.id]}
                     className={`gap-2 font-bold shadow-xl hover:scale-105 transition-all px-6 ${
                       watchCount && watchCount > 0
                         ? "bg-green-600 hover:bg-green-700"
                         : "bg-white text-black hover:bg-white/90"
                     }`}
                   >
-                    <Eye className="w-5 h-5" />
+                    {processingMovies[movie.id] ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      <Eye className="w-5 h-5" />
+                    )}
                     {watchCount && watchCount > 0
                       ? `Vista (${watchCount})`
                       : "Marcar Vista"}
@@ -375,9 +382,14 @@ export default function MovieDetailPage() {
                       variant="outline"
                       size="lg"
                       onClick={() => resetWatchCount(movie.id)}
+                      disabled={processingMovies[movie.id]}
                       className="gap-2 bg-black/40 backdrop-blur-md border-white/30 text-white hover:bg-red-600 hover:border-red-600 transition-all shadow-xl"
                     >
-                      <EyeOff className="w-5 h-5" />
+                      {processingMovies[movie.id] ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : (
+                        <EyeOff className="w-5 h-5" />
+                      )}
                       Resetear
                     </Button>
                   )}
@@ -390,9 +402,11 @@ export default function MovieDetailPage() {
                         ? "bg-blue-600 border-blue-600 text-white hover:bg-blue-700"
                         : "bg-black/40 border-white/30 text-white hover:bg-white hover:text-black"
                     }`}
-                    disabled={(watchCount ?? 0) > 0}
+                    disabled={processingMovies[movie.id] || (watchCount ?? 0) > 0}
                   >
-                    {watchLater ? (
+                    {processingMovies[movie.id] ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : watchLater ? (
                       <>
                         <Check className="w-5 h-5" />
                         En Lista

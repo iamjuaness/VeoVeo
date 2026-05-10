@@ -57,6 +57,7 @@ export default function MovieTracker() {
     incrementWatchCount,
     resetWatchCount,
     toggleWatchLater,
+    processingMovies,
   } = useMovies();
   const [selectedGenres, setSelectedGenres] = useState<{
     all: Genre;
@@ -597,6 +598,7 @@ export default function MovieTracker() {
                       toggleWatchLater={toggleWatchLater}
                       user={user}
                       openLoginModal={() => setShowLoginModal(true)}
+                      isProcessing={processingMovies[movie.id]}
                     />
                   </div>
                 )}

@@ -124,7 +124,7 @@ export const SocialProvider: React.FC<{ children: ReactNode }> = ({
       refreshSocialData();
 
       // Initialize Socket
-      socketRef.current = io(API_BASE_URL, { transports: ["websocket"] });
+      socketRef.current = io(API_BASE_URL);
 
       socketRef.current.on("connect", () => {
         socketRef.current?.emit("join", user.id || (user as any)._id);

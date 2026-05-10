@@ -524,7 +524,7 @@ export function SeriesProvider({ children }: SeriesProviderProps) {
   useEffect(() => {
     if (!user) return;
 
-    socketRef.current = io(ENDPOINT, { transports: ["websocket"] });
+    socketRef.current = io(ENDPOINT);
 
     socketRef.current.on("connect", () => {
       socketRef.current?.emit("join", String(user.id));

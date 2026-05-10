@@ -581,7 +581,7 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
   useEffect(() => {
     if (!user) return;
 
-    socketRef.current = io(ENDPOINT, { transports: ["websocket"] });
+    socketRef.current = io(ENDPOINT);
 
     socketRef.current.on("connect", () => {
       socketRef.current?.emit("join", String(user.id));

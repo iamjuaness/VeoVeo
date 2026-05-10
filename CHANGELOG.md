@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.8.2] - 2026-05-10
+
+### Fixed
+
+- **Series Progress Sync**: Resolved a critical issue where marking episodes as watched would "unmark" them after a few seconds due to Mongoose change tracking issues and API latency.
+- **Dynamic Completion Tracking**: Fixed the "Watched" status logic to automatically transition series back to "In Progress" when new episodes are released on IMDb.
+
+### Improved
+
+- **API Performance**: Optimized backend series completion checks, reducing IMDb API calls from 20+ to 1-2 per request, significantly improving response times (from >10s to <1s).
+- **Metadata Caching**: Enhanced `MediaCache` to store total episode counts and series status, enabling efficient progress tracking without redundant external lookups.
+- **Real-time Synchronization**: Improved socket event handling to force data refresh and increased the guard duration (5s) for optimistic UI updates to prevent state flickering.
+
 ## [2.8.1] - 2026-01-13
 
 ### Fixed

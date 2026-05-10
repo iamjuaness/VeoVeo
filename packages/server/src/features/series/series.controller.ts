@@ -337,18 +337,43 @@ export async function toggleEpisodeWatched(req: Request, res: Response) {
  */
 async function checkSeriesCompletion(seriesId: string, seriesEntry: any) {
   try {
-    const allEpisodes = await getAllEpisodesInternal(seriesId);
-    const totalEpisodesCount = allEpisodes.length;
+    // 1. Try to get totalEpisodes from cache first
+    const cache = await MediaCacheModel.findOne({ id: seriesId });
+    let totalEpisodesCount = cache?.totalEpisodes;
 
-    // Update MediaCache with latest episode count
-    await MediaCacheModel.updateOne(
-      { id: seriesId },
-      { $set: { totalEpisodes: totalEpisodesCount, lastUpdated: new Date() } }
-    );
+    // 2. Determine if we need a fresh fetch
+    // Refresh if: 
+    // - Not in cache
+    // - Cache is older than 24h AND series is not "Ended"
+    // - Force update if somehow we have more episodes watched than total (cache mismatch)
+    const isRecentlyUpdated =
+      cache &&
+      Date.now() - new Date(cache.lastUpdated).getTime() < 1000 * 60 * 60 * 24;
+    const needsRefresh =
+      !totalEpisodesCount ||
+      (!isRecentlyUpdated && cache?.status !== "Ended") ||
+      seriesEntry.episodes.length > (totalEpisodesCount || 0);
 
+    if (needsRefresh) {
+      const allEpisodes = await getAllEpisodesInternal(seriesId);
+      totalEpisodesCount = allEpisodes.length;
+
+      // Update MediaCache with new count and refresh timestamp
+      await MediaCacheModel.updateOne(
+        { id: seriesId },
+        {
+          $set: {
+            totalEpisodes: totalEpisodesCount,
+            lastUpdated: new Date(),
+          },
+        }
+      );
+    }
+
+    // 3. Mark completion
     if (
-      seriesEntry.episodes.length >= totalEpisodesCount &&
-      totalEpisodesCount > 0
+      totalEpisodesCount! > 0 &&
+      seriesEntry.episodes.length >= totalEpisodesCount!
     ) {
       seriesEntry.isCompleted = true;
     } else {

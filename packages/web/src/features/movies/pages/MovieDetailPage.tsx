@@ -47,7 +47,7 @@ export default function MovieDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
-  const { user, setUser, logout, token } = useAuth();
+  const { user, setUser, logout, accessToken } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const { isDarkMode, toggleTheme } = useContext(ThemeContext);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
@@ -116,7 +116,7 @@ export default function MovieDetailPage() {
 
   useEffect(() => {
     async function fetchMovie() {
-      if (!id || !token) return;
+      if (!id || !accessToken) return;
 
       // Si no tenemos datos en el contexto, mostramos loading.
       // Si ya tenemos datos (movieFromContext), mantenemos la vista optimista mientras carga el detalle completo.
@@ -125,7 +125,7 @@ export default function MovieDetailPage() {
       }
 
       try {
-        const data = await getMovieDetailById(id, token);
+        const data = await getMovieDetailById(id);
         setMovie(data);
       } catch (err) {
         console.error(err);
@@ -134,7 +134,7 @@ export default function MovieDetailPage() {
       }
     }
     if (id) fetchMovie();
-  }, [id, token, movieFromContext]); // Dependencias actualizadas
+  }, [id, accessToken, movieFromContext]); // Dependencias actualizadas
 
   const incrementWatchCount = async (id: string) => {
     await incrementWatchCountContext(id);

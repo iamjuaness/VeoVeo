@@ -2,10 +2,10 @@ import type { Series } from "../../../interfaces/Series";
 import type { SeriesDetail } from "../../../interfaces/SeriesDetail";
 import type { Episode } from "../../../interfaces/Series";
 import { API_BASE_URL } from "../../../shared/utils/urls";
+import { apiClient } from "../../../core/api/apiClient";
 
 const API_URL = "https://api.imdbapi.dev/";
 const SERIES_PER_PAGE = 24;
-const token = localStorage.getItem("authToken");
 
 export async function getSeriesByGenres(
   genre: string,
@@ -155,14 +155,9 @@ export async function getSeasonEpisodes(
 
 export async function getSeriesByIds(ids: string[]): Promise<Series[]> {
   if (!ids || !Array.isArray(ids) || ids.length === 0) return [];
-  if (!token) return [];
 
-  const res = await fetch(`${API_BASE_URL}api/user/series/batch`, {
+  const res = await apiClient(`${API_BASE_URL}api/user/series/batch`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
     body: JSON.stringify({
       ids: ids,
       options: { concurrentRequests: 4, delayMs: 1000 },
@@ -170,6 +165,7 @@ export async function getSeriesByIds(ids: string[]): Promise<Series[]> {
   });
 
   if (!res.ok) {
+    if (res.status === 401) return [];
     console.error("Error al obtener batch de series:", res.statusText);
     return [];
   }

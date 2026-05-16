@@ -51,7 +51,7 @@ const SocialContext = createContext<SocialContextType | undefined>(undefined);
 export const SocialProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
-  const { token, user } = useAuth();
+  const { accessToken, user } = useAuth();
   const [friends, setFriends] = useState<any[]>([]);
   const [requests, setRequests] = useState<FriendRequest[]>([]);
   const [sentRequests, setSentRequests] = useState<any[]>([]);
@@ -63,7 +63,6 @@ export const SocialProvider: React.FC<{ children: ReactNode }> = ({
     publicKey: string;
     privateKey: string;
   } | null>(null);
-
   // Load or generate keys
   useEffect(() => {
     const loadKeys = async () => {
@@ -72,22 +71,22 @@ export const SocialProvider: React.FC<{ children: ReactNode }> = ({
         const parsed = JSON.parse(stored);
         setKeys(parsed);
         // Sync public key with server if not already there
-        if (token) {
-          SocialService.updateProfile({ publicKey: parsed.publicKey }, token);
+        if (accessToken) {
+          SocialService.updateProfile({ publicKey: parsed.publicKey });
         }
       } else {
         const newKeys = await generateKeyPair();
         localStorage.setItem("veoveo_chat_keys", JSON.stringify(newKeys));
         setKeys(newKeys);
-        if (token) {
-          SocialService.updateProfile({ publicKey: newKeys.publicKey }, token);
+        if (accessToken) {
+          SocialService.updateProfile({ publicKey: newKeys.publicKey });
         }
       }
     };
-    if (user && token) {
+    if (user && accessToken) {
       loadKeys();
     }
-  }, [user, token]);
+  }, [user, accessToken]);
 
   const decryptMessageItem = useCallback(
     async (m: any) => {
@@ -104,10 +103,10 @@ export const SocialProvider: React.FC<{ children: ReactNode }> = ({
   );
 
   const refreshSocialData = useCallback(async () => {
-    if (!token) return;
+    if (!accessToken) return;
     setLoading(true);
     try {
-      const data = await SocialService.getSocialData(token);
+      const data = await SocialService.getSocialData();
       setFriends(data.friends || []);
       setRequests(data.requests || []);
       setSentRequests(data.sentRequests || []);
@@ -117,10 +116,10 @@ export const SocialProvider: React.FC<{ children: ReactNode }> = ({
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [accessToken]);
 
   useEffect(() => {
-    if (user && token) {
+    if (user && accessToken) {
       refreshSocialData();
 
       // Initialize Socket
@@ -153,29 +152,29 @@ export const SocialProvider: React.FC<{ children: ReactNode }> = ({
         socketRef.current?.disconnect();
       };
     }
-  }, [user, token, refreshSocialData]);
+  }, [user, accessToken, refreshSocialData, decryptMessageItem]);
 
   const sendRequest = async (toId: string) => {
-    if (!token) return;
-    await SocialService.sendFriendRequest(toId, token);
+    if (!accessToken) return;
+    await SocialService.sendFriendRequest(toId);
     await refreshSocialData();
   };
 
   const acceptRequest = async (requestId: string) => {
-    if (!token) return;
-    await SocialService.respondToRequest(requestId, "accepted", token);
+    if (!accessToken) return;
+    await SocialService.respondToRequest(requestId, "accepted");
     await refreshSocialData();
   };
 
   const rejectRequest = async (requestId: string) => {
-    if (!token) return;
-    await SocialService.respondToRequest(requestId, "rejected", token);
+    if (!accessToken) return;
+    await SocialService.respondToRequest(requestId, "rejected");
     await refreshSocialData();
   };
 
   const removeFriend = async (friendId: string) => {
-    if (!token) return;
-    await SocialService.removeFriend(friendId, token);
+    if (!accessToken) return;
+    await SocialService.removeFriend(friendId);
     await refreshSocialData();
   };
 
@@ -183,19 +182,18 @@ export const SocialProvider: React.FC<{ children: ReactNode }> = ({
     bio?: string;
     socialLinks?: any;
     name?: string;
+    publicKey?: string;
   }) => {
-    if (!token) return;
-    await SocialService.updateProfile(data, token);
-    // Optionally refresh user data if auth context doesn't handle it
+    if (!accessToken) return;
+    await SocialService.updateProfile(data);
   };
 
   const sendMessage = async (toId: string, content: string) => {
-    if (!token || !keys) return;
+    if (!accessToken || !keys) return;
     try {
       // 1. Get recipient's public key
       const { publicKey: recipientPublicKey } = await SocialService.getPublicKey(
-        toId,
-        token
+        toId
       );
 
       if (!recipientPublicKey) {
@@ -209,19 +207,17 @@ export const SocialProvider: React.FC<{ children: ReactNode }> = ({
       await SocialService.sendMessage(
         toId,
         encrypted.encryptedContent,
-        token,
         encrypted.encryptedKey,
         encrypted.iv
       );
     } catch (err) {
       console.error("Error sending E2EE message:", err);
-      // Fallback or alert user
     }
   };
 
   const getMessages = async (friendId: string) => {
-    if (!token) return;
-    const msgs = await SocialService.getMessages(friendId, token);
+    if (!accessToken) return;
+    const msgs = await SocialService.getMessages(friendId);
     const decryptedMsgs = await Promise.all(
       msgs.map((m: any) => decryptMessageItem(m))
     );
@@ -229,8 +225,8 @@ export const SocialProvider: React.FC<{ children: ReactNode }> = ({
   };
 
   const deleteChat = async (friendId: string) => {
-    if (!token) return;
-    await SocialService.deleteChat(friendId, token);
+    if (!accessToken) return;
+    await SocialService.deleteChat(friendId);
     setMessages([]);
   };
 
@@ -242,13 +238,13 @@ export const SocialProvider: React.FC<{ children: ReactNode }> = ({
     mediaPoster?: string;
     message?: string;
   }) => {
-    if (!token) return;
-    await SocialService.recommendMedia(data, token);
+    if (!accessToken) return;
+    await SocialService.recommendMedia(data);
   };
 
   const search = async (query: string) => {
-    if (!token) return [];
-    return await SocialService.searchUsers(query, token);
+    if (!accessToken) return [];
+    return await SocialService.searchUsers(query);
   };
 
   return (

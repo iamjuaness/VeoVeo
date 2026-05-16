@@ -60,6 +60,7 @@ export default function MovieTracker() {
     resetWatchCount,
     toggleWatchLater,
     processingMovies,
+    searchError,
   } = useMovies();
   const [selectedGenres, setSelectedGenres] = useState<{
     all: Genre;
@@ -130,7 +131,9 @@ export default function MovieTracker() {
   };
 
   const { genreMovies, isLoadingGenre, errorGenre, loadMoreGenreMovies } =
-    useGenreMovies(filterStatus === "all" ? selectedGenres[filterStatus] : "All");
+    useGenreMovies(
+      filterStatus === "all" ? selectedGenres[filterStatus] : "All",
+    );
 
   // Use the new custom hook for filtered movies
   const displayedMovies = useFilteredMovies({
@@ -574,7 +577,20 @@ export default function MovieTracker() {
           {filteredMoviesToDisplay.length === 0 ? (
             loading || searchLoading ? (
               <div className="flex justify-center py-12">
-                <Loader2 className="w-10 h-10 animate-spin text-gray-400" />
+                <Loader2 className="w-10 h-10 animate-spin text-primary" />
+              </div>
+            ) : searchError ? (
+              <div className="text-center py-12 px-4 max-w-md mx-auto">
+                <div className="text-destructive mb-4 text-4xl">⚠️</div>
+                <h3 className="text-xl font-semibold mb-2 text-destructive">
+                  Error en la búsqueda
+                </h3>
+                <p className="text-muted-foreground mb-6">
+                  {searchError}
+                </p>
+                <Button variant="outline" onClick={clearSearch}>
+                  Limpiar y reintentar
+                </Button>
               </div>
             ) : (
               <div className="text-center py-12">
@@ -582,7 +598,7 @@ export default function MovieTracker() {
                 <h3 className="text-xl font-semibold mb-2">
                   No se encontraron películas
                 </h3>
-                <p className="text-muted">
+                <p className="text-muted-foreground">
                   {activeSearchTerm
                     ? `No hay resultados para "${activeSearchTerm}"`
                     : "No hay películas en esta categoría"}

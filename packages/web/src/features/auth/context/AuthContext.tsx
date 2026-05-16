@@ -5,8 +5,9 @@ import type { User } from "../../../interfaces/User";
 interface AuthContextType {
   user: User | null;
   setUser: (user: User | null) => void;
-  token: string | null;
-  login: (token: string) => void;
+  accessToken: string | null;
+  refreshToken: string | null;
+  login: (accessToken: string, refreshToken: string) => void;
   logout: () => void;
   isLoading: boolean;
 }
@@ -24,42 +25,63 @@ function getUserFromToken(token: string): User | null {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [token, setToken] = useState<string | null>(null);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [refreshToken, setRefreshToken] = useState<string | null>(null);
   const [rawUser, setRawUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Memoiza user para mantener referencia estable
   const user = useMemo(() => rawUser, [rawUser]);
 
-  // Carga inicial de token y user desde almacenamiento
+  // Carga inicial de tokens y user desde almacenamiento
   useEffect(() => {
-    const storedToken =
-      localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
-    if (storedToken) {
-      setToken(storedToken);
-      setRawUser(getUserFromToken(storedToken));
+    const storedAccessToken = localStorage.getItem("accessToken");
+    const storedRefreshToken = localStorage.getItem("refreshToken");
+    
+    if (storedAccessToken && storedRefreshToken) {
+      setAccessToken(storedAccessToken);
+      setRefreshToken(storedRefreshToken);
+      setRawUser(getUserFromToken(storedAccessToken));
     }
     setIsLoading(false);
   }, []);
 
   // Función para iniciar sesión
-  const login = (jwt: string) => {
-    localStorage.setItem("authToken", jwt);
-    setToken(jwt);
-    setRawUser(getUserFromToken(jwt));
+  const login = (access: string, refresh: string) => {
+    localStorage.setItem("accessToken", access);
+    localStorage.setItem("refreshToken", refresh);
+    setAccessToken(access);
+    setRefreshToken(refresh);
+    setRawUser(getUserFromToken(access));
   };
 
   // Función para cerrar sesión
   const logout = () => {
-    localStorage.removeItem("authToken");
-    sessionStorage.removeItem("authToken");
-    setToken(null);
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    setAccessToken(null);
+    setRefreshToken(null);
     setRawUser(null);
   };
 
+  // Escuchar evento de cierre de sesión global (p.ej. desde apiClient)
+  useEffect(() => {
+    const handleLogout = () => logout();
+    window.addEventListener("auth-logout", handleLogout);
+    return () => window.removeEventListener("auth-logout", handleLogout);
+  }, []);
+
   return (
     <AuthContext.Provider
-      value={{ user, setUser: setRawUser, token, login, logout, isLoading }}
+      value={{ 
+        user, 
+        setUser: setRawUser, 
+        accessToken, 
+        refreshToken, 
+        login, 
+        logout, 
+        isLoading 
+      }}
     >
       {children}
     </AuthContext.Provider>

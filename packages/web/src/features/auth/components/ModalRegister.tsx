@@ -26,6 +26,7 @@ import {
 } from "../../../shared/components/ui/avatar";
 import { register } from "../../movies/services/auth";
 import { predefinedAvatars } from "../../../shared/components/common/PredefinedAvatars";
+import { useAuth } from "../hooks/useAuth";
 
 interface RegisterDialogProps {
   open: boolean;
@@ -33,6 +34,7 @@ interface RegisterDialogProps {
 }
 
 export function ModalRegister({ open, setOpen }: RegisterDialogProps) {
+  const { login } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -109,19 +111,25 @@ export function ModalRegister({ open, setOpen }: RegisterDialogProps) {
     }
     setIsLoading(true);
     try {
-      await register({
+      const result = await register({
         name,
         email,
         password,
         passwordConfirm,
         selectedAvatar,
       });
-      setOpen(false);
-      setName("");
-      setEmail("");
-      setPassword("");
-      setConfirm("");
-      setSelectedAvatar(predefinedAvatars[0].id);
+
+      if (result.accessToken && result.refreshToken) {
+        login(result.accessToken, result.refreshToken);
+        
+        // Solo cerramos y limpiamos si todo fue bien
+        setOpen(false);
+        setName("");
+        setEmail("");
+        setPassword("");
+        setConfirm("");
+        setSelectedAvatar(predefinedAvatars[0].id);
+      }
     } catch (error: any) {
       setErrors({
         submit: error?.message ?? "Error al registrarse, intenta de nuevo.",

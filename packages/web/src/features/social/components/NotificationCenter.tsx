@@ -24,14 +24,14 @@ import {
 import { ScrollArea } from "../../../shared/components/ui/scroll-area";
 
 export function NotificationCenter() {
-  const { token, user } = useAuth();
+  const { accessToken, user } = useAuth();
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
   const fetchNotifications = async () => {
-    if (!token) return;
+    if (!accessToken) return;
     try {
-      const data = await getSocialData(token);
+      const data = await getSocialData();
 
       // Combine requests and recommendations
       const combined: any[] = [
@@ -68,12 +68,12 @@ export function NotificationCenter() {
     fetchNotifications();
     const interval = setInterval(fetchNotifications, 30000); // Check every 30s
     return () => clearInterval(interval);
-  }, [token]);
+  }, [accessToken]);
 
   const handleOpenChange = async (open: boolean) => {
     if (open && unreadCount > 0) {
       try {
-        await markNotificationsAsRead(token!);
+        await markNotificationsAsRead();
         setUnreadCount(0);
         // We don't necessarily want to mark as read immediately if they just view the popover
         // but the backend implementation usually marks all as read when queried or via this call.
@@ -84,9 +84,9 @@ export function NotificationCenter() {
   };
 
   const handleRespond = async (requestId: string, action: "accepted" | "rejected") => {
-    if (!token) return;
+    if (!accessToken) return;
     try {
-      await respondToRequest(requestId, action, token);
+      await respondToRequest(requestId, action);
       fetchNotifications();
     } catch (error) {
       console.error("Error responding to request:", error);

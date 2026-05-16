@@ -15,6 +15,16 @@ export async function register(data: {
     body: JSON.stringify(data),
   });
   const result = await res.json();
+
+  if (!res.ok) {
+    throw new Error(result.message || "Error en el registro");
+  }
+
+  if (result.accessToken && result.refreshToken) {
+    localStorage.setItem("accessToken", result.accessToken);
+    localStorage.setItem("refreshToken", result.refreshToken);
+  }
+
   return result;
 }
 
@@ -26,11 +36,17 @@ export async function login(data: { email: string; password: string }) {
     },
     body: JSON.stringify(data),
   });
+  
   const result = await res.json();
-  if (result.token) {
-    localStorage.setItem("authToken", result.token);
-  } else {
-    // Manejo de error
+  
+  if (!res.ok) {
+    throw new Error(result.message || "Error en la petición");
   }
+
+  if (result.accessToken && result.refreshToken) {
+    localStorage.setItem("accessToken", result.accessToken);
+    localStorage.setItem("refreshToken", result.refreshToken);
+  }
+  
   return result;
 }

@@ -21,12 +21,7 @@ export function MovieSearchBar({
     performSearch(searchTerm);
   };
 
-  // Permitir también búsqueda con Enter
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      performSearch(searchTerm);
-    }
-  };
+
 
   return (
     <form
@@ -41,7 +36,6 @@ export function MovieSearchBar({
           placeholder="Buscar películas..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          onKeyDown={handleKeyDown}
           className="pl-12 pr-4 h-11 rounded-lg border-border/50 bg-background/50 backdrop-blur-sm focus:bg-background transition-all shadow-sm"
         />
         <Button

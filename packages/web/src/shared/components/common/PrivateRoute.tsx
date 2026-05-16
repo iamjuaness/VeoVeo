@@ -5,11 +5,11 @@ import type { ReactNode } from "react";
 import { useAuth } from "../../../features/auth/hooks/useAuth";
 
 export default function PrivateRoute({ children }: { children: ReactNode }) {
-  const { token, isLoading } = useAuth();
+  const { accessToken, isLoading } = useAuth();
 
   if (isLoading) return null;
 
-  if (!token || isTokenExpired(token)) {
+  if (!accessToken || isTokenExpired(accessToken)) {
     return <Navigate to="/" replace />;
   }
   return children;

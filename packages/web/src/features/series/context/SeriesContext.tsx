@@ -57,6 +57,7 @@ interface SeriesContextType {
   setActiveSearchTerm: React.Dispatch<React.SetStateAction<string>>;
   searchResults: Series[];
   searchLoading: boolean;
+  searchError: string | null;
   performSearch: (query: string) => Promise<void>;
   clearSearch: () => void;
   setSearchResults: React.Dispatch<React.SetStateAction<Series[]>>;
@@ -90,7 +91,7 @@ interface SeriesProviderProps {
 }
 
 export function SeriesProvider({ children }: SeriesProviderProps) {
-  const { user, token } = useAuth();
+  const { user, accessToken } = useAuth();
   const queryClient = useQueryClient();
   const socketRef = useRef<Socket<DefaultEventsMap, DefaultEventsMap> | null>(
     null,
@@ -111,6 +112,7 @@ export function SeriesProvider({ children }: SeriesProviderProps) {
   const [activeSearchTerm, setActiveSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<Series[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<
     "all" | "watched" | "watchLater" | "inProgress"
   >("all");
@@ -123,7 +125,7 @@ export function SeriesProvider({ children }: SeriesProviderProps) {
   const { data: userSeriesStatus, isLoading: statsLoading } = useQuery({
     queryKey: ["userSeriesStatus", user?.id],
     queryFn: getUserSeriesStatus,
-    enabled: !!user && !!token,
+    enabled: !!user && !!accessToken,
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
@@ -285,7 +287,7 @@ export function SeriesProvider({ children }: SeriesProviderProps) {
 
   // Pagination & Loading
   useEffect(() => {
-    if (filterStatus !== "all" || !hasMore || isFetchingRef.current) return;
+    if (filterStatus !== "all" || activeSearchTerm || !hasMore || isFetchingRef.current) return;
 
     isFetchingRef.current = true;
     setLoading(true);
@@ -313,10 +315,11 @@ export function SeriesProvider({ children }: SeriesProviderProps) {
         setLoading(false);
         isFetchingRef.current = false;
       });
-  }, [currentPage]);
+  }, [currentPage, activeSearchTerm, filterStatus]);
 
   // Search logic
   const performSearch = async (query: string) => {
+    if (searchLoading && query === activeSearchTerm) return;
     setActiveSearchTerm(query);
     if (!query.trim()) {
       setSearchResults([]);
@@ -324,11 +327,16 @@ export function SeriesProvider({ children }: SeriesProviderProps) {
       return;
     }
     setSearchLoading(true);
+    setSearchError(null);
     try {
       const results = await searchSeries(query);
       setSearchResults(syncSeriesFlags(results));
+      if (results.length === 0) {
+        setSearchError("No se encontraron series para esta búsqueda.");
+      }
     } catch (err) {
       console.error("Error al buscar series:", err);
+      setSearchError("Hubo un error al realizar la búsqueda. Por favor, intenta de nuevo.");
       setSearchResults([]);
     } finally {
       setSearchLoading(false);
@@ -339,6 +347,7 @@ export function SeriesProvider({ children }: SeriesProviderProps) {
   const clearSearch = () => {
     setActiveSearchTerm("");
     setSearchResults([]);
+    setSearchError(null);
   };
 
   useEffect(() => {
@@ -381,6 +390,7 @@ export function SeriesProvider({ children }: SeriesProviderProps) {
       setActiveSearchTerm,
       searchResults,
       searchLoading,
+      searchError,
       performSearch,
       clearSearch,
       setSearchResults,
@@ -419,6 +429,7 @@ export function SeriesProvider({ children }: SeriesProviderProps) {
       activeSearchTerm,
       searchResults,
       searchLoading,
+      searchError,
       seriesWatchedList,
       filterStatus,
       seriesInProgressList,

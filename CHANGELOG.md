@@ -8,13 +8,22 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- **TanStack Query**: Migration to TanStack Query 5.
-- **Series Tracker**: Added filters for "Watched", "Watching", and "To Watch".
+- **TanStack Query**: Migration to TanStack Query 5 for robust data fetching and state synchronization.
+- **Series Tracker**: Added filters for "Watched", "Watching", and "To Watch" with optimized performance.
+- **Authentication**: Implemented automatic login immediately after successful registration.
+
+### Improved
+
+- **Centralized API Client**: Refactored all network requests to use a unified `apiClient` with automatic Bearer token injection and 401 unauthorized automatic retry logic.
+- **Token Management**: Standardized session state using `accessToken` and `refreshToken` across the entire codebase, eliminating legacy `token` passing.
+- **Service Layer**: Simplified IMDb and user services by removing manual token arguments, relying on internal authentication state detection.
 
 ### Fixed
 
-- **Movies Tracker**: Filters were not working correctly.
-- **Search**: Fixed issue with search functionality.
+- **Auth Modals UX**: Fixed critical issue where login/register modals would close silently on error. They now remain open and display specific backend error messages (e.g., "Invalid credentials", "Email already registered").
+- **Search Reliability**: Fixed race conditions in global search that caused results to disappear upon individual request failures.
+- **Movie Details**: Resolved issue where authenticated user data (watch count, watch later status) wouldn't load correctly due to deprecated token handling.
+- **Code Integrity**: Fixed missing `useAuth` hook imports and resolved multiple TypeScript errors in context providers.
 
 ## [2.8.3] - 2026-05-16
 

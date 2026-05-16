@@ -59,6 +59,7 @@ interface MoviesContextType {
   setActiveSearchTerm: React.Dispatch<React.SetStateAction<string>>;
   searchResults: Movie[];
   searchLoading: boolean;
+  searchError: string | null;
   performSearch: (query: string) => Promise<void>;
   clearSearch: () => void;
   setSearchResults: React.Dispatch<React.SetStateAction<Movie[]>>;
@@ -87,7 +88,7 @@ interface MoviesProviderProps {
 }
 
 export function MoviesProvider({ children }: MoviesProviderProps) {
-  const { user, token } = useAuth();
+  const { user, accessToken } = useAuth();
   const queryClient = useQueryClient();
   const socketRef = useRef<Socket<DefaultEventsMap, DefaultEventsMap> | null>(
     null,
@@ -110,6 +111,7 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
   const [activeSearchTerm, setActiveSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<Movie[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<
     "all" | "watched" | "watchLater"
   >("all");
@@ -125,7 +127,7 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
   const { data: userMovieStatus, isLoading: statsLoading } = useQuery({
     queryKey: ["userMovieStatus", user?.id],
     queryFn: getUserMovieStatus,
-    enabled: !!user && !!token,
+    enabled: !!user && !!accessToken,
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
@@ -284,7 +286,7 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
 
   // Pagination & Feed Loading
   useEffect(() => {
-    if (filterStatus !== "all" || !hasMore || isFetchingRef.current) return;
+    if (filterStatus !== "all" || activeSearchTerm || !hasMore || isFetchingRef.current) return;
 
     isFetchingRef.current = true;
     setLoading(true);
@@ -302,15 +304,21 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
         setTotalPages(movieData.totalPages);
         setTotalResults(movieData.totalResults);
       })
-      .catch((err) => console.error("Error fetching movies:", err))
+      .catch((err) => {
+        console.error("Error fetching movies:", err);
+        if (err?.message?.includes("429")) {
+          setHasMore(false);
+        }
+      })
       .finally(() => {
         setLoading(false);
         isFetchingRef.current = false;
       });
-  }, [currentPage, selectedGenre]); // Re-run feed fetch
+  }, [currentPage, selectedGenre, activeSearchTerm, filterStatus]); // Re-run feed fetch
 
   // Search logic
   const performSearch = async (query: string) => {
+    if (searchLoading && query === activeSearchTerm) return;
     setActiveSearchTerm(query);
     if (!query.trim()) {
       setSearchResults([]);
@@ -318,11 +326,16 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
       return;
     }
     setSearchLoading(true);
+    setSearchError(null);
     try {
       const results = await searchMovies(query);
       setSearchResults(syncMoviesFlags(results));
+      if (results.length === 0) {
+        setSearchError("No se encontraron películas para esta búsqueda.");
+      }
     } catch (err) {
       console.error("Error al buscar películas:", err);
+      setSearchError("Hubo un error al realizar la búsqueda. Por favor, intenta de nuevo.");
       setSearchResults([]);
     } finally {
       setSearchLoading(false);
@@ -333,6 +346,7 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
   const clearSearch = () => {
     setActiveSearchTerm("");
     setSearchResults([]);
+    setSearchError(null);
   };
 
   // Scroll persistence
@@ -378,6 +392,7 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
       setActiveSearchTerm,
       searchResults,
       searchLoading,
+      searchError,
       performSearch,
       clearSearch,
       setSearchResults,
@@ -416,6 +431,7 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
       activeSearchTerm,
       searchResults,
       searchLoading,
+      searchError,
       filterStatus,
       lastScrollPosition,
       movieStats,

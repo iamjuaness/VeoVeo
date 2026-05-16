@@ -1,14 +1,11 @@
 import { API_BASE_URL } from "../../../shared/utils/urls";
+import { apiClient } from "../../../core/api/apiClient";
 
 const API_URL = API_BASE_URL + "api/user";
+
 export async function toggleSeriesWatchLaterApi(data: { seriesId: string }) {
-  const token = localStorage.getItem("authToken");
-  const res = await fetch(`${API_URL}/series/watch-later`, {
+  const res = await apiClient(`${API_URL}/series/watch-later`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
     body: JSON.stringify(data),
   });
   const result = await res.json();
@@ -16,13 +13,8 @@ export async function toggleSeriesWatchLaterApi(data: { seriesId: string }) {
 }
 
 export async function getUserSeriesStatus() {
-  const token = localStorage.getItem("authToken");
-  const res = await fetch(`${API_URL}/series/status`, {
+  const res = await apiClient(`${API_URL}/series/status`, {
     method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
   });
   const result = await res.json();
   return result;
@@ -34,13 +26,8 @@ export async function toggleEpisodeWatchedApi(data: {
   episodeNumber: number;
   force?: boolean;
 }) {
-  const token = localStorage.getItem("authToken");
-  const res = await fetch(`${API_URL}/series/episodes/watched`, {
+  const res = await apiClient(`${API_URL}/series/episodes/watched`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
     body: JSON.stringify(data),
   });
   const result = await res.json();
@@ -53,13 +40,8 @@ export async function markSeasonWatchedApi(data: {
   episodes?: { episodeNumber: number }[];
   increment?: boolean;
 }) {
-  const token = localStorage.getItem("authToken");
-  const res = await fetch(`${API_URL}/series/season/watched`, {
+  const res = await apiClient(`${API_URL}/series/season/watched`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
     body: JSON.stringify(data),
   });
   const result = await res.json();
@@ -71,13 +53,8 @@ export async function markAllEpisodesWatchedApi(data: {
   seasons?: { seasonNumber: number; episodeCount: number }[];
   increment?: boolean;
 }) {
-  const token = localStorage.getItem("authToken");
-  const res = await fetch(`${API_URL}/series/mark-all-watched`, {
+  const res = await apiClient(`${API_URL}/series/mark-all-watched`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
     body: JSON.stringify(data),
   });
   const result = await res.json();
@@ -88,13 +65,8 @@ export async function toggleSeriesCompletedApi(data: {
   seriesId: string;
   isCompleted: boolean;
 }) {
-  const token = localStorage.getItem("authToken");
-  const res = await fetch(`${API_URL}/series/completed`, {
+  const res = await apiClient(`${API_URL}/series/completed`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
     body: JSON.stringify(data),
   });
   const result = await res.json();
@@ -102,26 +74,16 @@ export async function toggleSeriesCompletedApi(data: {
 }
 
 export async function getSeriesProgressApi(seriesId: string) {
-  const token = localStorage.getItem("authToken");
-  const res = await fetch(`${API_URL}/series/${seriesId}/progress`, {
+  const res = await apiClient(`${API_URL}/series/${seriesId}/progress`, {
     method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
   });
   const result = await res.json();
   return result;
 }
 
 export async function resetSeriesWatchedApi(data: { seriesId: string }) {
-  const token = localStorage.getItem("authToken");
-  const res = await fetch(`${API_URL}/series/reset`, {
+  const res = await apiClient(`${API_URL}/series/reset`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
     body: JSON.stringify(data),
   });
   const result = await res.json();

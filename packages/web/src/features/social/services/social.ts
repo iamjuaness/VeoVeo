@@ -1,24 +1,17 @@
 import { API_BASE_URL } from "../../../shared/utils/urls";
+import { apiClient } from "../../../core/api/apiClient";
 
 const SOCIAL_API = `${API_BASE_URL}api/social`;
 
-export async function getSocialData(token: string) {
-  const response = await fetch(SOCIAL_API, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+export async function getSocialData() {
+  const response = await apiClient(SOCIAL_API);
   if (!response.ok) throw new Error("Failed to fetch social data");
   return response.json();
 }
 
-export async function sendFriendRequest(toId: string, token: string) {
-  const response = await fetch(`${SOCIAL_API}/request`, {
+export async function sendFriendRequest(toId: string) {
+  const response = await apiClient(`${SOCIAL_API}/request`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
     body: JSON.stringify({ toId }),
   });
   if (!response.ok) throw new Error("Failed to send friend request");
@@ -27,15 +20,10 @@ export async function sendFriendRequest(toId: string, token: string) {
 
 export async function respondToRequest(
   requestId: string,
-  action: "accepted" | "rejected",
-  token: string
+  action: "accepted" | "rejected"
 ) {
-  const response = await fetch(`${SOCIAL_API}/respond`, {
+  const response = await apiClient(`${SOCIAL_API}/respond`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
     body: JSON.stringify({ requestId, action }),
   });
   if (!response.ok) throw new Error("Failed to respond to request");
@@ -50,52 +38,35 @@ export async function recommendMedia(
     mediaTitle?: string;
     mediaPoster?: string;
     message?: string;
-  },
-  token: string
+  }
 ) {
-  const response = await fetch(`${SOCIAL_API}/recommend`, {
+  const response = await apiClient(`${SOCIAL_API}/recommend`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
     body: JSON.stringify(data),
   });
   if (!response.ok) throw new Error("Failed to send recommendation");
   return response.json();
 }
 
-export async function searchUsers(query: string, token: string) {
-  const response = await fetch(`${SOCIAL_API}/search?query=${query}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+export async function searchUsers(query: string) {
+  const response = await apiClient(`${SOCIAL_API}/search?query=${query}`);
   if (!response.ok) throw new Error("Failed to search users");
   return response.json();
 }
 
-export async function removeFriend(friendId: string, token: string) {
-  const response = await fetch(`${SOCIAL_API}/friends/${friendId}`, {
+export async function removeFriend(friendId: string) {
+  const response = await apiClient(`${SOCIAL_API}/friends/${friendId}`, {
     method: "DELETE",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
   });
   if (!response.ok) throw new Error("Failed to remove friend");
   return response.json();
 }
 
 export async function updateProfile(
-  data: { bio?: string; socialLinks?: any; name?: string; publicKey?: string },
-  token: string
+  data: { bio?: string; socialLinks?: any; name?: string; publicKey?: string }
 ) {
-  const response = await fetch(`${SOCIAL_API}/profile`, {
+  const response = await apiClient(`${SOCIAL_API}/profile`, {
     method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
     body: JSON.stringify(data),
   });
   if (!response.ok) throw new Error("Failed to update profile");
@@ -105,70 +76,47 @@ export async function updateProfile(
 export async function sendMessage(
   toId: string,
   content: string,
-  token: string,
   encryptedKey?: string,
   iv?: string
 ) {
-  const response = await fetch(`${SOCIAL_API}/chat`, {
+  const response = await apiClient(`${SOCIAL_API}/chat`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
     body: JSON.stringify({ toId, content, encryptedKey, iv }),
   });
   if (!response.ok) throw new Error("Failed to send message");
   return response.json();
 }
 
-export async function getMessages(friendId: string, token: string) {
-  const response = await fetch(`${SOCIAL_API}/chat/${friendId}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+export async function getMessages(friendId: string) {
+  const response = await apiClient(`${SOCIAL_API}/chat/${friendId}`);
   if (!response.ok) throw new Error("Failed to get messages");
   return response.json();
 }
 
-export async function getPublicKey(friendId: string, token: string) {
-  const response = await fetch(`${SOCIAL_API}/keys/${friendId}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+export async function getPublicKey(friendId: string) {
+  const response = await apiClient(`${SOCIAL_API}/keys/${friendId}`);
   if (!response.ok) throw new Error("Failed to get public key");
   return response.json();
 }
 
-export async function deleteChat(friendId: string, token: string) {
-  const response = await fetch(`${SOCIAL_API}/chat/${friendId}`, {
+export async function deleteChat(friendId: string) {
+  const response = await apiClient(`${SOCIAL_API}/chat/${friendId}`, {
     method: "DELETE",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
   });
   if (!response.ok) throw new Error("Failed to delete chat");
   return response.json();
 }
 
-export async function markNotificationsAsRead(token: string) {
-  const response = await fetch(`${SOCIAL_API}/mark-read`, {
+export async function markNotificationsAsRead() {
+  const response = await apiClient(`${SOCIAL_API}/mark-read`, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
   });
   if (!response.ok) throw new Error("Failed to mark notifications as read");
   return response.json();
 }
 
-export async function getUserProfile(userId: string, token: string) {
-  const response = await fetch(`${SOCIAL_API}/profile/${userId}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+export async function getUserProfile(userId: string) {
+  const response = await apiClient(`${SOCIAL_API}/profile/${userId}`);
   if (!response.ok) throw new Error("Failed to fetch user profile");
   return response.json();
 }

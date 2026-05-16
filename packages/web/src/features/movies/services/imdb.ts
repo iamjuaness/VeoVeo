@@ -2,11 +2,10 @@ import type { Movie } from "../../../interfaces/Movie";
 import type { MovieDetail } from "../../../interfaces/MovieDetail";
 import { getMovieInWatchLater, getMovieWatchCount } from "./movie";
 import { API_BASE_URL } from "../../../shared/utils/urls";
+import { apiClient } from "../../../core/api/apiClient";
 
-// const API_URL = "https://api.themoviedb.org/3";
 const API_URL = "https://api.imdbapi.dev/";
 const MOVIES_PER_PAGE = 24;
-const token = localStorage.getItem("authToken");
 
 export async function getMoviesByGenres(
   genre: string,
@@ -35,8 +34,7 @@ export async function getMoviesByGenres(
 }
 
 export async function getMovieDetailById(
-  id: string,
-  token?: string
+  id: string
 ): Promise<MovieDetail> {
   const response = await fetch(`${API_URL}titles/${id}`, {
     method: "GET",
@@ -49,11 +47,19 @@ export async function getMovieDetailById(
   let watchCount = 0;
   let watchLater = false;
 
-  if (token) {
-    [watchCount, watchLater] = await Promise.all([
-      getMovieWatchCount(id).then((res) => res.count),
-      getMovieInWatchLater(id).then((res) => res.inWatchLater),
-    ]);
+  const hasToken = !!localStorage.getItem("accessToken");
+
+  if (hasToken) {
+    try {
+      const [countRes, watchLaterRes] = await Promise.all([
+        getMovieWatchCount(id),
+        getMovieInWatchLater(id),
+      ]);
+      watchCount = countRes?.count ?? 0;
+      watchLater = watchLaterRes?.inWatchLater ?? false;
+    } catch (err) {
+      console.warn("Could not fetch user movie status", err);
+    }
   }
 
   return {
@@ -125,14 +131,10 @@ export async function getMovieDetailById(
 
 export async function getMoviesByIds(ids: string[]): Promise<Movie[]> {
   if (!ids.length) return [];
-  if (!token) return [];
-
-  const res = await fetch(`${API_BASE_URL}api/imbd/movies/batch`, {
+  
+  // Usamos apiClient para peticiones internas que requieren auth y refresh automático
+  const res = await apiClient(`${API_BASE_URL}api/imbd/movies/batch`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
     body: JSON.stringify({
       ids: ids,
       options: { concurrentRequests: 4, delayMs: 1000 },
@@ -140,6 +142,7 @@ export async function getMoviesByIds(ids: string[]): Promise<Movie[]> {
   });
 
   if (!res.ok) {
+    if (res.status === 401) return []; // No autorizado tras intento de refresh
     console.error("Error al obtener batch de películas:", res.statusText);
     return [];
   }
@@ -168,6 +171,7 @@ export async function searchMovies(query: string): Promise<Movie[]> {
   const url = `${API_URL}search/titles?query=${encodeURIComponent(
     query
   )}&limit=50&countryCodes=US`;
+  
   const res = await fetch(url, {
     method: "GET",
     headers: { "Content-Type": "application/json" },

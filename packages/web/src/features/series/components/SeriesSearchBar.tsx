@@ -20,11 +20,7 @@ export function SeriesSearchBar({
     performSearch(searchTerm);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      performSearch(searchTerm);
-    }
-  };
+
 
   return (
     <form
@@ -39,7 +35,6 @@ export function SeriesSearchBar({
           placeholder="Buscar series..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          onKeyDown={handleKeyDown}
           className="pl-12 pr-4 h-11 rounded-lg border-border/50 bg-background/50 backdrop-blur-sm focus:bg-background transition-all shadow-sm"
         />
       </div>

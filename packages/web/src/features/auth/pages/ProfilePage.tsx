@@ -40,7 +40,7 @@ import { ModalSettings } from "../components/ModalSettings";
 export default function ProfilePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user: currentUser, token, setUser } = useAuth();
+  const { user: currentUser, accessToken, setUser } = useAuth();
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
@@ -50,11 +50,11 @@ export default function ProfilePage() {
 
   useEffect(() => {
     const fetchProfile = async () => {
-      if (!token) return;
+      if (!accessToken) return;
       setLoading(true);
       try {
         const userId = id || currentUser?.id || (currentUser as any)?._id;
-        const data = await getUserProfile(userId, token);
+        const data = await getUserProfile(userId);
         setProfile(data);
       } catch (error) {
         console.error("Error fetching profile:", error);
@@ -65,7 +65,7 @@ export default function ProfilePage() {
 
     fetchProfile();
     window.scrollTo(0, 0);
-  }, [id, currentUser, token]);
+  }, [id, currentUser, accessToken]);
 
   if (loading) {
     return (

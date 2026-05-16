@@ -1,17 +1,8 @@
 import { API_BASE_URL } from "../utils/urls";
-
-const getHeaders = () => {
-  const token = localStorage.getItem("authToken");
-  return {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
-};
+import { apiClient } from "../../core/api/apiClient";
 
 export async function getUserProfile() {
-  const response = await fetch(`${API_BASE_URL}api/user/profile`, {
-    headers: getHeaders(),
-  });
+  const response = await apiClient(`${API_BASE_URL}api/user/profile`);
   if (!response.ok) throw new Error("Failed to fetch profile");
   return response.json();
 }
@@ -22,9 +13,8 @@ export async function updateUserProfile(data: {
   bio?: string;
   selectedAvatar?: string;
 }) {
-  const response = await fetch(`${API_BASE_URL}api/user/profile`, {
+  const response = await apiClient(`${API_BASE_URL}api/user/profile`, {
     method: "PATCH",
-    headers: getHeaders(),
     body: JSON.stringify(data),
   });
   if (!response.ok) throw new Error("Failed to update profile");
@@ -36,9 +26,8 @@ export async function updateUserSettings(data: {
   privacyPreferences?: any;
   appearancePreferences?: any;
 }) {
-  const response = await fetch(`${API_BASE_URL}api/user/settings`, {
+  const response = await apiClient(`${API_BASE_URL}api/user/settings`, {
     method: "PATCH",
-    headers: getHeaders(),
     body: JSON.stringify(data),
   });
   if (!response.ok) throw new Error("Failed to update settings");

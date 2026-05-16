@@ -10,6 +10,7 @@ export function useGenreMovies(selectedGenre: Genre) {
     moviesWatchLaterList,
     setSelectedGenre,
     setGenreMovies: setGenreMoviesContext,
+    activeSearchTerm,
   } = useMovies();
   const [genreMovies, setGenreMovies] = useState<Movie[]>([]);
   const [isLoadingGenre, setIsLoadingGenre] = useState(false);
@@ -134,12 +135,11 @@ export function useGenreMovies(selectedGenre: Genre) {
     }
   }, [moviesWatchedList, moviesWatchLaterList]);
 
-  // Fetch inicial cuando cambia el género
   useEffect(() => {
-    if (selectedGenre !== "All") {
+    if (selectedGenre !== "All" && !activeSearchTerm) {
       fetchGenreMovies();
     }
-  }, [selectedGenre]);
+  }, [selectedGenre, activeSearchTerm, fetchGenreMovies]);
 
   // Función para cargar más (scroll infinito)
   const loadMoreGenreMovies = useCallback(() => {
@@ -147,11 +147,12 @@ export function useGenreMovies(selectedGenre: Genre) {
       !isLoadingGenre &&
       hasMoreGenre &&
       nextPageToken &&
-      !isFetchingRef.current
+      !isFetchingRef.current &&
+      !activeSearchTerm
     ) {
       fetchGenreMovies(nextPageToken);
     }
-  }, [isLoadingGenre, hasMoreGenre, nextPageToken, fetchGenreMovies]);
+  }, [isLoadingGenre, hasMoreGenre, nextPageToken, fetchGenreMovies, activeSearchTerm]);
 
   return {
     genreMovies,

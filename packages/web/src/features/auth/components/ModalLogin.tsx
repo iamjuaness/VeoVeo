@@ -26,6 +26,7 @@ import {
 } from "../../../shared/components/ui/card";
 import { Input } from "../../../shared/components/ui/input";
 import { Label } from "../../../shared/components/ui/label";
+import { useAuth } from "../hooks/useAuth";
 
 interface LoginDialogProps {
   open: boolean;
@@ -46,25 +47,24 @@ export function ModalLogin({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const { login: contextLogin } = useAuth();
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setIsLoading(true);
     try {
       const result = await login({ email, password });
-      const user = {
-        id: result.id,
-        name: result.name,
-        email: result.email,
-        avatar: result.avatar,
-      };
 
-      if (user) {
-        onLogin(user);
+      if (result.accessToken && result.refreshToken) {
+        // Usar la función de login del contexto que maneja ambos tokens
+        contextLogin(result.accessToken, result.refreshToken);
+
+        // El usuario se decodifica automáticamente en el contexto
         setOpen(false);
-        window.location.reload();
+        // Eliminamos window.location.reload() ya que el contexto actualizará la app
       } else {
-        setError("Error al iniciar sesión");
+        setError(result.message || "Error al iniciar sesión");
       }
     } catch (error: any) {
       setError(error?.message || "Error al iniciar sesión, intenta de nuevo.");

@@ -68,6 +68,7 @@ export interface IUser extends Document {
     region: string;
   };
   publicKey?: string;
+  refreshToken?: string;
 }
 
 const userSchema = new Schema<IUser>({
@@ -134,6 +135,7 @@ const userSchema = new Schema<IUser>({
     region: { type: String, default: "España" },
   },
   publicKey: { type: String, default: "" },
+  refreshToken: { type: String },
   moviesWatched: [
     {
       movieId: { type: String, required: true },

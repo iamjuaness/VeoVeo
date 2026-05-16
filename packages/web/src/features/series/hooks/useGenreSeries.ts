@@ -11,6 +11,7 @@ export function useGenreSeries(selectedGenre: Genre) {
     seriesInProgressList,
     setSelectedGenre,
     setGenreSeries: setGenreSeriesContext,
+    activeSearchTerm,
   } = useSeries();
   const [genreSeries, setGenreSeries] = useState<Series[]>([]);
   const [isLoadingGenre, setIsLoadingGenre] = useState(false);
@@ -130,12 +131,11 @@ export function useGenreSeries(selectedGenre: Genre) {
     }
   }, [seriesWatchedList, seriesWatchLaterList, seriesInProgressList]);
 
-  // Fetch inicial cuando cambia el género
   useEffect(() => {
-    if (selectedGenre !== "All") {
+    if (selectedGenre !== "All" && !activeSearchTerm) {
       fetchGenreSeries();
     }
-  }, [selectedGenre]);
+  }, [selectedGenre, activeSearchTerm, fetchGenreSeries]);
 
   // Función para cargar más (scroll infinito)
   const loadMoreGenreSeries = useCallback(() => {
@@ -143,11 +143,12 @@ export function useGenreSeries(selectedGenre: Genre) {
       !isLoadingGenre &&
       hasMoreGenre &&
       nextPageToken &&
-      !isFetchingRef.current
+      !isFetchingRef.current &&
+      !activeSearchTerm
     ) {
       fetchGenreSeries(nextPageToken);
     }
-  }, [isLoadingGenre, hasMoreGenre, nextPageToken, fetchGenreSeries]);
+  }, [isLoadingGenre, hasMoreGenre, nextPageToken, fetchGenreSeries, activeSearchTerm]);
 
   return {
     genreSeries,

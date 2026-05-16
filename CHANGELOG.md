@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.8.3] - 2026-05-16
+
+### Added
+
+- **Testing System**: Setup Vitest and supertest for both web and server packages to catch regressions before deployment. Included basic test suites and coverage for core components.
+- **Error Boundaries**: Implemented a global ErrorBoundary component and wrapped all routes in AppRouter to catch React render errors (e.g., `s.title.trim is not a function`) and display a fallback UI instead of a blank screen.
+- **CI/CD Pipeline**: Added GitHub Actions workflow (`main.yml`) for automated linting, type-checking, testing, and building on pushes to main.
+
 ## [2.8.2] - 2026-05-10
 
 ### Fixed

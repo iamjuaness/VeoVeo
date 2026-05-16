@@ -5,6 +5,8 @@ import { BottomNav } from "../../shared/components/layout/BottomNav";
 import PrivateRoute from "../../shared/components/common/PrivateRoute.tsx";
 import { Loader2 } from "lucide-react";
 
+import ErrorBoundary from "../../shared/components/ErrorBoundary";
+
 // Lazy-loaded components
 const StatsPage = lazy(() => import("../../features/stats/pages/StatsPage"));
 const MovieTracker = lazy(
@@ -28,45 +30,59 @@ const PageLoader = () => (
   </div>
 );
 
+const withErrorBoundary = (Component: React.ElementType) => (
+  <ErrorBoundary>
+    <Component />
+  </ErrorBoundary>
+);
+
 export default function AppRouter() {
   return (
     <BrowserRouter>
       <Suspense fallback={<PageLoader />}>
         <Routes>
-          <Route path="/home" element={<MovieTracker />} />
+          <Route path="/home" element={withErrorBoundary(MovieTracker)} />
           <Route
             path="/stats"
             element={
-              <PrivateRoute>
-                <StatsPage />
-              </PrivateRoute>
+              <ErrorBoundary>
+                <PrivateRoute>
+                  <StatsPage />
+                </PrivateRoute>
+              </ErrorBoundary>
             }
           />
-          <Route path="/movie/:id" element={<MovieDetailPage />} />
-          <Route path="/series" element={<SeriesTracker />} />
-          <Route path="/series/:id" element={<SeriesDetailPage />} />
+          <Route path="/movie/:id" element={withErrorBoundary(MovieDetailPage)} />
+          <Route path="/series" element={withErrorBoundary(SeriesTracker)} />
+          <Route path="/series/:id" element={withErrorBoundary(SeriesDetailPage)} />
           <Route
             path="/social"
             element={
-              <PrivateRoute>
-                <SocialPage />
-              </PrivateRoute>
+              <ErrorBoundary>
+                <PrivateRoute>
+                  <SocialPage />
+                </PrivateRoute>
+              </ErrorBoundary>
             }
           />
           <Route
             path="/profile"
             element={
-              <PrivateRoute>
-                <ProfilePage />
-              </PrivateRoute>
+              <ErrorBoundary>
+                <PrivateRoute>
+                  <ProfilePage />
+                </PrivateRoute>
+              </ErrorBoundary>
             }
           />
           <Route
             path="/profile/:id"
             element={
-              <PrivateRoute>
-                <ProfilePage />
-              </PrivateRoute>
+              <ErrorBoundary>
+                <PrivateRoute>
+                  <ProfilePage />
+                </PrivateRoute>
+              </ErrorBoundary>
             }
           />
 

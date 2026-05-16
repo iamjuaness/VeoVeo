@@ -5,10 +5,11 @@ import { MoviesProvider } from "./features/movies/context/MoviesContext";
 import { SeriesProvider } from "./features/series/context/SeriesContext";
 import { SocialProvider } from "./features/social/context/SocialContext";
 import { ThemeProvider } from "./core/providers/ThemeContext";
+import ErrorBoundary from "./shared/components/ErrorBoundary";
 
 function App() {
   return (
-    <>
+    <ErrorBoundary>
       <ThemeProvider>
         <AuthProvider>
           <MoviesProvider>
@@ -20,7 +21,7 @@ function App() {
           </MoviesProvider>
         </AuthProvider>
       </ThemeProvider>
-    </>
+    </ErrorBoundary>
   );
 }
 

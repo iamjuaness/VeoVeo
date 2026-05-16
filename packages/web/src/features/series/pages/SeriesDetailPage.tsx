@@ -360,7 +360,7 @@ export default function SeriesDetailPage() {
                     disabled={!user || isProcessing}
                     className={`gap-2 font-bold shadow-xl hover:scale-105 transition-all px-6 ${
                       isWatched
-                        ? "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+                        ? "bg-linear-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
                         : "bg-white text-black hover:bg-white/90"
                     }`}
                   >
@@ -374,8 +374,8 @@ export default function SeriesDetailPage() {
                     {isWatched && watchedEpisodes.length > 0
                       ? "Ver serie de nuevo (+1)"
                       : isWatched
-                      ? "Marcar como Vista"
-                      : "Marcar Todo Visto"}
+                        ? "Marcar como Vista"
+                        : "Marcar Todo Visto"}
                   </Button>
 
                   {/* Remove from Watched (decrement) */}
@@ -468,7 +468,7 @@ export default function SeriesDetailPage() {
                 <CardContent className="space-y-4">
                   {[...(series.seasons || [])]
                     .sort(
-                      (a: any, b: any) => Number(a.season) - Number(b.season)
+                      (a: any, b: any) => Number(a.season) - Number(b.season),
                     )
                     .map((season: any) => (
                       <SeasonAccordion

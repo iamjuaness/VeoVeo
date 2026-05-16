@@ -1,7 +1,7 @@
 {
   "name": "veoveo",
   "private": true,
-  "version": "2.8.1",
+  "version": "2.8.3",
   "type": "module",
   "scripts": {
     "dev": "pnpm --parallel --filter @veoveo/web --filter @veoveo/server dev",
@@ -12,6 +12,7 @@
     "build:server": "pnpm --filter @veoveo/server build",
     "lint": "pnpm -r lint",
     "type-check": "pnpm -r type-check",
+    "test": "pnpm -r test",
     "preinstall": "npx only-allow pnpm"
   },
   "description": "**CineMate** is a modern web app for movie lovers who want to **track, organize, and discover movies** with ease. Built with **React**, **TypeScript**, and **Vite**, CineMate lets you manage your personal movie collection, track which films you've seen (and how many times), and create a watchlist for the future.",

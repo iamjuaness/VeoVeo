@@ -139,11 +139,12 @@ export const MovieCard = memo(function MovieCard({
             className={`flex-1 gap-1.5 h-8 text-xs font-medium transition-all ${
               movie.watchCount > 0 ? "bg-green-600 hover:bg-green-700" : ""
             }`}
+            aria-label={movie.watchCount > 0 ? `Película vista ${movie.watchCount} veces. Click para marcar otra vez.` : "Marcar película como vista"}
           >
             {isProcessing ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
             ) : (
-              <Eye className="w-3.5 h-3.5" />
+              <Eye className="w-3.5 h-3.5" aria-hidden="true" />
             )}
             {movie.watchCount > 0 ? "Visto" : "Ver"}
           </Button>
@@ -155,12 +156,13 @@ export const MovieCard = memo(function MovieCard({
               onClick={handleResetWatchCount}
               disabled={isProcessing}
               className="h-8 w-8 p-0 shrink-0 text-muted-foreground hover:text-destructive hover:border-destructive/50"
-              title="Resetear"
+              title="Resetear progreso"
+              aria-label="Resetear progreso de la película"
             >
               {isProcessing ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
               ) : (
-                <EyeOff className="w-3.5 h-3.5" />
+                <EyeOff className="w-3.5 h-3.5" aria-hidden="true" />
               )}
             </Button>
           )}
@@ -174,11 +176,12 @@ export const MovieCard = memo(function MovieCard({
               movie.watchLater ? "bg-blue-600 hover:bg-blue-700 text-white" : ""
             }`}
             title={movie.watchLater ? "Quitar de pendientes" : "Ver después"}
+            aria-label={movie.watchLater ? "Quitar de pendientes" : "Añadir a ver después"}
           >
             {isProcessing ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
             ) : (
-              <Clock className="w-3.5 h-3.5" />
+              <Clock className="w-3.5 h-3.5" aria-hidden="true" />
             )}
           </Button>
         </div>

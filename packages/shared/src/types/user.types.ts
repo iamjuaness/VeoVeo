@@ -1,3 +1,12 @@
+export interface Review {
+  mediaId: string;
+  mediaType: "movie" | "series";
+  rating: number;
+  comment?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface User {
   id: string;
   name: string;
@@ -5,6 +14,7 @@ export interface User {
   avatar: string;
   moviesWatched?: { movieId: string; count: number; duration: number }[];
   watchLater?: string[];
+  reviews?: Review[];
   friends?: string[];
   friendRequests?: import("./social.types").FriendRequest[];
   recommendations?: import("./social.types").Recommendation[];

@@ -38,7 +38,6 @@ interface LoginDialogProps {
 export function ModalLogin({
   open,
   setOpen,
-  onLogin,
   openRegisterModal,
 }: LoginDialogProps) {
   const [email, setEmail] = useState("");

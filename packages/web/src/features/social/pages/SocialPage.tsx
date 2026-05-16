@@ -52,6 +52,12 @@ import { useAuth } from "../../auth/hooks/useAuth";
 import { Textarea } from "../../../shared/components/ui/textarea";
 import { NotificationCenter } from "../components/NotificationCenter";
 import { predefinedAvatars } from "../../../shared/components/common/PredefinedAvatars";
+import { UserCardSkeleton } from "../components/UserCardSkeleton";
+import { RecommendationSkeleton } from "../components/RecommendationSkeleton";
+import { Star } from "lucide-react";
+import { UserReviewsList } from "../components/reviews/UserReviewsList";
+import { UserLists } from "../components/lists/UserLists";
+import { Sparkles } from "lucide-react";
 
 export default function SocialPage() {
   const {
@@ -69,6 +75,7 @@ export default function SocialPage() {
     getMessages,
     deleteChat,
     search,
+    loading,
   } = useSocial();
   const { user: currentUser } = useAuth();
   const navigate = useNavigate();
@@ -258,6 +265,20 @@ export default function SocialPage() {
                     {recommendations.length}
                   </span>
                 </TabsTrigger>
+                <TabsTrigger
+                  value="reviews"
+                  className="rounded-lg px-4 py-2 text-sm font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm"
+                >
+                  <Star className="w-4 h-4 mr-2" />
+                  Reseñas
+                </TabsTrigger>
+                <TabsTrigger
+                  value="lists"
+                  className="rounded-lg px-4 py-2 text-sm font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm"
+                >
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Listas
+                </TabsTrigger>
               </TabsList>
             </div>
 
@@ -276,7 +297,11 @@ export default function SocialPage() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {friends.filter((f) => f).length === 0 ? (
+                {loading && friends.length === 0 ? (
+                  Array.from({ length: 6 }).map((_, i) => (
+                    <UserCardSkeleton key={i} />
+                  ))
+                ) : friends.filter((f) => f).length === 0 ? (
                   <div className="col-span-full py-20 flex flex-col items-center justify-center text-center space-y-4 border-2 border-dashed border-primary/10 rounded-3xl bg-muted/5">
                     <div className="bg-primary/5 p-6 rounded-full">
                       <Users className="w-12 h-12 text-primary/20" />
@@ -490,7 +515,13 @@ export default function SocialPage() {
               value="requests"
               className="space-y-6 animate-in fade-in-50 duration-500 outline-none"
             >
-              {requests.filter((r) => r && r.status === "pending").length ===
+              {loading && requests.length === 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <UserCardSkeleton key={i} />
+                  ))}
+                </div>
+              ) : requests.filter((r) => r && r.status === "pending").length ===
               0 ? (
                 <div className="text-center py-20 border-2 border-dashed border-primary/10 rounded-3xl bg-muted/5">
                   <p className="text-muted-foreground font-bold">
@@ -585,7 +616,13 @@ export default function SocialPage() {
               value="sent_requests"
               className="space-y-6 animate-in fade-in-50 duration-500 outline-none"
             >
-              {sentRequests.filter((r) => r && r.status === "pending")
+              {loading && sentRequests.length === 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <UserCardSkeleton key={i} />
+                  ))}
+                </div>
+              ) : sentRequests.filter((r) => r && r.status === "pending")
                 .length === 0 ? (
                 <div className="text-center py-20 border-2 border-dashed border-primary/10 rounded-3xl bg-muted/5">
                   <p className="text-muted-foreground font-bold">
@@ -638,7 +675,13 @@ export default function SocialPage() {
               value="recommendations"
               className="space-y-6 animate-in fade-in-50 duration-500 outline-none"
             >
-              {recommendations.length === 0 ? (
+              {loading && recommendations.length === 0 ? (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <RecommendationSkeleton key={i} />
+                  ))}
+                </div>
+              ) : recommendations.length === 0 ? (
                 <div className="text-center py-20 border-2 border-dashed border-primary/10 rounded-3xl bg-muted/5">
                   <p className="text-muted-foreground font-bold">
                     Sin recomendaciones todavía.
@@ -728,6 +771,26 @@ export default function SocialPage() {
                   })}
                 </div>
               )}
+            </TabsContent>
+
+            <TabsContent
+              value="reviews"
+              className="space-y-6 animate-in fade-in-50 duration-500 outline-none"
+            >
+              <div className="flex items-center justify-between px-1">
+                <h3 className="text-xl font-black tracking-tight flex items-center gap-3">
+                  <Star className="w-6 h-6 text-primary" />
+                  MIS RESEÑAS
+                </h3>
+              </div>
+              <UserReviewsList />
+            </TabsContent>
+
+            <TabsContent
+              value="lists"
+              className="space-y-6 animate-in fade-in-50 duration-500 outline-none"
+            >
+              <UserLists />
             </TabsContent>
           </Tabs>
         </div>

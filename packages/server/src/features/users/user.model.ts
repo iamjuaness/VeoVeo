@@ -67,6 +67,14 @@ export interface IUser extends Document {
     language: string;
     region: string;
   };
+  reviews: {
+    mediaId: string;
+    mediaType: "movie" | "series";
+    rating: number;
+    comment?: string;
+    createdAt: Date;
+    updatedAt: Date;
+  }[];
   publicKey?: string;
   refreshToken?: string;
 }
@@ -136,6 +144,16 @@ const userSchema = new Schema<IUser>({
   },
   publicKey: { type: String, default: "" },
   refreshToken: { type: String },
+  reviews: [
+    {
+      mediaId: { type: String, required: true },
+      mediaType: { type: String, enum: ["movie", "series"], required: true },
+      rating: { type: Number, required: true, min: 0, max: 10 },
+      comment: { type: String },
+      createdAt: { type: Date, default: Date.now },
+      updatedAt: { type: Date, default: Date.now },
+    },
+  ],
   moviesWatched: [
     {
       movieId: { type: String, required: true },

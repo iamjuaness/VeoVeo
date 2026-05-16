@@ -27,7 +27,7 @@ import { useContext, useState } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { ThemeContext } from "../../../core/providers/ThemeContext";
 
-const APP_VERSION = "2.8.4"; // Update this when releasing new versions
+const APP_VERSION = "2.8.5"; // Update this when releasing new versions
 
 interface UserMenuProps {
   open: boolean;

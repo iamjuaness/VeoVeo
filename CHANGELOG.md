@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.8.5] - 2026-05-16
+
+### Improved
+
+- **Accessibility (a11y)**: Comprehensive audit and implementation of accessibility improvements across core UI components.
+  - **Modals**: Enhanced `AddToListModal` and `RecommendModal` with `aria-live` regions for dynamic state announcements and improved keyboard navigation.
+  - **Navigation**: Added descriptive `aria-label` to icon-only buttons in `SeriesCard`, `MovieCard`, and `NotificationCenter`.
+  - **Series Slider**: Implemented W3C carousel patterns with proper roles (`carousel`, `slide`), labels, and focus management for the featured series slider.
+  - **Decorative Elements**: Hidden decorative icons from screen readers using `aria-hidden="true"` throughout the application.
+  - **Form Accessibility**: Improved label-input associations and status roles for interactive lists.
+
 ## [2.8.4] - 2026-05-16
 
 ### Added

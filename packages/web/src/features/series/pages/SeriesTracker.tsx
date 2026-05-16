@@ -28,6 +28,8 @@ import { NotificationCenter } from "../../social/components/NotificationCenter";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { useSeries } from "../context/SeriesContext";
 import { ThemeContext } from "../../../core/providers/ThemeContext";
+import { SliderSkeleton } from "../../movies/components/SliderSkeleton";
+import { SeriesCardSkeleton } from "../components/SeriesCardSkeleton";
 
 
 export default function SeriesTracker() {
@@ -407,7 +409,10 @@ export default function SeriesTracker() {
         {/* Main Content */}
         <main className="container mx-auto px-4 py-8 pt-24">
           {/* Featured Slider */}
-          {featuredSeries.length > 0 &&
+          {(loading && series.length === 0) ? (
+            <SliderSkeleton />
+          ) : (
+            featuredSeries.length > 0 &&
             !activeSearchTerm &&
             filterStatus === "all" && (
               <SeriesSlider
@@ -417,7 +422,8 @@ export default function SeriesTracker() {
                 nextSlide={nextSlide}
                 goToSlide={goToSlide}
               />
-            )}
+            )
+          )}
 
           {/* Stats */}
           {user && (
@@ -538,11 +544,10 @@ export default function SeriesTracker() {
             selectedGenres[filterStatus] !== "All" &&
             filterStatus === "all" &&
             genreSeries.length === 0 && (
-              <div className="flex justify-center items-center py-12">
-                <Loader2 className="w-10 h-10 animate-spin text-primary" />
-                <p className="ml-3 text-muted-foreground">
-                  Cargando series de {selectedGenres[filterStatus]}...
-                </p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 justify-items-center py-8">
+                {Array.from({ length: 10 }).map((_, i) => (
+                  <SeriesCardSkeleton key={i} />
+                ))}
               </div>
             )}
 
@@ -554,9 +559,11 @@ export default function SeriesTracker() {
 
           {/* Grid */}
           {filteredSeriesToDisplay.length === 0 ? (
-            loading || searchLoading ? (
-              <div className="flex justify-center py-12">
-                <Loader2 className="w-10 h-10 animate-spin text-primary" />
+            (loading || searchLoading) ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 justify-items-center py-8">
+                {Array.from({ length: 10 }).map((_, i) => (
+                  <SeriesCardSkeleton key={i} />
+                ))}
               </div>
             ) : searchError ? (
               <div className="text-center py-12 px-4 max-w-md mx-auto">

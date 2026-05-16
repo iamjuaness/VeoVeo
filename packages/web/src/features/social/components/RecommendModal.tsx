@@ -87,8 +87,12 @@ export function RecommendModal({
         </DialogHeader>
 
         {sent ? (
-          <div className="py-12 flex flex-col items-center justify-center text-center space-y-4 animate-in zoom-in-95 duration-300">
-            <div className="bg-primary/10 p-6 rounded-full">
+          <div 
+            className="py-12 flex flex-col items-center justify-center text-center space-y-4 animate-in zoom-in-95 duration-300"
+            aria-live="assertive"
+            role="status"
+          >
+            <div className="bg-primary/10 p-6 rounded-full" aria-hidden="true">
               <CheckCircle2 className="w-16 h-16 text-primary" />
             </div>
             <div>
@@ -105,7 +109,7 @@ export function RecommendModal({
             {!selectedFriend ? (
               <div className="space-y-4">
                 <div className="relative group">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" aria-hidden="true" />
                   <Input
                     placeholder="Buscar amigo..."
                     className="pl-10 h-10 bg-muted/30 border-primary/5 rounded-xl"
@@ -113,19 +117,27 @@ export function RecommendModal({
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                       setSearchQuery(e.target.value)
                     }
+                    aria-label="Buscar amigo para recomendar"
                   />
                 </div>
-                <div className="max-h-[250px] overflow-y-auto space-y-2 pr-2 scrollbar-hide">
+                <div 
+                  className="max-h-[250px] overflow-y-auto space-y-2 pr-2 scrollbar-hide"
+                  role="list"
+                  aria-label="Lista de amigos"
+                >
                   {filteredFriends.length === 0 ? (
                     <p className="text-center py-8 text-sm text-muted-foreground font-medium italic">
                       No se encontraron amigos.
                     </p>
                   ) : (
                     filteredFriends.map((friend) => (
-                      <div
+                      <button
                         key={friend._id || friend.id}
-                        className="flex items-center justify-between p-3 rounded-2xl hover:bg-primary/5 cursor-pointer transition-colors group"
+                        type="button"
+                        className="w-full flex items-center justify-between p-3 rounded-2xl hover:bg-primary/5 cursor-pointer transition-colors group focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary/50"
                         onClick={() => setSelectedFriend(friend)}
+                        role="listitem"
+                        aria-label={`Seleccionar a ${friend.name}`}
                       >
                         <div className="flex items-center gap-3">
                           <Avatar className="h-10 w-10 border border-primary/10">
@@ -138,14 +150,10 @@ export function RecommendModal({
                             {friend.name}
                           </p>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="rounded-full h-8 w-8 text-muted-foreground group-hover:text-primary"
-                        >
+                        <div className="text-muted-foreground group-hover:text-primary" aria-hidden="true">
                           <Send className="w-4 h-4" />
-                        </Button>
-                      </div>
+                        </div>
+                      </button>
                     ))
                   )}
                 </div>
@@ -153,7 +161,7 @@ export function RecommendModal({
             ) : (
               <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
                 <div className="flex items-center gap-4 p-4 bg-primary/5 rounded-2xl border border-primary/10">
-                  <Avatar className="h-12 w-12 border-2 border-primary/20">
+                  <Avatar className="h-12 w-12 border-2 border-primary/20" aria-hidden="true">
                     <AvatarImage src={selectedFriend.selectedAvatar} />
                     <AvatarFallback className="font-black text-primary">
                       {selectedFriend.name?.substring(0, 2).toUpperCase()}
@@ -172,16 +180,18 @@ export function RecommendModal({
                     size="sm"
                     onClick={() => setSelectedFriend(null)}
                     className="text-xs font-bold hover:text-red-500"
+                    aria-label="Cambiar amigo seleccionado"
                   >
                     Cambiar
                   </Button>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-xs font-black uppercase text-muted-foreground px-1">
+                  <label htmlFor="recommendation-message" className="text-xs font-black uppercase text-muted-foreground px-1 cursor-pointer">
                     Mensaje (Opcional)
                   </label>
                   <Textarea
+                    id="recommendation-message"
                     placeholder="¿Por qué la recomiendas?"
                     className="rounded-2xl bg-muted/30 border-primary/5 resize-none h-24 focus-visible:ring-primary/20"
                     value={message}

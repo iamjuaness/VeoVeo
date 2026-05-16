@@ -41,6 +41,10 @@ import { UserMenu } from "../../auth/components/UserMenu";
 import { ThemeContext } from "../../../core/providers/ThemeContext";
 import { RecommendModal } from "../../social/components/RecommendModal";
 import { useSocial } from "../../social/context/SocialContext";
+import { DetailSkeleton } from "../../../shared/components/ui/DetailSkeleton";
+import { ReviewSection } from "../../social/components/reviews/ReviewSection";
+import { AddToListModal } from "../../social/components/lists/AddToListModal";
+import { ListPlus as ListPlusIcon } from "lucide-react";
 
 interface WatchedEpisode {
   seasonNumber: number;
@@ -75,6 +79,7 @@ export default function SeriesDetailPage() {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [isRecommendModalOpen, setIsRecommendModalOpen] = useState(false);
+  const [isAddToListModalOpen, setIsAddToListModalOpen] = useState(false);
   const { friends } = useSocial();
 
   const [watchedEpisodes, setWatchedEpisodes] = useState<WatchedEpisode[]>([]);
@@ -176,14 +181,7 @@ export default function SeriesDetailPage() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
-          <p>Cargando serie...</p>
-        </div>
-      </div>
-    );
+    return <DetailSkeleton />;
   }
 
   if (!series) {
@@ -444,6 +442,18 @@ export default function SeriesDetailPage() {
                       Recomendar
                     </Button>
                   )}
+
+                  {user && (
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      onClick={() => setIsAddToListModalOpen(true)}
+                      className="gap-2 bg-purple-500/10 border-purple-500/20 text-purple-400 hover:bg-purple-500 hover:text-white transition-all shadow-xl font-bold"
+                    >
+                      <ListPlusIcon className="w-5 h-5" />
+                      Listas
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
@@ -524,6 +534,9 @@ export default function SeriesDetailPage() {
                 </CardContent>
               </Card>
             )}
+
+            {/* User Review Section */}
+            <ReviewSection mediaId={series.id} mediaType="series" />
           </div>
 
           {/* Sidebar */}
@@ -627,6 +640,15 @@ export default function SeriesDetailPage() {
       <RecommendModal
         open={isRecommendModalOpen}
         onOpenChange={setIsRecommendModalOpen}
+        mediaId={series.id}
+        mediaType="series"
+        mediaTitle={series.primaryTitle}
+        mediaPoster={series.primaryImage?.url || ""}
+      />
+
+      <AddToListModal
+        open={isAddToListModalOpen}
+        onOpenChange={setIsAddToListModalOpen}
         mediaId={series.id}
         mediaType="series"
         mediaTitle={series.primaryTitle}

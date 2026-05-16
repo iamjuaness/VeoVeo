@@ -63,3 +63,26 @@ export interface UserProfile {
     other?: string;
   };
 }
+
+export interface CustomListItem {
+  mediaId: string;
+  mediaType: "movie" | "series";
+  mediaTitle?: string;
+  mediaPoster?: string;
+  addedAt: Date | string;
+}
+
+export interface CustomList {
+  id?: string;
+  _id?: string;
+  userId: string;
+  userName: string;
+  userAvatar?: string;
+  title: string;
+  description?: string;
+  items: CustomListItem[];
+  isPublic: boolean;
+  likes: string[]; // User IDs
+  createdAt: Date | string;
+  updatedAt: Date | string;
+}

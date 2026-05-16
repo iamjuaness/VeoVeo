@@ -42,6 +42,10 @@ import { ThemeContext } from "../../../core/providers/ThemeContext";
 import { useMovies } from "../context/MoviesContext";
 import { RecommendModal } from "../../social/components/RecommendModal";
 import { useSocial } from "../../social/context/SocialContext";
+import { DetailSkeleton } from "../../../shared/components/ui/DetailSkeleton";
+import { ReviewSection } from "../../social/components/reviews/ReviewSection";
+import { AddToListModal } from "../../social/components/lists/AddToListModal";
+import { ListPlus as ListPlusIcon } from "lucide-react";
 
 export default function MovieDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -112,6 +116,7 @@ export default function MovieDetailPage() {
   const [loading, setLoading] = useState(!movie);
 
   const [isRecommendModalOpen, setIsRecommendModalOpen] = useState(false);
+  const [isAddToListModalOpen, setIsAddToListModalOpen] = useState(false);
   const { friends } = useSocial();
 
   useEffect(() => {
@@ -179,14 +184,7 @@ export default function MovieDetailPage() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-4xl mb-4">🎬</div>
-          <p>Cargando película...</p>
-        </div>
-      </div>
-    );
+    return <DetailSkeleton />;
   }
 
   if (!movie) {
@@ -431,6 +429,18 @@ export default function MovieDetailPage() {
                       Recomendar
                     </Button>
                   )}
+
+                  {user && (
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      onClick={() => setIsAddToListModalOpen(true)}
+                      className="gap-2 bg-purple-500/10 border-purple-500/20 text-purple-400 hover:bg-purple-500 hover:text-white transition-all shadow-xl font-bold"
+                    >
+                      <ListPlusIcon className="w-5 h-5" />
+                      Listas
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
@@ -557,6 +567,9 @@ export default function MovieDetailPage() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* User Review Section */}
+            <ReviewSection mediaId={movie.id} mediaType="movie" />
           </div>
 
           {/* Sidebar */}
@@ -659,6 +672,15 @@ export default function MovieDetailPage() {
       <RecommendModal
         open={isRecommendModalOpen}
         onOpenChange={setIsRecommendModalOpen}
+        mediaId={movie.id}
+        mediaType="movie"
+        mediaTitle={movie.primaryTitle}
+        mediaPoster={movie.primaryImage?.url || ""}
+      />
+
+      <AddToListModal
+        open={isAddToListModalOpen}
+        onOpenChange={setIsAddToListModalOpen}
         mediaId={movie.id}
         mediaType="movie"
         mediaTitle={movie.primaryTitle}

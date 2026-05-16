@@ -15,6 +15,15 @@ import {
   getPublicKey,
   deleteChat,
 } from "./social.controller.js";
+import {
+  createList,
+  getMyLists,
+  getPublicLists,
+  getListById,
+  updateList,
+  deleteList,
+  toggleLikeList,
+} from "./list.controller.js";
 
 const router = Router();
 
@@ -34,5 +43,14 @@ router.delete("/chat/:friendId", deleteChat);
 router.get("/keys/:friendId", getPublicKey);
 router.post("/recommend", recommendMedia);
 router.post("/mark-read", markNotificationsAsRead);
+
+// Custom Lists Routes
+router.get("/lists/public", getPublicLists);
+router.get("/lists/me", getMyLists);
+router.get("/lists/:listId", getListById);
+router.post("/lists", createList);
+router.put("/lists/:listId", updateList);
+router.delete("/lists/:listId", deleteList);
+router.post("/lists/:listId/like", toggleLikeList);
 
 export default router;

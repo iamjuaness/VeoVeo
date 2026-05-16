@@ -15,6 +15,11 @@ import {
   updateUserSettings,
 } from "../users/user.controller.js";
 import {
+  upsertReview,
+  getUserReviews,
+  getReviewByMediaId,
+} from "../users/review.controller.js";
+import {
   toggleSeriesWatchLater,
   getUserSeriesStatus,
   toggleEpisodeWatched,
@@ -61,5 +66,10 @@ router.get("/series/:id/progress", getSeriesProgress);
 router.post("/series/batch", fetchSeriesBatchRawController);
 router.get("/series/:id", fetchSeriesDetail);
 router.get("/series/:id/episodes/:season", fetchSeasonEpisodes);
+
+// Review routes
+router.post("/reviews", upsertReview);
+router.get("/reviews", getUserReviews);
+router.get("/reviews/:mediaId", getReviewByMediaId);
 
 export default router;

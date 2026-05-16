@@ -151,8 +151,9 @@ export const SeriesCard = memo(function SeriesCard({
             className={`flex-1 gap-1.5 h-8 text-xs font-medium transition-all ${
               watched ? "bg-green-600 hover:bg-green-700" : ""
             }`}
+            aria-label={watched ? "Serie vista" : "Marcar como vista"}
           >
-            <Tv className="w-3.5 h-3.5" />
+            <Tv className="w-3.5 h-3.5" aria-hidden="true" />
             {watched ? "Vista" : "Marcar Vista"}
           </Button>
 
@@ -162,9 +163,10 @@ export const SeriesCard = memo(function SeriesCard({
               size="sm"
               onClick={handleResetWatched}
               className="h-8 w-8 p-0 shrink-0 text-muted-foreground hover:text-destructive hover:border-destructive/50"
-              title="Resetear"
+              title="Resetear progreso"
+              aria-label="Resetear progreso de la serie"
             >
-              <EyeOff className="w-3.5 h-3.5" />
+              <EyeOff className="w-3.5 h-3.5" aria-hidden="true" />
             </Button>
           )}
 
@@ -179,8 +181,9 @@ export const SeriesCard = memo(function SeriesCard({
                 : ""
             }`}
             title={series.watchLater ? "Quitar de pendientes" : "Ver después"}
+            aria-label={series.watchLater ? "Quitar de pendientes" : "Añadir a ver después"}
           >
-            <Clock className="w-3.5 h-3.5" />
+            <Clock className="w-3.5 h-3.5" aria-hidden="true" />
           </Button>
         </div>
       </div>

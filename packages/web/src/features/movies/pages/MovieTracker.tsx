@@ -35,6 +35,8 @@ import {
 import { VirtuosoGrid } from "react-virtuoso";
 import { NotificationCenter } from "../../social/components/NotificationCenter";
 import { useGenreMovies } from "../hooks/useGenreMovies";
+import { SliderSkeleton } from "../components/SliderSkeleton";
+import { MovieCardSkeleton } from "../components/MovieCardSkeleton";
 
 export default function MovieTracker() {
   const {
@@ -422,14 +424,18 @@ export default function MovieTracker() {
           <div className="container mx-auto px-4 py-6">
             <div className="gap-6 mb-6">
               <div className="gap-2 mt-16">
-                <Slider
-                  featuredMovies={featuredMovies}
-                  currentSlide={currentSlide}
-                  prevSlide={prevSlide}
-                  nextSlide={nextSlide}
-                  goToSlide={goToSlide}
-                  toggleWatchLater={() => {}}
-                />
+                {(loading && movies.length === 0) ? (
+                  <SliderSkeleton />
+                ) : (
+                  <Slider
+                    featuredMovies={featuredMovies}
+                    currentSlide={currentSlide}
+                    prevSlide={prevSlide}
+                    nextSlide={nextSlide}
+                    goToSlide={goToSlide}
+                    toggleWatchLater={() => {}}
+                  />
+                )}
               </div>
 
               {/* Estadísticas - Solo visible cuando el usuario está logueado */}
@@ -560,11 +566,10 @@ export default function MovieTracker() {
           {isLoadingGenre &&
             selectedGenres[filterStatus] !== "All" &&
             genreMovies.length === 0 && (
-              <div className="flex justify-center items-center py-12">
-                <Loader2 className="w-10 h-10 animate-spin text-primary" />
-                <p className="ml-3 text-muted-foreground">
-                  Cargando películas de {selectedGenres[filterStatus]}...
-                </p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 justify-items-center py-8">
+                {Array.from({ length: 10 }).map((_, i) => (
+                  <MovieCardSkeleton key={i} />
+                ))}
               </div>
             )}
 
@@ -575,9 +580,11 @@ export default function MovieTracker() {
             </div>
           )}
           {filteredMoviesToDisplay.length === 0 ? (
-            loading || searchLoading ? (
-              <div className="flex justify-center py-12">
-                <Loader2 className="w-10 h-10 animate-spin text-primary" />
+            (loading || searchLoading) ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 justify-items-center py-8">
+                {Array.from({ length: 10 }).map((_, i) => (
+                  <MovieCardSkeleton key={i} />
+                ))}
               </div>
             ) : searchError ? (
               <div className="text-center py-12 px-4 max-w-md mx-auto">

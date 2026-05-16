@@ -26,16 +26,25 @@ export function SeriesSlider({
   }
 
   return (
-    <div className="relative mb-8 rounded-2xl overflow-hidden shadow-2xl group">
-      <div className="relative h-72 md:h-96 lg:h-[450px]">
+    <div
+      className="relative mb-8 rounded-2xl overflow-hidden shadow-2xl group"
+      role="region"
+      aria-roledescription="carousel"
+      aria-label="Series Destacadas"
+    >
+      <div className="relative h-72 md:h-96 lg:h-[450px]" aria-live="polite">
         {featuredSeries.map((series, index) => (
           <div
             key={series.id}
             className={`absolute inset-0 transition-all duration-700 ${
               index === currentSlide
-                ? "opacity-100 scale-100"
-                : "opacity-0 scale-105"
+                ? "opacity-100 scale-100 z-10"
+                : "opacity-0 scale-105 z-0"
             }`}
+            aria-hidden={index !== currentSlide}
+            role="group"
+            aria-roledescription="slide"
+            aria-label={`${index + 1} de ${featuredSeries.length}: ${series.title}`}
           >
             <div
               className="relative h-full cursor-pointer"
@@ -43,12 +52,13 @@ export function SeriesSlider({
                 navigate(`/series/${featuredSeries[currentSlide].id}`)
               }
               role="button"
-              tabIndex={0}
+              tabIndex={index === currentSlide ? 0 : -1}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   navigate(`/series/${featuredSeries[currentSlide].id}`);
                 }
               }}
+              aria-label={`Ver detalles de ${series.title}`}
             >
               <img
                 src={series.backdrop || series.poster || "/placeholder.svg"}
@@ -63,7 +73,10 @@ export function SeriesSlider({
                 <div className="max-w-3xl">
                   <div className="flex items-center gap-2 mb-4">
                     <Badge className="bg-yellow-500/90 hover:bg-yellow-600 text-black font-bold backdrop-blur-sm">
-                      <Star className="w-4 h-4 mr-1 fill-current" />
+                      <Star
+                        className="w-4 h-4 mr-1 fill-current"
+                        aria-hidden="true"
+                      />
                       {series.rating.toFixed(1)}
                     </Badge>
                     {series.genres && series.genres[0] && (
@@ -94,12 +107,13 @@ export function SeriesSlider({
                   <Button
                     size="lg"
                     className="gap-2 bg-white text-black hover:bg-white/90 font-bold shadow-xl hover:scale-105 transition-transform"
+                    tabIndex={index === currentSlide ? 0 : -1}
                     onClick={(e) => {
                       e.stopPropagation();
                       navigate(`/series/${featuredSeries[currentSlide].id}`);
                     }}
                   >
-                    <Play className="w-5 h-5 fill-current" />
+                    <Play className="w-5 h-5 fill-current" aria-hidden="true" />
                     Ver Detalles
                   </Button>
                 </div>
@@ -113,22 +127,24 @@ export function SeriesSlider({
       <Button
         variant="outline"
         size="icon"
-        className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/60 border-white/30 text-white hover:bg-black/80 backdrop-blur-md opacity-0 group-hover:opacity-100 transition-all hover:scale-110"
+        className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/60 border-white/30 text-white hover:bg-black/80 backdrop-blur-md opacity-0 group-hover:opacity-100 transition-all hover:scale-110 z-20"
         onClick={prevSlide}
+        aria-label="Anterior serie"
       >
-        <ChevronLeft className="w-5 h-5" />
+        <ChevronLeft className="w-5 h-5" aria-hidden="true" />
       </Button>
       <Button
         variant="outline"
         size="icon"
-        className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/60 border-white/30 text-white hover:bg-black/80 backdrop-blur-md opacity-0 group-hover:opacity-100 transition-all hover:scale-110"
+        className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/60 border-white/30 text-white hover:bg-black/80 backdrop-blur-md opacity-0 group-hover:opacity-100 transition-all hover:scale-110 z-20"
         onClick={nextSlide}
+        aria-label="Siguiente serie"
       >
-        <ChevronRight className="w-5 h-5" />
+        <ChevronRight className="w-5 h-5" aria-hidden="true" />
       </Button>
 
       {/* Indicadores */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-20">
         {featuredSeries.map((_, index) => (
           <button
             key={index}
@@ -138,7 +154,8 @@ export function SeriesSlider({
                 ? "bg-white w-10"
                 : "bg-white/50 w-6 hover:bg-white/70"
             }`}
-            aria-label={`Go to slide ${index + 1}`}
+            aria-label={`Ir a la serie ${index + 1}`}
+            aria-current={index === currentSlide ? "true" : "false"}
           />
         ))}
       </div>

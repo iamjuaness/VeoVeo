@@ -23,6 +23,7 @@ const SeriesDetailPage = lazy(
 );
 const SocialPage = lazy(() => import("../../features/social/pages/SocialPage"));
 const ProfilePage = lazy(() => import("../../features/auth/pages/ProfilePage"));
+const ListDetailPage = lazy(() => import("../../features/social/pages/ListDetailPage"));
 
 const PageLoader = () => (
   <div className="flex h-screen w-screen items-center justify-center bg-background">
@@ -81,6 +82,16 @@ export default function AppRouter() {
               <ErrorBoundary>
                 <PrivateRoute>
                   <ProfilePage />
+                </PrivateRoute>
+              </ErrorBoundary>
+            }
+          />
+          <Route
+            path="/social/list/:id"
+            element={
+              <ErrorBoundary>
+                <PrivateRoute>
+                  <ListDetailPage />
                 </PrivateRoute>
               </ErrorBoundary>
             }

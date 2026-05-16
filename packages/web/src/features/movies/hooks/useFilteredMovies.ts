@@ -55,27 +55,44 @@ export function useFilteredMovies({
           const movieFirstGenre = Array.isArray(movie.genres)
             ? movie.genres[0] // Primer elemento del array
             : typeof movie.genres === "string"
-            ? movie.genres // String completo
-            : null;
+              ? movie.genres // String completo
+              : null;
           return movieFirstGenre === currentGenre;
         });
       } else {
         // Usar películas normales
-        base = movies.filter(
-          (movie) =>
-            movie.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            movie.genres.some((genre) =>
-              genre.toLowerCase().includes(searchTerm.toLowerCase())
-            )
-        );
+        base = [...movies];
       }
+    }
+
+    // Filtrar localmente por género para "watched" y "watchLater"
+    if (filterStatus !== "all" && currentGenre && currentGenre !== "All") {
+      base = base.filter((movie) =>
+        Array.isArray(movie.genres) && movie.genres.includes(currentGenre)
+      );
+    }
+
+    // Filtrar localmente por búsqueda si es aplicable
+    if (searchTerm.trim() !== "") {
+      const lowerSearch = searchTerm.toLowerCase();
+      base = base.filter(
+        (movie) =>
+          (typeof movie.title === "string" &&
+            movie.title.toLowerCase().includes(lowerSearch)) ||
+          (Array.isArray(movie.genres) &&
+            movie.genres.some(
+              (genre) =>
+                typeof genre === "string" &&
+                genre.toLowerCase().includes(lowerSearch),
+            )),
+      );
     }
 
     // Filtrar por rating
     const currentRating = selectedRatings[filterStatus];
     if (currentRating !== "All") {
       base = base.filter(
-        (movie) => (movie.rating ?? 0) >= Number(currentRating)
+        (movie) => (movie.rating ?? 0) >= Number(currentRating),
       );
     }
 

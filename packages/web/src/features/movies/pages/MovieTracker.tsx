@@ -48,6 +48,8 @@ export default function MovieTracker() {
     moviesWatchLaterList,
     searchTerm,
     setSearchTerm,
+    activeSearchTerm,
+    clearSearch,
     statsLoading,
     performSearch,
     searchResults,
@@ -128,7 +130,7 @@ export default function MovieTracker() {
   };
 
   const { genreMovies, isLoadingGenre, errorGenre, loadMoreGenreMovies } =
-    useGenreMovies(selectedGenres[filterStatus]);
+    useGenreMovies(filterStatus === "all" ? selectedGenres[filterStatus] : "All");
 
   // Use the new custom hook for filtered movies
   const displayedMovies = useFilteredMovies({
@@ -136,7 +138,7 @@ export default function MovieTracker() {
     moviesWatchedList,
     moviesWatchLaterList,
     filterStatus,
-    searchTerm,
+    searchTerm: activeSearchTerm,
     selectedGenres,
     selectedRatings,
     watchedOrder,
@@ -149,32 +151,46 @@ export default function MovieTracker() {
     .map((movie) => ({
       ...movie,
       backdrop: `${movie.backdrop}&text=${encodeURIComponent(
-        movie.title
+        movie.title,
       )}+Backdrop`,
     }));
 
-  const moviesToDisplay = searchTerm.trim() ? searchResults : displayedMovies;
+  const moviesToDisplay =
+    activeSearchTerm.trim() && filterStatus === "all"
+      ? searchResults
+      : displayedMovies;
   const filteredMoviesToDisplay = moviesToDisplay.filter(
     (movie) =>
-      movie.year &&
-      movie.year !== 0 &&
-      movie.poster &&
-      typeof movie.poster === "string" &&
-      movie.poster.trim() !== "" &&
       movie.title &&
       typeof movie.title === "string" &&
       movie.title.trim() !== "" &&
-      movie.rating &&
-      movie.rating !== 0 &&
       movie.type &&
       (movie.type === "movie" ||
         movie.type === "video" ||
-        movie.type === "tvMovie")
+        movie.type === "tvMovie") &&
+      (activeSearchTerm.trim() !== "" ||
+        (movie.year &&
+          movie.year !== 0 &&
+          movie.poster &&
+          typeof movie.poster === "string" &&
+          movie.poster.trim() !== "" &&
+          movie.rating &&
+          movie.rating !== 0)),
   );
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [filterStatus, watchedOrder, selectedGenres, selectedRatings, searchTerm]);
+  }, [
+    filterStatus,
+    watchedOrder,
+    selectedGenres,
+    selectedRatings,
+    activeSearchTerm,
+  ]);
+
+  useEffect(() => {
+    clearSearch();
+  }, [filterStatus]);
 
   // Auto-play del slider
   useEffect(() => {
@@ -187,14 +203,14 @@ export default function MovieTracker() {
   useEffect(() => {
     localStorage.setItem(
       "moviesSelectedGenres",
-      JSON.stringify(selectedGenres)
+      JSON.stringify(selectedGenres),
     );
   }, [selectedGenres]);
 
   useEffect(() => {
     localStorage.setItem(
       "moviesSelectedRatings",
-      JSON.stringify(selectedRatings)
+      JSON.stringify(selectedRatings),
     );
   }, [selectedRatings]);
 
@@ -237,6 +253,7 @@ export default function MovieTracker() {
     setMovies(displayedMovies);
     setFilterStatus("all");
     setSearchTerm("");
+    clearSearch();
   };
 
   // Funciones del slider
@@ -246,7 +263,7 @@ export default function MovieTracker() {
 
   const prevSlide = () => {
     setCurrentSlide(
-      (prev) => (prev - 1 + featuredMovies.length) % featuredMovies.length
+      (prev) => (prev - 1 + featuredMovies.length) % featuredMovies.length,
     );
   };
 
@@ -454,10 +471,24 @@ export default function MovieTracker() {
             <div className="flex items-center gap-2">
               <LayoutGrid className="w-5 h-5 text-primary" />
               <h2 className="text-xl font-bold tracking-tight">
-                {filterStatus === "all" && "Explorar Catálogo"}
-                {filterStatus === "watched" && "Mi Historial"}
-                {filterStatus === "watchLater" && "Lista de Pendientes"}
+                {activeSearchTerm
+                  ? `Resultados para "${activeSearchTerm}"`
+                  : filterStatus === "all"
+                    ? "Explorar Catálogo"
+                    : filterStatus === "watched"
+                      ? "Mi Historial"
+                      : "Lista de Pendientes"}
               </h2>
+              {activeSearchTerm && (
+                <Button
+                  variant="ghost"
+                  onClick={clearSearch}
+                  size="sm"
+                  className="ml-2 h-8 text-muted-foreground hover:text-foreground"
+                >
+                  Limpiar Búsqueda
+                </Button>
+              )}
             </div>
 
             <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
@@ -552,10 +583,19 @@ export default function MovieTracker() {
                   No se encontraron películas
                 </h3>
                 <p className="text-muted">
-                  {searchTerm
-                    ? `No hay resultados para "${searchTerm}"`
+                  {activeSearchTerm
+                    ? `No hay resultados para "${activeSearchTerm}"`
                     : "No hay películas en esta categoría"}
                 </p>
+                {activeSearchTerm && (
+                  <Button
+                    variant="outline"
+                    onClick={clearSearch}
+                    className="mt-4"
+                  >
+                    Ver todas las películas
+                  </Button>
+                )}
               </div>
             )
           ) : (
@@ -605,7 +645,7 @@ export default function MovieTracker() {
                 components={{
                   Footer: () => (
                     <>
-                      {loading && hasMore && !searchTerm && (
+                      {loading && hasMore && !activeSearchTerm && (
                         <div className="flex justify-center py-6 text-gray-400">
                           <span className="animate-pulse text-lg">
                             <Loader2 className="w-5 h-5 animate-spin" />

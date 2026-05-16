@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useContext } from "react";
 import { Stats } from "../../stats/components/Stats";
 import { SeriesSearchBar } from "../components/SeriesSearchBar";
 import { SeriesFilters } from "../components/SeriesFilters";
@@ -12,13 +12,23 @@ import { Hamburger } from "../../../shared/components/layout/Hamburguer";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../../../shared/components/ui/button";
 import { useFilteredSeries } from "../hooks/useFilteredSeries";
-import { useContext } from "react";
+import { useGenreSeries } from "../hooks/useGenreSeries";
+import type { Genre } from "../../../shared/lib/genres";
+import { movieGenres } from "../../../shared/lib/genres";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../../shared/components/ui/select";
+import { Loader2, Search, LayoutGrid, Film, Tv, Filter, Star, ArrowUpDown } from "lucide-react";
+import { VirtuosoGrid } from "react-virtuoso";
+import { NotificationCenter } from "../../social/components/NotificationCenter";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { useSeries } from "../context/SeriesContext";
 import { ThemeContext } from "../../../core/providers/ThemeContext";
-import { Loader2, Search, LayoutGrid, Film, Tv } from "lucide-react";
-import { VirtuosoGrid } from "react-virtuoso";
-import { NotificationCenter } from "../../social/components/NotificationCenter";
+
 
 export default function SeriesTracker() {
   const {
@@ -33,6 +43,8 @@ export default function SeriesTracker() {
     seriesInProgressList,
     searchTerm,
     setSearchTerm,
+    activeSearchTerm,
+    clearSearch,
     statsLoading,
     performSearch,
     searchResults,
@@ -45,6 +57,80 @@ export default function SeriesTracker() {
     resetWatched,
     toggleWatchLater,
   } = useSeries();
+
+  const [selectedGenres, setSelectedGenres] = useState<{
+    all: Genre;
+    watched: Genre;
+    watchLater: Genre;
+    inProgress: Genre;
+  }>(() => {
+    const saved = localStorage.getItem("seriesSelectedGenres");
+    return saved
+      ? JSON.parse(saved)
+      : {
+          all: "All",
+          watched: "All",
+          watchLater: "All",
+          inProgress: "All",
+        };
+  });
+
+  type RatingValue = "All" | 5 | 6 | 7 | 8 | 9 | 10;
+
+  const [selectedRatings, setSelectedRatings] = useState<{
+    all: RatingValue;
+    watched: RatingValue;
+    watchLater: RatingValue;
+    inProgress: RatingValue;
+  }>(() => {
+    const saved = localStorage.getItem("seriesSelectedRatings");
+    return saved
+      ? JSON.parse(saved)
+      : {
+          all: "All",
+          watched: "All",
+          watchLater: "All",
+          inProgress: "All",
+        };
+  });
+
+  const [watchedOrder, setWatchedOrder] = useState<"asc" | "desc">("desc");
+
+  const handleRatingChange = (value: string) => {
+    const parsed = value === "All" ? "All" : (Number(value) as RatingValue);
+    setSelectedRatings((prev) => ({
+      ...prev,
+      [filterStatus]: parsed,
+    }));
+  };
+
+  const handleGenreChange = (genre: Genre) => {
+    setSelectedGenres((prev) => ({
+      ...prev,
+      [filterStatus]: genre,
+    }));
+
+    if (genre === "All" && filterStatus === "all") {
+      setCurrentPage(1);
+    }
+  };
+
+  const { genreSeries, isLoadingGenre, errorGenre } =
+    useGenreSeries(filterStatus === "all" ? selectedGenres[filterStatus] : "All");
+
+  useEffect(() => {
+    localStorage.setItem(
+      "seriesSelectedGenres",
+      JSON.stringify(selectedGenres)
+    );
+  }, [selectedGenres]);
+
+  useEffect(() => {
+    localStorage.setItem(
+      "seriesSelectedRatings",
+      JSON.stringify(selectedRatings)
+    );
+  }, [selectedRatings]);
 
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
@@ -121,24 +207,32 @@ export default function SeriesTracker() {
     seriesWatchLaterList,
     seriesInProgressList,
     filterStatus,
-    searchTerm,
+    searchTerm: activeSearchTerm,
+    selectedGenres,
+    selectedRatings,
+    watchedOrder,
+    genreSeries,
   });
 
-  const seriesToDisplay = searchTerm.trim() ? searchResults : displayedSeries;
+  const seriesToDisplay =
+    activeSearchTerm.trim() && filterStatus === "all"
+      ? searchResults
+      : displayedSeries;
   const filteredSeriesToDisplay = seriesToDisplay.filter(
     (s) =>
-      s.year &&
-      s.year !== 0 &&
-      s.poster &&
-      typeof s.poster === "string" &&
-      s.poster.trim() !== "" &&
       s.title &&
       typeof s.title === "string" &&
       s.title.trim() !== "" &&
-      s.rating &&
-      s.rating !== 0 &&
       s.type &&
-      (s.type === "tvSeries" || s.type === "tvMiniSeries")
+      (s.type === "tvSeries" || s.type === "tvMiniSeries") &&
+      (activeSearchTerm.trim() !== "" ||
+        (s.year &&
+          s.year !== 0 &&
+          s.poster &&
+          typeof s.poster === "string" &&
+          s.poster.trim() !== "" &&
+          s.rating &&
+          s.rating !== 0))
   );
 
   useEffect(() => {
@@ -147,7 +241,11 @@ export default function SeriesTracker() {
     } else {
       isMountedRef.current = true;
     }
-  }, [filterStatus, searchTerm]);
+  }, [filterStatus, activeSearchTerm, selectedGenres, selectedRatings, watchedOrder]);
+
+  useEffect(() => {
+    clearSearch();
+  }, [filterStatus]);
 
   useEffect(() => {
     let lastValue = false;
@@ -169,6 +267,7 @@ export default function SeriesTracker() {
     setSeries(series);
     setFilterStatus("all");
     setSearchTerm("");
+    clearSearch();
   };
 
   const stats = {
@@ -308,7 +407,7 @@ export default function SeriesTracker() {
         <main className="container mx-auto px-4 py-8 pt-24">
           {/* Featured Slider */}
           {featuredSeries.length > 0 &&
-            !searchTerm &&
+            !activeSearchTerm &&
             filterStatus === "all" && (
               <SeriesSlider
                 featuredSeries={featuredSeries}
@@ -351,15 +450,106 @@ export default function SeriesTracker() {
           )}
 
           {/* Section Header */}
-          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6 sticky top-[72px] z-30 bg-background/80 backdrop-blur-md p-4 rounded-xl border shadow-sm transition-all duration-300">
             <div className="flex items-center gap-2">
               <LayoutGrid className="w-5 h-5 text-primary" />
               <h2 className="text-xl font-bold tracking-tight">
-                {filterStatus === "all" && "Explorar Series"}
-                {filterStatus === "watchLater" && "Lista de Pendientes"}
+                {activeSearchTerm ? `Resultados para "${activeSearchTerm}"` : (
+                  filterStatus === "all" ? "Explorar Series" :
+                  filterStatus === "watched" ? "Mi Historial" :
+                  filterStatus === "inProgress" ? "En Progreso" :
+                  "Lista de Pendientes"
+                )}
               </h2>
+              {activeSearchTerm && (
+                <Button variant="ghost" onClick={clearSearch} size="sm" className="ml-2 h-8 text-muted-foreground hover:text-foreground">
+                  Limpiar Búsqueda
+                </Button>
+              )}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+              {/* Género */}
+              <div className="flex items-center gap-2 bg-muted/50 p-1 rounded-lg border border-border/50 hover:bg-muted/80 transition-colors min-w-[160px]">
+                <Filter className="w-4 h-4 text-muted-foreground ml-2 shrink-0" />
+                <Select
+                  value={selectedGenres[filterStatus]}
+                  onValueChange={handleGenreChange}
+                >
+                  <SelectTrigger className="w-full min-w-[120px] border-0 bg-transparent focus:ring-0 h-8 text-sm font-medium">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {movieGenres.map((genre) => (
+                      <SelectItem key={genre} value={genre}>
+                        {genre}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Rating */}
+              <div className="flex items-center gap-2 bg-muted/50 p-1 rounded-lg border border-border/50 hover:bg-muted/80 transition-colors min-w-[140px]">
+                <Star className="w-4 h-4 text-yellow-500 ml-2 shrink-0" />
+                <Select
+                  value={String(selectedRatings[filterStatus])}
+                  onValueChange={handleRatingChange}
+                >
+                  <SelectTrigger className="w-full min-w-[100px] border-0 bg-transparent focus:ring-0 h-8 text-sm font-medium whitespace-nowrap">
+                    <SelectValue placeholder="All" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="All">Cualquiera</SelectItem>
+                    {[5, 6, 7, 8, 9, 10].map((r) => (
+                      <SelectItem key={r} value={String(r)}>
+                        {r}+ Estrellas
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {filterStatus === "watched" && (
+                <div className="flex items-center gap-2 bg-muted/50 p-1 rounded-lg border border-border/50 hover:bg-muted/80 transition-colors min-w-[160px]">
+                  <ArrowUpDown className="w-4 h-4 text-primary ml-2 shrink-0" />
+                  <Select
+                    value={watchedOrder}
+                    onValueChange={(value) =>
+                      setWatchedOrder(value as "asc" | "desc")
+                    }
+                  >
+                    <SelectTrigger className="w-full min-w-[120px] border-0 bg-transparent focus:ring-0 h-8 text-sm font-medium whitespace-nowrap">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="desc">Más Recientes</SelectItem>
+                      <SelectItem value="asc">Más Antiguas</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
           </div>
+
+          {/* Genre loading indicator */}
+          {isLoadingGenre &&
+            selectedGenres[filterStatus] !== "All" &&
+            filterStatus === "all" &&
+            genreSeries.length === 0 && (
+              <div className="flex justify-center items-center py-12">
+                <Loader2 className="w-10 h-10 animate-spin text-primary" />
+                <p className="ml-3 text-muted-foreground">
+                  Cargando series de {selectedGenres[filterStatus]}...
+                </p>
+              </div>
+            )}
+
+          {errorGenre && (
+            <div className="text-center py-8 text-destructive">
+              <p>{errorGenre}</p>
+            </div>
+          )}
 
           {/* Grid */}
           {filteredSeriesToDisplay.length === 0 ? (
@@ -374,10 +564,15 @@ export default function SeriesTracker() {
                   No se encontraron series
                 </h3>
                 <p className="text-muted">
-                  {searchTerm
-                    ? `No hay resultados para "${searchTerm}"`
+                  {activeSearchTerm
+                    ? `No hay resultados para "${activeSearchTerm}"`
                     : "No hay series en esta categoría"}
                 </p>
+                {activeSearchTerm && (
+                  <Button variant="outline" onClick={clearSearch} className="mt-4">
+                    Ver todas las series
+                  </Button>
+                )}
               </div>
             )
           ) : (
@@ -424,7 +619,7 @@ export default function SeriesTracker() {
                 components={{
                   Footer: () => (
                     <>
-                      {loading && hasMore && !searchTerm && (
+                      {loading && hasMore && !activeSearchTerm && (
                         <div className="flex justify-center py-6 text-gray-400">
                           <Loader2 className="w-5 h-5 animate-spin" />
                         </div>

@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.8.4] - 2026-05-16
+
+### Added
+
+- **TanStack Query**: Migration to TanStack Query 5.
+- **Series Tracker**: Added filters for "Watched", "Watching", and "To Watch".
+
+### Fixed
+
+- **Movies Tracker**: Filters were not working correctly.
+- **Search**: Fixed issue with search functionality.
+
 ## [2.8.3] - 2026-05-16
 
 ### Added

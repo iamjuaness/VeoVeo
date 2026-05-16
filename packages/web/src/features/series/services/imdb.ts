@@ -7,6 +7,32 @@ const API_URL = "https://api.imdbapi.dev/";
 const SERIES_PER_PAGE = 24;
 const token = localStorage.getItem("authToken");
 
+export async function getSeriesByGenres(
+  genre: string,
+  pageToken?: string
+): Promise<{
+  titles: any[];
+  nextPageToken?: string;
+  totalCount?: number;
+}> {
+  const url = `${API_URL}titles?types=TV_SERIES&types=TV_MINI_SERIES&genres=${genre}&limit=50&sortBy=SORT_BY_POPULARITY${
+    pageToken ? `&pageToken=${pageToken}` : ""
+  }`;
+
+  const res = await fetch(url, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error(`Error al obtener series por género: ${res.statusText}`);
+  }
+
+  return await res.json();
+}
+
 export async function getSeriesDetailById(id: string): Promise<SeriesDetail> {
   const response = await fetch(`${API_URL}titles/${id}`, {
     method: "GET",

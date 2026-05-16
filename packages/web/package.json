@@ -1,6 +1,6 @@
 {
   "name": "@veoveo/web",
-  "version": "2.8.3",
+  "version": "2.8.4",
   "private": true,
   "type": "module",
   "scripts": {
@@ -30,6 +30,8 @@
     "@socket.io/component-emitter": "^3.1.2",
     "@tailwindcss/typography": "^0.5.18",
     "@tailwindcss/vite": "^4.1.13",
+    "@tanstack/react-query": "^5.100.10",
+    "@tanstack/react-query-devtools": "^5.100.10",
     "@veoveo/shared": "workspace:*",
     "@vercel/analytics": "^1.5.0",
     "class-variance-authority": "^0.7.1",

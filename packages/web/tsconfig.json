@@ -10,7 +10,6 @@
   ],
   "compilerOptions": {
     "baseUrl": ".",
-    "ignoreDeprecations": "6.0",
     "paths": {
       "@/shared/utils/*": ["./packages/shared/utils/*"],
       "@/shared/components/*": ["./packages/shared/components/ui/*"]

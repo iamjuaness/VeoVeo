@@ -1,9 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import ErrorBoundary from './ErrorBoundary';
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen } from "@testing-library/react";
+import ErrorBoundary from "./ErrorBoundary";
 
 // A component that always throws an error
-const ThrowError = ({ message = 'Test error' }: { message?: string }) => {
+const ThrowError = ({ message = "Test error" }: { message?: string }) => {
   throw new Error(message);
 };
 
@@ -12,42 +12,44 @@ const NormalComponent = () => {
   return <div data-testid="normal">Normal Component</div>;
 };
 
-describe('ErrorBoundary', () => {
+describe("ErrorBoundary", () => {
   beforeEach(() => {
     // Prevent React's error boundary logging from cluttering the test output
-    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
   });
 
-  it('renders children when there is no error', () => {
+  it("renders children when there is no error", () => {
     render(
       <ErrorBoundary>
         <NormalComponent />
-      </ErrorBoundary>
+      </ErrorBoundary>,
     );
 
-    expect(screen.getByTestId('normal')).toBeInTheDocument();
+    expect(screen.getByTestId("normal")).toBeInTheDocument();
   });
 
-  it('renders fallback UI when a child throws an error', () => {
+  it("renders fallback UI when a child throws an error", () => {
     render(
       <ErrorBoundary>
         <ThrowError message="Crashed component" />
-      </ErrorBoundary>
+      </ErrorBoundary>,
     );
 
     // The fallback UI should contain the text "Vaya, algo salió mal"
-    expect(screen.getByText('Vaya, algo salió mal')).toBeInTheDocument();
+    expect(screen.getByText("Vaya, algo salió mal")).toBeInTheDocument();
     // And the error message should be displayed
-    expect(screen.getByText('Crashed component')).toBeInTheDocument();
+    expect(screen.getByText("Crashed component")).toBeInTheDocument();
   });
 
-  it('renders a custom fallback if provided', () => {
+  it("renders a custom fallback if provided", () => {
     render(
-      <ErrorBoundary fallback={<div data-testid="custom-fallback">Custom Fallback</div>}>
+      <ErrorBoundary
+        fallback={<div data-testid="custom-fallback">Custom Fallback</div>}
+      >
         <ThrowError />
-      </ErrorBoundary>
+      </ErrorBoundary>,
     );
 
-    expect(screen.getByTestId('custom-fallback')).toBeInTheDocument();
+    expect(screen.getByTestId("custom-fallback")).toBeInTheDocument();
   });
 });

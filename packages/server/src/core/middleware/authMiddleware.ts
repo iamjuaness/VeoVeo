@@ -1,7 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import jwt from "jsonwebtoken";
-
-const JWT_SECRET = process.env.JWT_SECRET!;
+import { verifyToken } from "../config/jwt.js";
 
 export function authMiddleware(req: Request, res: Response, next: NextFunction) {
   try {
@@ -11,9 +9,9 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
     }
 
     const token = authHeader.split(" ")[1];
-    const decoded = jwt.verify(token, JWT_SECRET) as { id: string };
+    const decoded = verifyToken(token);
 
-    if (!decoded.id) {
+    if (!decoded || !decoded.id) {
       return res.status(401).json({ message: "Invalid token" });
     }
 

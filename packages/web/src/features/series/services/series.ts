@@ -1,15 +1,18 @@
 import { API_BASE_URL } from "../../../shared/utils/urls";
 import { apiClient } from "../../../core/api/apiClient";
+import { requestQueue } from "../../../core/api/requestQueue";
 
 const API_URL = API_BASE_URL + "api/user";
 
 export async function toggleSeriesWatchLaterApi(data: { seriesId: string }) {
-  const res = await apiClient(`${API_URL}/series/watch-later`, {
-    method: "POST",
-    body: JSON.stringify(data),
+  return requestQueue.enqueue(`series:${data.seriesId}`, async () => {
+    const res = await apiClient(`${API_URL}/series/watch-later`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    const result = await res.json();
+    return result;
   });
-  const result = await res.json();
-  return result;
 }
 
 export async function getUserSeriesStatus() {
@@ -26,12 +29,14 @@ export async function toggleEpisodeWatchedApi(data: {
   episodeNumber: number;
   force?: boolean;
 }) {
-  const res = await apiClient(`${API_URL}/series/episodes/watched`, {
-    method: "POST",
-    body: JSON.stringify(data),
+  return requestQueue.enqueue(`series:${data.seriesId}`, async () => {
+    const res = await apiClient(`${API_URL}/series/episodes/watched`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    const result = await res.json();
+    return result;
   });
-  const result = await res.json();
-  return result;
 }
 
 export async function markSeasonWatchedApi(data: {
@@ -40,12 +45,14 @@ export async function markSeasonWatchedApi(data: {
   episodes?: { episodeNumber: number }[];
   increment?: boolean;
 }) {
-  const res = await apiClient(`${API_URL}/series/season/watched`, {
-    method: "POST",
-    body: JSON.stringify(data),
+  return requestQueue.enqueue(`series:${data.seriesId}`, async () => {
+    const res = await apiClient(`${API_URL}/series/season/watched`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    const result = await res.json();
+    return result;
   });
-  const result = await res.json();
-  return result;
 }
 
 export async function markAllEpisodesWatchedApi(data: {
@@ -53,24 +60,28 @@ export async function markAllEpisodesWatchedApi(data: {
   seasons?: { seasonNumber: number; episodeCount: number }[];
   increment?: boolean;
 }) {
-  const res = await apiClient(`${API_URL}/series/mark-all-watched`, {
-    method: "POST",
-    body: JSON.stringify(data),
+  return requestQueue.enqueue(`series:${data.seriesId}`, async () => {
+    const res = await apiClient(`${API_URL}/series/mark-all-watched`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    const result = await res.json();
+    return result;
   });
-  const result = await res.json();
-  return result;
 }
 
 export async function toggleSeriesCompletedApi(data: {
   seriesId: string;
   isCompleted: boolean;
 }) {
-  const res = await apiClient(`${API_URL}/series/completed`, {
-    method: "POST",
-    body: JSON.stringify(data),
+  return requestQueue.enqueue(`series:${data.seriesId}`, async () => {
+    const res = await apiClient(`${API_URL}/series/completed`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    const result = await res.json();
+    return result;
   });
-  const result = await res.json();
-  return result;
 }
 
 export async function getSeriesProgressApi(seriesId: string) {
@@ -82,10 +93,12 @@ export async function getSeriesProgressApi(seriesId: string) {
 }
 
 export async function resetSeriesWatchedApi(data: { seriesId: string }) {
-  const res = await apiClient(`${API_URL}/series/reset`, {
-    method: "POST",
-    body: JSON.stringify(data),
+  return requestQueue.enqueue(`series:${data.seriesId}`, async () => {
+    const res = await apiClient(`${API_URL}/series/reset`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    const result = await res.json();
+    return result;
   });
-  const result = await res.json();
-  return result;
 }

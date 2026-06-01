@@ -1,7 +1,7 @@
 import { memo, useState } from "react";
 import { Card } from "../../../shared/components/ui/card";
 import { Badge } from "../../../shared/components/ui/badge";
-import { Eye, EyeOff, Clock, Star, Calendar, Tv } from "lucide-react";
+import { Eye, EyeOff, Clock, Star, Calendar, Tv, Loader2 } from "lucide-react";
 import type { Series } from "../../../interfaces/Series";
 import { Button } from "../../../shared/components/ui/button";
 import type { User } from "../../../interfaces/User";
@@ -15,6 +15,7 @@ interface Props {
   openLoginModal: () => void;
   watched?: boolean;
   inProgress?: boolean;
+  isProcessing?: boolean;
 }
 
 export const SeriesCard = memo(function SeriesCard({
@@ -26,6 +27,7 @@ export const SeriesCard = memo(function SeriesCard({
   openLoginModal,
   watched = false,
   inProgress = false,
+  isProcessing = false,
 }: Props) {
   const [isLoaded, setIsLoaded] = useState(false);
   function handleToggleWatchLater(e: React.MouseEvent<HTMLButtonElement>) {
@@ -148,12 +150,17 @@ export const SeriesCard = memo(function SeriesCard({
             variant={watched ? "default" : "secondary"}
             size="sm"
             onClick={handleMarkWatched}
+            disabled={isProcessing}
             className={`flex-1 gap-1.5 h-8 text-xs font-medium transition-all ${
               watched ? "bg-green-600 hover:bg-green-700" : ""
             }`}
             aria-label={watched ? "Serie vista" : "Marcar como vista"}
           >
-            <Tv className="w-3.5 h-3.5" aria-hidden="true" />
+            {isProcessing ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
+            ) : (
+              <Tv className="w-3.5 h-3.5" aria-hidden="true" />
+            )}
             {watched ? "Vista" : "Marcar Vista"}
           </Button>
 
@@ -162,11 +169,16 @@ export const SeriesCard = memo(function SeriesCard({
               variant="outline"
               size="sm"
               onClick={handleResetWatched}
+              disabled={isProcessing}
               className="h-8 w-8 p-0 shrink-0 text-muted-foreground hover:text-destructive hover:border-destructive/50"
               title="Resetear progreso"
               aria-label="Resetear progreso de la serie"
             >
-              <EyeOff className="w-3.5 h-3.5" aria-hidden="true" />
+              {isProcessing ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
+              ) : (
+                <EyeOff className="w-3.5 h-3.5" aria-hidden="true" />
+              )}
             </Button>
           )}
 
@@ -174,7 +186,7 @@ export const SeriesCard = memo(function SeriesCard({
             variant={series.watchLater ? "default" : "outline"}
             size="sm"
             onClick={handleToggleWatchLater}
-            disabled={watched}
+            disabled={watched || isProcessing}
             className={`h-8 w-8 p-0 shrink-0 transition-colors ${
               series.watchLater
                 ? "bg-blue-600 hover:bg-blue-700 text-white"
@@ -183,7 +195,11 @@ export const SeriesCard = memo(function SeriesCard({
             title={series.watchLater ? "Quitar de pendientes" : "Ver después"}
             aria-label={series.watchLater ? "Quitar de pendientes" : "Añadir a ver después"}
           >
-            <Clock className="w-3.5 h-3.5" aria-hidden="true" />
+            {isProcessing ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
+            ) : (
+              <Clock className="w-3.5 h-3.5" aria-hidden="true" />
+            )}
           </Button>
         </div>
       </div>

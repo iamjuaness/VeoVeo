@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Stats } from "../../stats/components/Stats";
 import { MovieSearchBar } from "../components/MovieSearchBar";
 import { MovieFilters } from "../components/MovieFilters";
@@ -98,7 +98,15 @@ export default function MovieTracker() {
         };
   });
 
-  const [watchedOrder, setWatchedOrder] = useState<"asc" | "desc">("desc");
+  const [watchedOrder, setWatchedOrder] = useState<"asc" | "desc">(
+    () => (localStorage.getItem("moviesWatchedOrder") as "asc" | "desc") || "desc"
+  );
+
+  useEffect(() => {
+    localStorage.setItem("moviesWatchedOrder", watchedOrder);
+  }, [watchedOrder]);
+
+  const isMountedRef = useRef(false);
 
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
@@ -184,7 +192,11 @@ export default function MovieTracker() {
   );
 
   useEffect(() => {
-    setCurrentPage(1);
+    if (isMountedRef.current) {
+      setCurrentPage(1);
+    } else {
+      isMountedRef.current = true;
+    }
   }, [
     filterStatus,
     watchedOrder,
@@ -227,15 +239,16 @@ export default function MovieTracker() {
   const { lastScrollPosition, setLastScrollPosition } = useMovies();
 
   useEffect(() => {
-    if (lastScrollPosition > 0) {
-      setTimeout(() => {
+    if (lastScrollPosition > 0 && filteredMoviesToDisplay.length > 0) {
+      const timer = setTimeout(() => {
         window.scrollTo({
           top: lastScrollPosition,
           behavior: "instant" as any,
         });
       }, 100);
+      return () => clearTimeout(timer);
     }
-  }, []);
+  }, [filteredMoviesToDisplay.length, lastScrollPosition]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -250,7 +263,14 @@ export default function MovieTracker() {
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      const currentScrollY = window.scrollY;
+      if (currentScrollY > 0) {
+        setLastScrollPosition(currentScrollY);
+        localStorage.setItem("moviesLastScroll", currentScrollY.toString());
+      }
+    };
   }, [setLastScrollPosition]);
 
   const handleLogout = () => {

@@ -59,6 +59,7 @@ export default function SeriesTracker() {
     resetWatched,
     toggleWatchLater,
     searchError,
+    processingSeries,
   } = useSeries();
 
   const [selectedGenres, setSelectedGenres] = useState<{
@@ -97,7 +98,13 @@ export default function SeriesTracker() {
         };
   });
 
-  const [watchedOrder, setWatchedOrder] = useState<"asc" | "desc">("desc");
+  const [watchedOrder, setWatchedOrder] = useState<"asc" | "desc">(
+    () => (localStorage.getItem("seriesWatchedOrder") as "asc" | "desc") || "desc"
+  );
+
+  useEffect(() => {
+    localStorage.setItem("seriesWatchedOrder", watchedOrder);
+  }, [watchedOrder]);
 
   const handleRatingChange = (value: string) => {
     const parsed = value === "All" ? "All" : (Number(value) as RatingValue);
@@ -160,19 +167,17 @@ export default function SeriesTracker() {
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      const currentScrollY = window.scrollY;
+      if (currentScrollY > 0) {
+        setLastScrollPosition(currentScrollY);
+        localStorage.setItem("seriesLastScroll", currentScrollY.toString());
+      }
+    };
   }, [setLastScrollPosition]);
 
-  useEffect(() => {
-    if (lastScrollPosition > 0) {
-      setTimeout(() => {
-        window.scrollTo({
-          top: lastScrollPosition,
-          behavior: "instant" as any,
-        });
-      }, 100);
-    }
-  }, []);
+
 
   // Featured series for slider (top rated)
   const featuredSeries = useMemo(() => {
@@ -237,6 +242,18 @@ export default function SeriesTracker() {
           s.rating &&
           s.rating !== 0))
   );
+
+  useEffect(() => {
+    if (lastScrollPosition > 0 && filteredSeriesToDisplay.length > 0) {
+      const timer = setTimeout(() => {
+        window.scrollTo({
+          top: lastScrollPosition,
+          behavior: "instant" as any,
+        });
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [filteredSeriesToDisplay.length, lastScrollPosition]);
 
   useEffect(() => {
     if (isMountedRef.current) {
@@ -612,16 +629,16 @@ export default function SeriesTracker() {
                 listClassName="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4"
                 itemContent={(_index, s) => (
                   <div
-                    key={s.id}
-                    className="cursor-pointer h-full w-full flex justify-center"
-                    tabIndex={0}
-                    onClick={() => navigate(`/series/${s.id}`)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ")
-                        navigate(`/series/${s.id}`);
-                    }}
-                    role="button"
-                    aria-label={`Ver detalles de ${s.title}`}
+                     key={s.id}
+                     className="cursor-pointer h-full w-full flex justify-center"
+                     tabIndex={0}
+                     onClick={() => navigate(`/series/${s.id}`)}
+                     onKeyDown={(e) => {
+                       if (e.key === "Enter" || e.key === " ")
+                         navigate(`/series/${s.id}`);
+                     }}
+                     role="button"
+                     aria-label={`Ver detalles de ${s.title}`}
                   >
                     <SeriesCard
                       series={s}
@@ -634,6 +651,7 @@ export default function SeriesTracker() {
                       )}
                       user={user}
                       openLoginModal={() => setShowLoginModal(true)}
+                      isProcessing={processingSeries[s.id]}
                     />
                   </div>
                 )}

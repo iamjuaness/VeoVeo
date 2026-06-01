@@ -82,6 +82,7 @@ interface SeriesContextType {
   setSelectedGenre?: (genre: Genre) => void;
   genreSeries: Series[];
   setGenreSeries?: React.Dispatch<React.SetStateAction<Series[]>>;
+  processingSeries: Record<string, boolean>;
 }
 
 const SeriesContext = createContext<SeriesContextType | undefined>(undefined);
@@ -119,6 +120,9 @@ export function SeriesProvider({ children }: SeriesProviderProps) {
   const [lastScrollPosition, setLastScrollPosition] = useState(0);
   const [selectedGenre, setSelectedGenre] = useState<Genre>("All");
   const [genreSeries, setGenreSeries] = useState<Series[]>([]);
+  const [processingSeries, setProcessingSeries] = useState<
+    Record<string, boolean>
+  >({});
   const isFetchingRef = useRef(false);
 
   // TanStack Query for User Series Status
@@ -128,6 +132,12 @@ export function SeriesProvider({ children }: SeriesProviderProps) {
     enabled: !!user && !!accessToken,
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
+
+  useEffect(() => {
+    queryClient.invalidateQueries({
+      queryKey: ["userSeriesStatus"],
+    });
+  }, [user?.id, accessToken, queryClient]);
 
   const seriesWatchedList = useMemo(() => {
     if (!userSeriesStatus?.seriesWatched) return [];
@@ -252,7 +262,9 @@ export function SeriesProvider({ children }: SeriesProviderProps) {
         })) || [];
       return markAllEpisodesWatchedApi({ seriesId: id, seasons });
     },
-    onSettled: () => {
+    onMutate: (id) => setProcessingSeries((prev) => ({ ...prev, [id]: true })),
+    onSettled: (_, __, id) => {
+      setProcessingSeries((prev) => ({ ...prev, [id]: false }));
       queryClient.invalidateQueries({
         queryKey: ["userSeriesStatus", user?.id],
       });
@@ -261,7 +273,9 @@ export function SeriesProvider({ children }: SeriesProviderProps) {
 
   const resetWatchedMutation = useMutation({
     mutationFn: async (id: string) => resetSeriesWatchedApi({ seriesId: id }),
-    onSettled: () => {
+    onMutate: (id) => setProcessingSeries((prev) => ({ ...prev, [id]: true })),
+    onSettled: (_, __, id) => {
+      setProcessingSeries((prev) => ({ ...prev, [id]: false }));
       queryClient.invalidateQueries({
         queryKey: ["userSeriesStatus", user?.id],
       });
@@ -271,7 +285,9 @@ export function SeriesProvider({ children }: SeriesProviderProps) {
   const toggleWatchLaterMutation = useMutation({
     mutationFn: async (id: string) =>
       toggleSeriesWatchLaterApi({ seriesId: id }),
-    onSettled: () => {
+    onMutate: (id) => setProcessingSeries((prev) => ({ ...prev, [id]: true })),
+    onSettled: (_, __, id) => {
+      setProcessingSeries((prev) => ({ ...prev, [id]: false }));
       queryClient.invalidateQueries({
         queryKey: ["userSeriesStatus", user?.id],
       });
@@ -413,6 +429,7 @@ export function SeriesProvider({ children }: SeriesProviderProps) {
       setSelectedGenre,
       genreSeries,
       setGenreSeries,
+      processingSeries,
     }),
     [
       series,
@@ -437,6 +454,7 @@ export function SeriesProvider({ children }: SeriesProviderProps) {
       seriesStats,
       selectedGenre,
       genreSeries,
+      processingSeries,
     ],
   );
 

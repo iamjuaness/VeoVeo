@@ -131,6 +131,12 @@ export function MoviesProvider({ children }: MoviesProviderProps) {
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
+  useEffect(() => {
+    queryClient.invalidateQueries({
+      queryKey: ["userMovieStatus"],
+    });
+  }, [user?.id, accessToken, queryClient]);
+
   const moviesWatchedList = useMemo(() => {
     if (!userMovieStatus?.moviesWatched) return [];
     return userMovieStatus.moviesWatched.map((movie: any) => ({

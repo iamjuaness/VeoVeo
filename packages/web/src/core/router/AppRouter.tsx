@@ -31,18 +31,19 @@ const PageLoader = () => (
   </div>
 );
 
-const withErrorBoundary = (Component: React.ElementType) => (
-  <ErrorBoundary>
-    <Component />
-  </ErrorBoundary>
-);
-
 export default function AppRouter() {
   return (
     <BrowserRouter>
       <Suspense fallback={<PageLoader />}>
         <Routes>
-          <Route path="/home" element={withErrorBoundary(MovieTracker)} />
+          <Route
+            path="/home"
+            element={
+              <ErrorBoundary>
+                <MovieTracker />
+              </ErrorBoundary>
+            }
+          />
           <Route
             path="/stats"
             element={
@@ -53,9 +54,30 @@ export default function AppRouter() {
               </ErrorBoundary>
             }
           />
-          <Route path="/movie/:id" element={withErrorBoundary(MovieDetailPage)} />
-          <Route path="/series" element={withErrorBoundary(SeriesTracker)} />
-          <Route path="/series/:id" element={withErrorBoundary(SeriesDetailPage)} />
+          <Route
+            path="/movie/:id"
+            element={
+              <ErrorBoundary>
+                <MovieDetailPage />
+              </ErrorBoundary>
+            }
+          />
+          <Route
+            path="/series"
+            element={
+              <ErrorBoundary>
+                <SeriesTracker />
+              </ErrorBoundary>
+            }
+          />
+          <Route
+            path="/series/:id"
+            element={
+              <ErrorBoundary>
+                <SeriesDetailPage />
+              </ErrorBoundary>
+            }
+          />
           <Route
             path="/social"
             element={

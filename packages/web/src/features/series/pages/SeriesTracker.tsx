@@ -357,7 +357,7 @@ export default function SeriesTracker() {
             {!user ? (
               <>
                 {/* Desktop (lg y superior): lupa + theme + login + register */}
-                <div className="hidden lg:flex items-center gap-2 fixed right-4 top-4 z-50">
+                <div className="hidden lg:flex items-center gap-2 fixed right-4 top-safe-nav z-50">
                   {showScrollSearch && (
                     <Button
                       variant="ghost"
@@ -384,7 +384,7 @@ export default function SeriesTracker() {
                 </div>
 
                 {/* Mobile: lupa + hamburger */}
-                <div className="fixed right-4 top-4 z-50 flex items-center gap-2 lg:hidden">
+                <div className="fixed right-4 top-safe-nav z-50 flex items-center gap-2 lg:hidden">
                   {showScrollSearch && (
                     <Button
                       variant="ghost"
@@ -411,7 +411,7 @@ export default function SeriesTracker() {
                 </div>
               </>
             ) : (
-              <div className="fixed right-4 top-4 z-50 flex items-center gap-2">
+              <div className="fixed right-4 top-safe-nav z-50 flex items-center gap-2">
                 {showScrollSearch && (
                   <Button
                     variant="ghost"

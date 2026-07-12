@@ -14,7 +14,9 @@ interface AuthContextType {
   isLoading: boolean;
 }
 
-export const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthContext = createContext<AuthContextType | undefined>(
+  undefined,
+);
 
 function getUserFromToken(token: string): User | null {
   try {
@@ -51,7 +53,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     const initAuth = async () => {
       const storedAccessToken = localStorage.getItem("accessToken");
       const storedRefreshToken = localStorage.getItem("refreshToken");
-      
+
       if (storedAccessToken && storedRefreshToken) {
         if (isTokenExpired(storedAccessToken)) {
           try {
@@ -115,14 +117,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   return (
     <AuthContext.Provider
-      value={{ 
-        user, 
-        setUser: setRawUser, 
-        accessToken, 
-        refreshToken, 
-        login, 
-        logout, 
-        isLoading 
+      value={{
+        user,
+        setUser: setRawUser,
+        accessToken,
+        refreshToken,
+        login,
+        logout,
+        isLoading,
       }}
     >
       {children}

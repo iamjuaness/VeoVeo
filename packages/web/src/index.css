@@ -244,3 +244,8 @@
 .navbar-safe {
   padding-top: env(safe-area-inset-top);
 }
+
+/* Fixed buttons (lupa, hamburger) that must sit below the iOS status bar */
+.top-safe-nav {
+  top: calc(env(safe-area-inset-top) + 8px);
+}

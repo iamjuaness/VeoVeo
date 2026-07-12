@@ -99,7 +99,8 @@ export default function MovieTracker() {
   });
 
   const [watchedOrder, setWatchedOrder] = useState<"asc" | "desc">(
-    () => (localStorage.getItem("moviesWatchedOrder") as "asc" | "desc") || "desc"
+    () =>
+      (localStorage.getItem("moviesWatchedOrder") as "asc" | "desc") || "desc",
   );
 
   useEffect(() => {
@@ -362,7 +363,7 @@ export default function MovieTracker() {
             {!user ? (
               <>
                 {/* Desktop (lg y superior): lupa + login + register */}
-                <div className="hidden lg:flex items-center gap-2 fixed right-4 top-4 z-50">
+                <div className="hidden lg:flex items-center gap-2 fixed right-4 top-safe-nav z-50">
                   {showScrollSearch && (
                     <Button
                       variant="ghost"
@@ -389,7 +390,7 @@ export default function MovieTracker() {
                 </div>
 
                 {/* Mobile: lupa + theme + hamburger */}
-                <div className="fixed right-4 top-4 z-50 flex items-center gap-2 lg:hidden">
+                <div className="fixed right-4 top-safe-nav z-50 flex items-center gap-2 lg:hidden">
                   {showScrollSearch && (
                     <Button
                       variant="ghost"
@@ -419,7 +420,7 @@ export default function MovieTracker() {
               </>
             ) : (
               /* Avatar de usuario y menú lateral */
-              <div className="fixed right-4 top-4 z-50 flex items-center gap-2">
+              <div className="fixed right-4 top-safe-nav z-50 flex items-center gap-2">
                 {showScrollSearch && (
                   <Button
                     variant="ghost"
@@ -470,7 +471,7 @@ export default function MovieTracker() {
           <div className="container mx-auto px-4 py-6">
             <div className="gap-6 mb-6">
               <div className="gap-2 mt-16">
-                {(loading && movies.length === 0) ? (
+                {loading && movies.length === 0 ? (
                   <SliderSkeleton />
                 ) : (
                   <Slider
@@ -626,7 +627,7 @@ export default function MovieTracker() {
             </div>
           )}
           {filteredMoviesToDisplay.length === 0 ? (
-            (loading || searchLoading) ? (
+            loading || searchLoading ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 justify-items-center py-8">
                 {Array.from({ length: 10 }).map((_, i) => (
                   <MovieCardSkeleton key={i} />
@@ -638,9 +639,7 @@ export default function MovieTracker() {
                 <h3 className="text-xl font-semibold mb-2 text-destructive">
                   Error en la búsqueda
                 </h3>
-                <p className="text-muted-foreground mb-6">
-                  {searchError}
-                </p>
+                <p className="text-muted-foreground mb-6">{searchError}</p>
                 <Button variant="outline" onClick={clearSearch}>
                   Limpiar y reintentar
                 </Button>

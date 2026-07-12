@@ -4,12 +4,12 @@ import { getMovieInWatchLater, getMovieWatchCount } from "./movie";
 import { API_BASE_URL } from "../../../shared/utils/urls";
 import { apiClient } from "../../../core/api/apiClient";
 
-const API_URL = "https://api.imdbapi.dev/";
+const API_URL = "https://api.tiffara.com/";
 const MOVIES_PER_PAGE = 24;
 
 export async function getMoviesByGenres(
   genre: string,
-  pageToken?: string
+  pageToken?: string,
 ): Promise<{
   titles: any[];
   nextPageToken?: string;
@@ -33,9 +33,7 @@ export async function getMoviesByGenres(
   return await res.json();
 }
 
-export async function getMovieDetailById(
-  id: string
-): Promise<MovieDetail> {
+export async function getMovieDetailById(id: string): Promise<MovieDetail> {
   const response = await fetch(`${API_URL}titles/${id}`, {
     method: "GET",
     headers: {
@@ -131,7 +129,7 @@ export async function getMovieDetailById(
 
 export async function getMoviesByIds(ids: string[]): Promise<Movie[]> {
   if (!ids.length) return [];
-  
+
   // Usamos apiClient para peticiones internas que requieren auth y refresh automático
   const res = await apiClient(`${API_BASE_URL}api/imbd/movies/batch`, {
     method: "POST",
@@ -169,9 +167,9 @@ export async function searchMovies(query: string): Promise<Movie[]> {
   if (!query.trim()) return [];
 
   const url = `${API_URL}search/titles?query=${encodeURIComponent(
-    query
+    query,
   )}&limit=50&countryCodes=US`;
-  
+
   const res = await fetch(url, {
     method: "GET",
     headers: { "Content-Type": "application/json" },

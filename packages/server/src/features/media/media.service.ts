@@ -1,7 +1,7 @@
 import { IdCard } from "lucide-react";
 import MediaCacheModel, { IMediaCache } from "./media.model.js";
 
-const API_URL = "https://api.imdbapi.dev/";
+const API_URL = "https://api.tiffara.com/";
 
 /**
  * Ensures a single media item is in the cache.
@@ -9,7 +9,7 @@ const API_URL = "https://api.imdbapi.dev/";
  * This is called on-demand as movies/series are accessed.
  */
 export async function ensureMediaInCache(
-  id: string
+  id: string,
 ): Promise<IMediaCache | null> {
   if (!id) return null;
 
@@ -27,7 +27,7 @@ export async function ensureMediaInCache(
 
     if (!res.ok) {
       console.error(
-        `Error fetching from IMDb API for ID ${id}: ${res.statusText}`
+        `Error fetching from IMDb API for ID ${id}: ${res.statusText}`,
       );
       return null;
     }
@@ -65,7 +65,7 @@ export async function ensureMediaInCache(
  */
 export async function enrichMediaList(
   items: any[],
-  idField: string
+  idField: string,
 ): Promise<any[]> {
   if (!items || items.length === 0) return [];
 

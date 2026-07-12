@@ -4,12 +4,12 @@ import type { Episode } from "../../../interfaces/Series";
 import { API_BASE_URL } from "../../../shared/utils/urls";
 import { apiClient } from "../../../core/api/apiClient";
 
-const API_URL = "https://api.imdbapi.dev/";
+const API_URL = "https://api.tiffara.com/";
 const SERIES_PER_PAGE = 24;
 
 export async function getSeriesByGenres(
   genre: string,
-  pageToken?: string
+  pageToken?: string,
 ): Promise<{
   titles: any[];
   nextPageToken?: string;
@@ -130,7 +130,7 @@ export async function getSeriesDetailById(id: string): Promise<SeriesDetail> {
 export async function getSeasonEpisodes(
   seriesId: string,
   season: string,
-  pageToken?: string
+  pageToken?: string,
 ): Promise<{
   episodes: Episode[];
   totalCount: number;
@@ -194,7 +194,7 @@ export async function searchSeries(query: string): Promise<Series[]> {
   if (!query.trim()) return [];
 
   const url = `${API_URL}search/titles?query=${encodeURIComponent(
-    query
+    query,
   )}&limit=50&countryCodes=US`;
   const res = await fetch(url, {
     method: "GET",
@@ -211,7 +211,7 @@ export async function searchSeries(query: string): Promise<Series[]> {
   // Filter only TV series and mini series
   return (data.titles ?? [])
     .filter(
-      (item: any) => item.type === "tvSeries" || item.type === "tvMiniSeries"
+      (item: any) => item.type === "tvSeries" || item.type === "tvMiniSeries",
     )
     .map((item: any) => ({
       id: item.id,

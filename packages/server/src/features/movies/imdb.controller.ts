@@ -1,13 +1,13 @@
 import { Request, Response } from "express";
 import { console } from "inspector";
-const API_URL = "https://api.imdbapi.dev/";
+const API_URL = "https://api.tiffara.com/";
 
 export async function fetchMoviesBatchRaw(
   ids: string[] | undefined | null,
   options?: {
     concurrentRequests?: number;
     delayMs?: number;
-  }
+  },
 ) {
   if (!ids || !Array.isArray(ids) || ids.length === 0) return null;
 
@@ -34,7 +34,7 @@ export async function fetchMoviesBatchRaw(
         const idStr = typeof id === "string" ? id : JSON.stringify(id);
         console.error(
           `Error al obtener película con ID ${idStr}:`,
-          res.statusText
+          res.statusText,
         );
         return null;
       }
@@ -53,7 +53,7 @@ export async function fetchMoviesBatchRaw(
 
 export async function fetchMoviesBatchRawController(
   req: Request,
-  res: Response
+  res: Response,
 ) {
   const { ids, options } = req.body;
 

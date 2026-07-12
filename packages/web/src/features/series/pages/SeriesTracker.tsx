@@ -156,18 +156,22 @@ export default function SeriesTracker() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    let debounceTimer: ReturnType<typeof setTimeout>;
+
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
       setShowScrollSearch(currentScrollY > 700);
 
-      const timer = setTimeout(() => {
+      // Debounce saving scroll position
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
         setLastScrollPosition(currentScrollY);
       }, 500);
-      return () => clearTimeout(timer);
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => {
+      clearTimeout(debounceTimer);
       window.removeEventListener("scroll", handleScroll);
       const currentScrollY = window.scrollY;
       if (currentScrollY > 0) {
@@ -243,8 +247,15 @@ export default function SeriesTracker() {
           s.rating !== 0))
   );
 
+  // Restore scroll position only once when series are loaded
+  const hasRestoredScroll = useRef(false);
   useEffect(() => {
-    if (lastScrollPosition > 0 && filteredSeriesToDisplay.length > 0) {
+    if (
+      !hasRestoredScroll.current &&
+      lastScrollPosition > 0 &&
+      filteredSeriesToDisplay.length > 0
+    ) {
+      hasRestoredScroll.current = true;
       const timer = setTimeout(() => {
         window.scrollTo({
           top: lastScrollPosition,
@@ -300,7 +311,7 @@ export default function SeriesTracker() {
   return (
     <div className="min-h-screen bg-background relative">
       {/* Navbar */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b shadow-sm transition-all duration-300 supports-backdrop-filter:bg-background/60">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b shadow-sm transition-all duration-300 supports-backdrop-filter:bg-background/60 navbar-safe">
         <div className="container mx-auto px-4 h-[72px] flex items-center justify-between">
           <div className="flex items-center justify-between w-full">
             {/* Logo */}
@@ -343,58 +354,79 @@ export default function SeriesTracker() {
             </div>
 
             {/* Controls */}
-            <div className="fixed right-28 z-50 flex items-center gap-2">
-              {showScrollSearch && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setShowFloatingSearch(!showFloatingSearch)}
-                  className="bg-background/50 hover:bg-background/80 backdrop-blur-sm border rounded-full w-10 h-10"
-                  aria-label="Buscar series"
-                >
-                  <Search className="w-5 h-5 text-muted-foreground" />
-                </Button>
-              )}
-
-              {!user ? (
-                <>
-                  <div className="hidden lg:flex items-center gap-3">
-                    <Theme toggleTheme={toggleTheme} />
-                    <div className="h-6 w-px bg-border/50 mx-1" />
-                    <ModalLogin
-                      open={showLoginModal}
-                      setOpen={setShowLoginModal}
-                      onLogin={setUser}
-                      openRegisterModal={() => setShowRegisterModal(true)}
-                    />
-                    <ModalRegister
-                      open={showRegisterModal}
-                      setOpen={setShowRegisterModal}
-                    />
-                  </div>
-
-                  <div className="fixed right-4 z-50 flex items-center gap-2">
-                    <Hamburger
-                      showLoginModal={showLoginModal}
-                      setShowLoginModal={setShowLoginModal}
-                      showRegisterModal={showRegisterModal}
-                      setShowRegisterModal={setShowRegisterModal}
-                      showMobileMenu={showMobileMenu}
-                      setShowMobileMenu={setShowMobileMenu}
-                      setUser={setUser}
-                      toggleTheme={toggleTheme}
-                      isDarkMode={isDarkMode}
-                      handleLogout={handleLogout}
-                    />
-                  </div>
-                </>
-              ) : (
-                <div className="fixed right-4 z-50 flex items-center gap-2">
-                  <NotificationCenter />
-                  <UserMenu open={showUserMenu} setOpen={setShowUserMenu} />
+            {!user ? (
+              <>
+                {/* Desktop (lg y superior): lupa + theme + login + register */}
+                <div className="hidden lg:flex items-center gap-2 fixed right-4 top-4 z-50">
+                  {showScrollSearch && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setShowFloatingSearch(!showFloatingSearch)}
+                      className="bg-background/50 hover:bg-background/80 backdrop-blur-sm border rounded-full w-10 h-10"
+                      aria-label="Buscar series"
+                    >
+                      <Search className="w-5 h-5 text-muted-foreground" />
+                    </Button>
+                  )}
+                  <Theme toggleTheme={toggleTheme} />
+                  <div className="h-6 w-px bg-border/50 mx-1" />
+                  <ModalLogin
+                    open={showLoginModal}
+                    setOpen={setShowLoginModal}
+                    onLogin={setUser}
+                    openRegisterModal={() => setShowRegisterModal(true)}
+                  />
+                  <ModalRegister
+                    open={showRegisterModal}
+                    setOpen={setShowRegisterModal}
+                  />
                 </div>
-              )}
-            </div>
+
+                {/* Mobile: lupa + hamburger */}
+                <div className="fixed right-4 top-4 z-50 flex items-center gap-2 lg:hidden">
+                  {showScrollSearch && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setShowFloatingSearch(!showFloatingSearch)}
+                      className="bg-background/50 hover:bg-background/80 backdrop-blur-sm border rounded-full w-10 h-10"
+                      aria-label="Buscar series"
+                    >
+                      <Search className="w-5 h-5 text-muted-foreground" />
+                    </Button>
+                  )}
+                  <Hamburger
+                    showLoginModal={showLoginModal}
+                    setShowLoginModal={setShowLoginModal}
+                    showRegisterModal={showRegisterModal}
+                    setShowRegisterModal={setShowRegisterModal}
+                    showMobileMenu={showMobileMenu}
+                    setShowMobileMenu={setShowMobileMenu}
+                    setUser={setUser}
+                    toggleTheme={toggleTheme}
+                    isDarkMode={isDarkMode}
+                    handleLogout={handleLogout}
+                  />
+                </div>
+              </>
+            ) : (
+              <div className="fixed right-4 top-4 z-50 flex items-center gap-2">
+                {showScrollSearch && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setShowFloatingSearch(!showFloatingSearch)}
+                    className="bg-background/50 hover:bg-background/80 backdrop-blur-sm border rounded-full w-10 h-10"
+                    aria-label="Buscar series"
+                  >
+                    <Search className="w-5 h-5 text-muted-foreground" />
+                  </Button>
+                )}
+                <NotificationCenter />
+                <UserMenu open={showUserMenu} setOpen={setShowUserMenu} />
+              </div>
+            )}
           </div>
         </div>
       </nav>
